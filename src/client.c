@@ -598,6 +598,8 @@ static void thd(void *arg)
 /* **************************************************
  * Extensions
  */
+
+/* signature: (ext-pause) */
 static lbm_value ext_pause(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -616,6 +618,7 @@ static lbm_value ext_pause(lbm_value *args, lbm_uint argn)
     return r_val;
 }
 
+/* signature: (ext-unpause) */
 static lbm_value ext_unpause(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -633,6 +636,7 @@ static lbm_value ext_unpause(lbm_value *args, lbm_uint argn)
     return r_val;
 }
 
+/* signature: (ext-uart-write string) */
 static lbm_value ext_uart_write(lbm_value *args, lbm_uint argn)
 {
 
@@ -656,6 +660,7 @@ static lbm_value ext_uart_write(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_true;
 }
 
+/* signature: (ext-set-connected) */
 static lbm_value ext_set_connected(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -666,6 +671,7 @@ static lbm_value ext_set_connected(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_true;
 }
 
+/* signature: (ext-uart-readline string number) */
 static lbm_value ext_uart_readline(lbm_value *args, lbm_uint argn)
 {
     // VESC_IF->printf("uart_read");
@@ -687,6 +693,7 @@ static lbm_value ext_uart_readline(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_i(r);
 }
 
+/* signature: (ext-uart-purge) */
 static lbm_value ext_uart_purge(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -699,6 +706,7 @@ static lbm_value ext_uart_purge(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_true;
 }
 
+/* signature: (ext-get-uuid string number) */
 static lbm_value ext_get_uuid(lbm_value *args, lbm_uint argn)
 {
     if (argn == 2)
@@ -724,6 +732,7 @@ static lbm_value ext_get_uuid(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_terror;
 }
 
+/* signature: (ext-tcp-send-string string) */
 static lbm_value ext_tcp_send_string(lbm_value *args, lbm_uint argn)
 {
 
@@ -741,6 +750,7 @@ static lbm_value ext_tcp_send_string(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_nil;
 }
 
+/* signature: (ext-is-connected) */
 static lbm_value ext_is_connected(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -754,6 +764,7 @@ static lbm_value ext_is_connected(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_nil;
 }
 
+/* signature: (ext-is-paused) */
 static lbm_value ext_is_paused(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -767,6 +778,7 @@ static lbm_value ext_is_paused(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_nil;
 }
 
+/* signature: (ext-send-fails) */
 static lbm_value ext_send_fails(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -776,6 +788,7 @@ static lbm_value ext_send_fails(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_u(d->send_fails);
 }
 
+/* signature: (ext-recv-fails) */
 static lbm_value ext_recv_fails(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -785,6 +798,7 @@ static lbm_value ext_recv_fails(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_u(d->recv_fails);
 }
 
+/* signature: (ext-sim7000-mode) */
 static lbm_value ext_sim7000_mode(lbm_value *args, lbm_uint argn)
 {
     (void)args;
@@ -797,6 +811,7 @@ static lbm_value ext_sim7000_mode(lbm_value *args, lbm_uint argn)
     return VESC_IF->lbm_enc_sym_true;
 }
 
+/* signature: (ext-sim7070-mode) */
 static lbm_value ext_sim7070_mode(lbm_value *args, lbm_uint argn)
 {
     (void)args;
