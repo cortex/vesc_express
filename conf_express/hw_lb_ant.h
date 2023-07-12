@@ -40,8 +40,8 @@
 // UART
 #define UART_NUM					0
 #define UART_BAUDRATE				115200
-#define UART_TX						1
-#define UART_RX						2
+#define UART_TX						2
+#define UART_RX						1
 
 // Functions
 void hw_init(void);
