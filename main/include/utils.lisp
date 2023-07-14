@@ -205,10 +205,53 @@
     ))
 )
 
-; t should be a number from 0.0 to 1.0
+; Converts a color in the RGB integer representation (what you would get when
+; typing 0xffffff) to a list of the RGB components from 0 to 255.
+(defun color-int-to-rgb (col-int)
+    (list
+        (bitwise-and (shr col-int 16) 0xff)
+        (bitwise-and (shr col-int 8) 0xff)
+        (bitwise-and col-int 0xff)
+    )
+)
+
+; Converts a color as a list of three RGB components into its integer
+; representation (see function above for explanation).
+(defun color-rgb-to-int (col-rgb)
+    (bitwise-or 
+        (shl (ix col-rgb 0) 16)
+        (bitwise-or
+            (shl (ix col-rgb 1) 8)
+            (ix col-rgb 2)
+        )
+    )
+)
+
+; Linearly interpolate between the two integer colors a and b by v.
+; v is in the range 0.0 to 1.0.
+(defun lerp-color (a b v) {
+    (var a-rgb (color-int-to-rgb a))
+    (var b-rgb (color-int-to-rgb b))
+    
+    (var r (to-i (lerp (ix a-rgb 0) (ix b-rgb 0) v)))
+    (var g (to-i (lerp (ix a-rgb 1) (ix b-rgb 1) v)))
+    (var b (to-i (lerp (ix a-rgb 2) (ix b-rgb 2) v)))
+    
+    (color-rgb-to-int (list r g b))
+})
+
+; x is meant to be a number from 0.0 to 1.0.
+; It isn't clamped to be in the range though.
 ; Source: https://gizma.com/easing/#easeInOutSine
 (defun ease-in-out-sine (x)
     (/ (- 1 (cos (* pi x))) 2)
+)
+
+; x is meant to be a number from 0.0 to 1.0.
+; It isn't clamped to be in the range though.
+; Source: https://gizma.com/easing/#easeOutQuint
+(defun ease-out-quint (x)
+    (- 1 (pow (- 1 x) 5))
 )
 
 @const-end

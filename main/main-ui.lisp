@@ -141,6 +141,9 @@
 ; Timestamp of the last tick with input
 (def last-input-time 0)
 
+; Timestamp of the end of last frame
+(def last-frame-time (systime))
+
 ; Buttons
 (def btn-up 0)
 (def btn-down 0)
@@ -190,6 +193,11 @@
 
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)
+
+; Timestamp of the last tick where the left or right buttons where pressed
+(def main-left-held-last-time 0)
+(def main-right-held-last-time 0)
+(def main-button-fadeout-secs 0.8)
 
 ; How many seconds the thrust activation countdown lasts.
 (def thr-countdown-len-secs (if dev-short-thr-activation 1.0 5.0))
@@ -242,6 +250,14 @@
     ; Used for keeping track of the angle of the last frame.
     (cons 'animation-angle 0.0)
 
+    ;;; main specific state
+    
+    ; How many long into the fadeout animation the gear '+' and '-' buttons
+    ; are. From 0.0 to 1.0.
+    ; These are nil if the animation isn't currently playing
+    (cons 'main-left-fadeout-t nil)
+    (cons 'main-right-fadeout-t nil)
+    
     ;;; board-info specific state
 
     ; The currently displayed message and icon
@@ -272,10 +288,8 @@
     ; - 'firmware-update: a firmware update is currently being installed
     (cons 'status-msg nil)
 
-
     (cons 'gradient-period 0)
     (cons 'gradient-phase 0)
-
 ))
 
 ; Contains the state from the last time it was rendered.
@@ -407,6 +421,36 @@
 ;;; View tick functions
 
 (defun view-tick-main () {
+    (if (not (state-get 'left-pressed)) {
+        (var secs (secs-since main-left-held-last-time))
+        (state-set 'main-left-fadeout-t
+            (if (> secs main-button-fadeout-secs)
+                nil
+                (clamp01 (/ secs main-button-fadeout-secs))
+            )
+        )
+    } {
+        (state-set 'main-left-fadeout-t nil)
+        (if (!= (state-get 'gear) gear-min)
+            (def main-left-held-last-time (systime))
+        )
+    })
+    
+    (if (not (state-get 'right-pressed)) {
+        (var secs (secs-since main-right-held-last-time))
+        (state-set 'main-right-fadeout-t
+            (if (> secs main-button-fadeout-secs)
+                nil
+                (clamp01 (/ secs main-button-fadeout-secs))
+            )
+        )
+    } {
+        (state-set 'main-right-fadeout-t nil)
+        (if (!= (state-get 'gear) gear-max)
+            (def main-right-held-last-time (systime))
+        )
+    })
+    
     (state-with-changed '(thr-active thr-input left-pressed right-pressed) (fn (thr-active thr-input left-pressed right-pressed) {
         (if (and
             (not thr-active)
@@ -454,6 +498,7 @@
     ; (println ("set thr-countdown-secs" (state-get 'thr-countdown-secs)))
 })
 
+(def fps 0.0)
 (defun tick () {
     (var start (systime))
 
@@ -538,6 +583,11 @@
     (state-store-last)
     
     (def frame-ms (* (secs-since start) 1000))
+    
+    ; source: https://stackoverflow.com/a/87333/15507414
+    (var smoothing 0.5) ; lower is smoother
+    (def fps (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps (- 1.0 smoothing))))
+    (def last-frame-time (systime))
 })
 
 @const-end

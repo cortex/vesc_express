@@ -151,8 +151,16 @@
     (match (state-get 'view-main-subview)
         (gear {
             (sbuf-render-changes subview-gear-num-buf (list col-menu col-fg))
-            (sbuf-render-changes subview-gear-left-buf (list col-menu col-menu-btn-fg col-menu-btn-bg col-menu-btn-disabled-fg))
-            (sbuf-render-changes subview-gear-right-buf (list col-menu col-menu-btn-fg col-menu-btn-bg col-menu-btn-disabled-fg))
+            ; (sbuf-render-changes subview-gear-left-buf (list col-menu col-menu-btn-fg col-menu-btn-bg col-menu-btn-disabled-fg))
+            ; (sbuf-render-changes subview-gear-right-buf (list col-menu col-menu-btn-fg col-menu-btn-bg col-menu-btn-disabled-fg))
+            ((if (eq subview-left-bg-col nil)
+                sbuf-render-changes
+                sbuf-render
+            ) subview-gear-left-buf (list col-menu col-menu-btn-fg subview-left-bg-col col-menu-btn-disabled-fg))
+            ((if (eq subview-right-bg-col nil)
+                sbuf-render-changes
+                sbuf-render
+            ) subview-gear-right-buf (list col-menu col-menu-btn-fg subview-right-bg-col col-menu-btn-disabled-fg))
         })
         (speed 
             (sbuf-render-changes subview-speed-num-buf (list col-menu col-fg))
@@ -231,6 +239,13 @@
     (def subview-gear-num-buf (create-sbuf 'indexed2 70 46 52 90))
     (def subview-gear-left-buf (create-sbuf 'indexed4 26 75 25 25))
     (def subview-gear-right-buf (create-sbuf 'indexed4 139 75 25 25))
+    
+    ; Unsure if this will draw a perfect sphere...
+    (sbuf-exec img-rectangle subview-gear-left-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
+    (sbuf-exec img-rectangle subview-gear-right-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
+
+    (def subview-left-bg-col col-menu)
+    (def subview-right-bg-col col-menu)
 
     (var gear-text (img-buffer-from-bin text-gear))
     (def subview-gear-text-buf (create-sbuf 'indexed2 131 108 33 19))
@@ -247,29 +262,45 @@
     ))
     
     ; left button
-    (state-with-changed '(left-pressed gear) (fn (left-pressed gear) {
-        (img-clear (sbuf-img subview-gear-left-buf) 0)
-
-        (if (and left-pressed (!= gear gear-min))
-            ; Unsure if this will draw a perfect sphere...
-            (sbuf-exec img-rectangle subview-gear-left-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
+    (state-with-changed '(main-left-fadeout-t left-pressed gear) (fn (main-left-fadeout-t left-pressed gear) {
+        (def subview-left-bg-col
+            (if (not-eq main-left-fadeout-t nil) {
+                (lerp-color col-menu-btn-bg col-menu (ease-out-quint main-left-fadeout-t))
+            } (if (and left-pressed (!= gear gear-min))
+                col-menu-btn-bg
+                col-menu
+            ))
         )
-
-        (var clr (if (= gear gear-min) 3 1))
-        (sbuf-exec img-rectangle subview-gear-left-buf 4 11 (17 3 clr '(filled)))
+        
+        (state-with-changed '(left-pressed gear) (fn (left-pressed gear) {
+            (var clr (if (= gear gear-min) 3 1))
+            (sbuf-exec img-rectangle subview-gear-left-buf 4 11 (17 3 clr '(filled)))
+        }))
     }))
-
+    
     ; right button
-    (state-with-changed '(right-pressed gear) (fn (right-pressed gear) {
-        (img-clear (sbuf-img subview-gear-right-buf) 0)
-        (if (and right-pressed (!= gear gear-max))
-            ; Unsure if this will draw a perfect sphere...
-            (sbuf-exec img-rectangle subview-gear-right-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
+    (state-with-changed '(main-right-fadeout-t right-pressed gear) (fn (main-right-fadeout-t right-pressed gear) {
+        (def subview-right-bg-col
+            (if (not-eq main-right-fadeout-t nil) {
+                (lerp-color col-menu-btn-bg col-menu (ease-out-quint main-right-fadeout-t))
+            } (if (and right-pressed (!= gear gear-max))
+                col-menu-btn-bg
+                col-menu
+            ))
         )
-        (var clr (if (= gear gear-max) 3 1))
-        (sbuf-exec img-rectangle subview-gear-right-buf 4 11 (17 3 clr '(filled)))
-        (sbuf-exec img-rectangle subview-gear-right-buf 11 4 (3 17 clr '(filled)))
+        
+        (state-with-changed '(right-pressed gear) (fn (right-pressed gear) {
+            ; (img-clear (sbuf-img subview-gear-right-buf) 0)
+            ; (if (and right-pressed (!= gear gear-max))
+            ;     ; Unsure if this will draw a perfect sphere...
+            ;     (sbuf-exec img-rectangle subview-gear-right-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
+            ; )
+            (var clr (if (= gear gear-max) 3 1))
+            (sbuf-exec img-rectangle subview-gear-right-buf 4 11 (17 3 clr '(filled)))
+            (sbuf-exec img-rectangle subview-gear-right-buf 11 4 (3 17 clr '(filled)))
+        }))
     }))
+    
 })
 
 (defun subview-cleanup-gear () {
