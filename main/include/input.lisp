@@ -56,7 +56,18 @@
             (set 'new-up t)
         })
 
-        ; (print (str-merge "left: " (to-str new-left) ", right: " (to-str new-right) ", down: " (to-str new-down) ", up: " (to-str new-up)))
+        ; (print (str-merge "left: " (to-str new-left) ", right: " (to-str
+        ; new-right) ", down: " (to-str new-down) ", up: " (to-str new-up)))
+        
+        (if (or
+            new-left
+            new-right
+            new-up
+            new-down
+            (is-thr-pressed thr-input)
+        ) {
+            (def last-input-time (systime))
+        })
 
         ; buttons are pressed on release
         (if (and (>= btn-down 2) (not new-down))

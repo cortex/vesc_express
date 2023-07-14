@@ -138,6 +138,9 @@
 ; Seems to control with what method thr is sent to the battery.
 (def thr-mode 1)
 
+; Timestamp of the last tick with input
+(def last-input-time 0)
+
 ; Buttons
 (def btn-up 0)
 (def btn-down 0)
@@ -215,8 +218,6 @@
 
     ; Throttle value calculated from magnetometer, 0.0 to 1.0
     (cons 'thr-input 0.0)
-    ; Final throttle that's adjusted for the current gear, 0.0 to 1.0
-    (cons 'thr 0.0)
 
     ; State of charge reported by BMS, 0.0 to 1.0
     (cons 'soc-remote 0.0)

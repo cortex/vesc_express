@@ -162,15 +162,20 @@
 })
 
 (defun connect-tick () {
-    (def thr (thr-apply-gear thr-input))
+    (if (> (secs-since last-input-time) 30.0) {
+        (set-thr-is-active false)
+        (def thr 0.0)
+    } {
+        (def thr (thr-apply-gear thr-input))
+    })
     
-    (state-set 'thr-input thr-input)
-    (state-set 'thr thr)
-    (state-set 'kmh kmh)
-    (state-set 'is-connected (!= esp-rx-cnt 0))
-    (if (state-get 'thr-active)
+    (if thr-active
         (send-thr thr)
     )
+    
+    (state-set 'thr-input thr-input)
+    (state-set 'kmh kmh)
+    (state-set 'is-connected (!= esp-rx-cnt 0))    
 })
 
 @const-start
