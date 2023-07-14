@@ -60,7 +60,7 @@
 (import "theme.lisp" code-theme)
 (import "ui-state.lisp" code-ui-state)
 (import "state-management.lisp" code-state-management)
-(import "communication.lisp" code-communication)
+(import "connection.lisp" code-connection)
 
 ;;; Icons
 
@@ -528,18 +528,9 @@
     (def frame-ms (* (secs-since start) 1000))
 })
 
-(read-eval-program code-communication)
+(read-eval-program code-connection)
 
 @const-end
-
-; (spawn 120 (fn ()
-;         (loopwhile t
-;             (progn
-;                 (def travel (thr-interpolate))
-;                 (def thr (* (mapval01 travel 2.0 11.0) gear 0.05))
-;                 (send-thr thr)
-;                 (sleep 0.04)
-; ))))
 
 ; Throttle calculation and communication
 (spawn 120 (fn ()
