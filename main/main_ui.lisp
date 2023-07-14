@@ -181,11 +181,15 @@
 (def magn0y-f -150.0)
 (def magn0z-f -150.0)
 
-; Throttle value calculated from magnetometer, 0.0 to 1.0
+; Throttle value calculated from magnetometer, 0.0 to 1.0.
 (def thr-input 0.0)
 ; Final throttle that's adjusted for the current gear, 0.0 to 1.0.
 (def thr 0.0)
 
+; If the thr is enabled, causing thr-input to be sent to the battery.
+(def thr-enabled false)
+
+; Seems to control with what method thr is sent to the battery.
 (def thr-mode 1)
 
 ; Buttons
@@ -254,6 +258,7 @@
 ; (def view-main-displayed-subview nil)
 
 ;;; UI state
+;;; This is a thread safe abstraction for storing values used by the UI rendering.
 
 ; The live unstatle UI state thats written to.
 (def ui-state (list
@@ -1046,7 +1051,6 @@
         ; (println (angle0-corrected ">" (angle-normalize value-angle-corrected)))
         (draw-rounded-circle-segment sbuf x y radius thickness angle0-corrected (angle-normalize value-angle-corrected) meter-col)
     })
-
 })
 
 ;;; Specific UI components
@@ -2127,11 +2131,14 @@
 ;                 (sleep 0.04)
 ; ))))
 
-(spawn 300 (fn ()
+; Throttle calculation and communication
+(spawn 120 (fn ()
     (loopwhile draw-enabled {
         (def travel (thr-interpolate))
         (def thr-input (* (map-range-01 travel 2.0 11.0)))
         (def thr (thr-apply-gear thr-input))
+        
+        
         (state-set 'thr-input thr-input)
         (state-set 'thr thr)
         (state-set 'kmh kmh)
