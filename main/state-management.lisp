@@ -9,6 +9,8 @@
 
 ;;; UI actions
 
+;;;; High-level actions
+
 (defun cycle-main-top-menu () {
     ; (print "cycle-main-top-menu")
     (var next (if (eq (state-get-live 'view-main-subview) 'gear) 'speed 'gear))
@@ -47,6 +49,22 @@
             (activate-thr-countdown)
         })
     })
+})
+
+; TODO: fix this
+(defun enter-sleep () {
+    (print "entering sleep...")
+    (def draw-enabled false)
+    (disp-clear) ; Should I clean up old buffers here?
+    ; (loopwhile (!= btn-down 0) (sleep 0.1))
+    (go-to-sleep -1)
+})
+
+;;;; Lower-level functions
+
+(defun set-thr-is-active (is-active) {
+    (def thr-active is-active)
+    (state-set 'thr-active is-active)
 })
 
 (defun activate-thr-reminder () (atomic
@@ -89,15 +107,6 @@
 (defun show-firmware-update-status () {
     (change-view 'status-msg)
     (state-set 'status-msg 'firmware-update)
-})
-
-; TODO: fix this
-(defun enter-sleep () {
-    (print "entering sleep...")
-    (def draw-enabled false)
-    (disp-clear) ; Should I clean up old buffers here?
-    ; (loopwhile (!= btn-down 0) (sleep 0.1))
-    (go-to-sleep -1)
 })
 
 

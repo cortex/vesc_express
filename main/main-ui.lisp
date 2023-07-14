@@ -434,7 +434,7 @@
                         (activate-thr-warning)
                     )
                     ((>= thr-countdown-secs thr-countdown-len-secs) {
-                        (state-set 'thr-active true)
+                        (set-thr-is-active true)
                         (change-view 'main)
                     })
                 )
