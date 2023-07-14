@@ -153,9 +153,7 @@ def to_bin(img: Image.Image, bit_count: Literal[1, 2, 4], palette: List[RgbTuple
                 panic(
                     f"Encountered invalid color index {index} for given `bit_count` {bit_count}. This should not be possible if `to_bin` was used correctly, the `palette` argument was likely the wrong length.")
 
-            # print(bit_str)
-
-            bits.append(to_bit_string(index, 2))
+            bits.append(to_bit_string(index, bit_count))
 
     return bits.tobytes()
 
