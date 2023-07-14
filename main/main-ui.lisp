@@ -175,6 +175,11 @@
 ; send data
 (def batt-addr-rx false)
 
+; True when there is a connection between the remote and battery.
+; The connection is considered broken when a certain number of pings have
+; failed.
+(def is-connected false)
+
 ; (def gear 3) ; 1 to 5, default should be 5
 (def gear-min 1)
 (def gear-max 9)
@@ -537,9 +542,17 @@
 
 @const-end
 
-; Throttle calculation and communication
+; Check connection
 (spawn 120 (fn ()
-    (loopwhile draw-enabled {
+    (loopwhile t
+        (check-connection-tick)
+        ; this tick function handles its own sleep time
+    )
+))
+
+; Communication
+(spawn 120 (fn ()
+    (loopwhile t {
         (connect-tick)
         
         (sleep 0.04)
@@ -557,7 +570,7 @@
 
 ; Slow updates
 (spawn 120 (fn ()
-    (loopwhile draw-enabled {
+    (loopwhile t {
         (def soc-remote (map-range-01 (vib-vmon) 3.4 4.2))
         (state-set 'soc-remote soc-remote)
         ; (print soc-bms)
@@ -566,9 +579,9 @@
     })
 ))
 
-; Fast updates
+; Tick UI
 (spawn 200 (fn ()
-    (loopwhile draw-enabled {
+    (loopwhile t {
         (var start (systime))
         (tick)
         ; (gc)
