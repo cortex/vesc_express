@@ -11,18 +11,18 @@ relative paths to `main_ui.lisp` so that it can find them.
 
 ## Assets
 
-All original and processed assets can be found under `sources/`.
+All original and processed assets can be found under `assets/`.
 In addition to that, there are also a couple python scripts to help automate the
 asset creation process. They should all contain documentation for how to run them.
 Most of them can either operate on single files or entire directories.
 
-The workflow for icons is that I start with the `sources/icons/svg-original`
+The workflow for icons is that I start with the `assets/icons/svg-original`
 directory, which I copy into `svg-prepared`, where I sanitize them, make sure
 that they're grayscale, and pixel perfect.
-I then convert them to PNGs with `svg2png.py` placed inside the `sources/icons/png/`
+I then convert them to PNGs with `svg2png.py` placed inside the `assets/icons/png/`
 directory.
 These are then finally converted into binaries using `png2bin.py` and placed
-inside the `sources/icons/bin` directory.
+inside the `assets/icons/bin` directory.
 
 I then finally copy the binary icon, texts, or font files that I'm going to use
 inside their respective directories in the `main/` directory.
@@ -38,7 +38,7 @@ This is convenient to avoid having to manually convert each one through VESC too
 example:
 
 ```bash
-./png2bin.py sources/icons/png/ sources/icons/bin/ indexed2 -p 0x0 0xffffff
+./png2bin.py assets/icons/png/ assets/icons/bin/ indexed2 -p 0x0 0xffffff
 ```
 
 ### `bin2png.py`
@@ -51,12 +51,12 @@ Essentially the inverse of `png2bin.py`.
 This generates PNGs of text snippets with a given font.
 The format for the text snippets are given as JSON files. The format is
 documented in the source code.
-Some example files can be found under `sources/texts/json/`.
+Some example files can be found under `assets/texts/json/`.
 
 example:
 
 ```bash
-./json-text2png.py sources/texts/json/ sources/texts/png
+./json-text2png.py assets/texts/json/ assets/texts/png
 ```
 
 ### `svg2png.py`
@@ -67,7 +67,7 @@ converting icons into lisp compatible binaries.
 example:
 
 ```bash
-./svg2png.py sources/icons/svg-prepared/ sources/icons/png
+./svg2png.py assets/icons/svg-prepared/ assets/icons/png
 ```
 
 ### `img-buf-size.py`
