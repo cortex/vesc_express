@@ -54,14 +54,14 @@
 
 ;;; Included files
 
-(import "utils.lisp" code-utils)
-(import "draw-utils.lisp" code-draw-utils)
-(import "views.lisp" code-views)
-(import "theme.lisp" code-theme)
-(import "ui-state.lisp" code-ui-state)
-(import "state-management.lisp" code-state-management)
-(import "connection.lisp" code-connection)
-(import "input.lisp" code-input)
+(import "include/utils.lisp" code-utils)
+(import "include/draw-utils.lisp" code-draw-utils)
+(import "include/views.lisp" code-views)
+(import "include/theme.lisp" code-theme)
+(import "include/ui-state.lisp" code-ui-state)
+(import "include/state-management.lisp" code-state-management)
+(import "include/connection.lisp" code-connection)
+(import "include/input.lisp" code-input)
 
 ;;; Icons
 
