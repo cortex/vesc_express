@@ -1,9 +1,9 @@
 {
-    "text": "Throttle not active",
-    "width": 130,
-    "font-family": "Heebo",
-    "font-size": 16,
-    "line-height": "120%",
+    "text": "Throttle inactive",
+    "width": 145,
+    "font-family": "Inconsolata",
+    "font-size": 17,
+    "line-height": "100%",
     "font-weight": 400,
     "align": "middle"
 }

@@ -1,9 +1,9 @@
 {
     "text": "Remote\nbattery low",
     "width": 140,
-    "font-family": "Heebo",
-    "font-size": 22,
-    "line-height": "120%",
+    "font-family": "Inconsolata",
+    "font-size": 24,
+    "line-height": "100%",
     "font-weight": 500,
     "align": "middle"
 }
