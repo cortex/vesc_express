@@ -161,4 +161,16 @@
     (* thr-input gear-ratio)
 })
 
+(defun connect-tick () {
+    (def thr (thr-apply-gear thr-input))
+    
+    (state-set 'thr-input thr-input)
+    (state-set 'thr thr)
+    (state-set 'kmh kmh)
+    (state-set 'is-connected (!= esp-rx-cnt 0))
+    (if (state-get 'thr-active)
+        (send-thr thr)
+    )
+})
+
 @const-start
