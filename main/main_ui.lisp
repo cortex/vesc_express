@@ -1,16 +1,26 @@
-(define initializing true)
+@const-symbol-strings
+(def initializing true)
 (loopwhile initializing {
     (sleep 0.1)
-    (if (main-init-done) (define initializing false))
+    (if (main-init-done) (def initializing false))
 })
 
 ; (loopwhile (not (main-init-done)) (sleep 0.1))
 
 (init-hw)
 
+(gpio-configure 0 'pin-mode-out)
+(gpio-write 0 1)
+
 (disp-load-sh8501b 6 5 7 8 40)
+; (disp-load-st7789 6 5 19 18 7 40) ; display size: 240x320
 (disp-reset)
+; (ext-disp-orientation 0)
+
 ; @const-start
+
+;(print (vib-vmon))
+;(print (get-adc 0))
 
 ;;; Render loading screen
 
@@ -23,10 +33,10 @@
     (var logo-buf (img-buffer 'indexed2 119 84))
     (img-blit logo-buf logo 3 0 -1)
     (disp-render logo-buf 36 120 (list 0x0 0xffffff))
-
+    
     (var version-buf (img-buffer 'indexed2 (* 10 (str-len version-str)) 16))
     (img-text version-buf 0 0 1 0 font-b3 version-str)
-    (disp-render version-buf 72 328 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
+    ; (disp-render version-buf 72 328 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
 }
 
 ; (gc) ; temporary fix
@@ -34,6 +44,7 @@
 @const-start
 
 ;;; Dev flags (these disable certain features)
+
 (def dev-disable-low-battery-msg true)
 (def dev-disable-charging-msg false) ; does nothing right now...
 (def dev-short-thr-activation true)
@@ -46,10 +57,10 @@
 
 (def dev-soc-remote 0.5) ; act as though the remote has the specified soc, nil to disable
 
-(def dev-bind-soc-bms-to-thr true) ; bind thrust input to bms soc meter. Usefull to test different values in a dynamic manner.
+(def dev-bind-soc-bms-to-thr false) ; bind thrust input to bms soc meter. Usefull to test different values in a dynamic manner.
 (def dev-soc-bms-thr-ratio 0.25) ; thr-input is multiplied by this value before being assigned to the bms soc
-(def dev-bind-soc-remote-to-thr true) ; bind thrust input to the displayed remote soc. Usefull to test different values in a dynamic manner.
-(def dev-bind-speed-to-thr true) ; bind thrust input to the displayed remote soc. Usefull to test different values in a dynamic manner.
+(def dev-bind-soc-remote-to-thr false) ; bind thrust input to the displayed remote soc. Usefull to test different values in a dynamic manner.
+(def dev-bind-speed-to-thr false) ; bind thrust input to the displayed remote soc. Usefull to test different values in a dynamic manner.
 
 ;;; Icons
 
@@ -102,8 +113,8 @@
 (def col-black 0x000000)
 (def col-gray-1 0xa7a9ac)
 (def col-gray-2 0x676767)
-(def col-gray-3 0x414141)
-(def col-gray-4 0x2e2e2e)
+(def col-gray-3 0x1c1c1c)
+(def col-gray-4 0x151515)
 
 ;;; Semantic color definitions.
 
@@ -341,7 +352,7 @@
 (def bevel-medium 15)
 (def bevel-small 13)
 
-
+@const-start
 
 ;;; Utilities
 
@@ -377,12 +388,6 @@
     `(print (str-merge ,@pair-strings))
 }))
 
-; (move-to-flash swap-in-place)
-
-(print (sym2u 'a))
-(print (sym2u 'b))
-
-@const-start
 
 ; Swap the values of a and b. ex: (swap-in-place var1 var2)
 (define swap-in-place (macro (a b) `(let (
@@ -987,7 +992,8 @@
 ; from the center to the outer edge. See `img-circle-sector` for angle0 and
 ; angle1 explanation.
 (defun draw-rounded-circle-segment (sbuf x y radius thickness angle0 angle1 fg-col) {
-    (sbuf-exec img-arc sbuf x y ((- radius (/ thickness 2)) angle0 angle1 fg-col `(thickness ,(/ thickness 2)) '(resolution 160) '(rounded)))
+    ; (sbuf-exec img-arc sbuf x y ((- radius (/ thickness 2)) angle0 angle1 fg-col `(thickness ,(/ thickness 2)) '(resolution 160) '(rounded)))
+    (sbuf-exec img-arc sbuf x y (radius angle0 angle1 fg-col `(thickness ,thickness) '(rounded)))
 })
 
 ; Draws a value meter in the shape of a circle segment with the specified
@@ -1033,11 +1039,11 @@
         (var point-angle (angle-normalize (/ (+ angle0 value-angle) 2)))
         ; (println ("point-angle:" point-angle "value-arc-len" value-arc-len "angle-error" angle-error))
         (var point (rot-point-origin (- radius path-radius) 0 point-angle))
-        ; (sbuf-exec img-circle sbuf (+ (ix point 0) x) (+ (ix point 1) y) ((/ value-arc-len 2) meter-col '(filled)))
+        (sbuf-exec img-circle sbuf (+ (ix point 0) x) (+ (ix point 1) y) ((/ value-arc-len 2) meter-col '(filled)))
     } {
         ; (print-vars '(angle0-corrected))
         ; (print-vars (angle0-corrected value-angle-corrected))
-        (println (angle0-corrected ">" (angle-normalize value-angle-corrected)))
+        ; (println (angle0-corrected ">" (angle-normalize value-angle-corrected)))
         (draw-rounded-circle-segment sbuf x y radius thickness angle0-corrected (angle-normalize value-angle-corrected) meter-col)
     })
 
@@ -1968,14 +1974,10 @@
 ; TODO: fix this
 (defun enter-sleep () {
     (print "entering sleep...")
-    ; (def draw-enabled false)
+    (def draw-enabled false)
     (disp-clear) ; Should I clean up old buffers here?
     ; (loopwhile (!= btn-down 0) (sleep 0.1))
     (go-to-sleep -1)
-    ; (sleep-deep 1.0)
-    (print "hi")
-    (state-reset-all-last)
-    ; (go-to-sleep -1)
 })
 
 ;;; View tick functions
@@ -2035,23 +2037,23 @@
 
     ; global tick
 
-    (state-with-changed '(soc-remote view status-msg) (fn (soc-remote view status-msg) {
-        (if (and 
-            (<= soc-remote 0.05)
-            (not-eq view 'status-msg)
-            (not-eq status-msg 'low-battery)
-            (not dev-disable-low-battery-msg)
-        ) {
-            (show-low-battery-status)
-        })
-        (if (and
-            (> soc-remote 0.05)
-            (eq view 'status-msg)
-            (eq status-msg 'low-battery)
-        ) {
-            (change-view 'main)
-        })
-    }))
+    ; (state-with-changed '(soc-remote view status-msg) (fn (soc-remote view status-msg) {
+    ;     (if (and 
+    ;         (<= soc-remote 0.05)
+    ;         (not-eq view 'status-msg)
+    ;         (not-eq status-msg 'low-battery)
+    ;         (not dev-disable-low-battery-msg)
+    ;     ) {
+    ;         (show-low-battery-status)
+    ;     })
+    ;     (if (and
+    ;         (> soc-remote 0.05)
+    ;         (eq view 'status-msg)
+    ;         (eq status-msg 'low-battery)
+    ;     ) {
+    ;         (change-view 'main)
+    ;     })
+    ; }))
 
     (if dev-bind-soc-remote-to-thr {
         (state-set 'soc-remote (state-get 'thr-input))
@@ -2250,7 +2252,7 @@
     })
 ))
 
-; ; Slow updates
+; Slow updates
 (spawn 120 (fn ()
     (loopwhile draw-enabled {
         (def soc-remote (map-range-01 (vib-vmon) 3.4 4.2))
