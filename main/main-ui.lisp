@@ -65,43 +65,43 @@
 
 ;;; Icons
 
-(import "icons/icon-small-battery-border.bin" 'icon-small-battery)
-(import "icons/icon-bolt.bin" 'icon-bolt)
-(import "icons/icon-bolt-colored.bin" 'icon-bolt-colored) ; indexed 4; bg: 0, fg: 2
-(import "icons/icon-board.bin" 'icon-board)
-(import "icons/icon-pair-inverted.bin" 'icon-pair-inverted) ; indexed4; bg: 3, fg: 0
-(import "icons/icon-check-mark-inverted.bin" 'icon-check-mark-inverted) ; indexed4; bg: 3, fg: 0
-(import "icons/icon-failed-inverted.bin" 'icon-failed-inverted) ; indexed4; bg: 3, fg: 0
-(import "icons/icon-bolt-inverted.bin" 'icon-bolt-inverted) ; indexed4; bg: 3, fg: 0
-(import "icons/icon-unlock-trigger-inverted.bin" 'icon-unlock-trigger-inverted) ; indexed4; bg: 3, fg: 0
-(import "icons/icon-battery-border.bin" 'icon-large-battery) ; 84x146 indexed4; bg: 0, fg: 1
-(import "icons/icon-low-battery.bin" 'icon-low-battery) ; 84x146 indexed4; bg: 0, fg: 1
-(import "icons/icon-warning.bin" 'icon-warning) ; 113x94 indexed4; bg: 0, fg: 1
+(import "../assets/icons/bin/icon-small-battery-border.bin" 'icon-small-battery)
+(import "../assets/icons/bin/icon-bolt.bin" 'icon-bolt)
+(import "../assets/icons/bin/icon-bolt-colored.bin" 'icon-bolt-colored) ; indexed 4; bg: 0, fg: 2
+(import "../assets/icons/bin/icon-board.bin" 'icon-board)
+(import "../assets/icons/bin/icon-pair-inverted.bin" 'icon-pair-inverted) ; indexed4; bg: 3, fg: 0
+(import "../assets/icons/bin/icon-check-mark-inverted.bin" 'icon-check-mark-inverted) ; indexed4; bg: 3, fg: 0
+(import "../assets/icons/bin/icon-failed-inverted.bin" 'icon-failed-inverted) ; indexed4; bg: 3, fg: 0
+(import "../assets/icons/bin/icon-bolt-inverted.bin" 'icon-bolt-inverted) ; indexed4; bg: 3, fg: 0
+(import "../assets/icons/bin/icon-unlock-trigger-inverted.bin" 'icon-unlock-trigger-inverted) ; indexed4; bg: 3, fg: 0
+(import "../assets/icons/bin/icon-battery-border.bin" 'icon-large-battery) ; 84x146 indexed4; bg: 0, fg: 1
+(import "../assets/icons/bin/icon-low-battery.bin" 'icon-low-battery) ; 84x146 indexed4; bg: 0, fg: 1
+(import "../assets/icons/bin/icon-warning.bin" 'icon-warning) ; 113x94 indexed4; bg: 0, fg: 1
 ; (import )
 
 ;;; Texts
 
-(import "texts/board-not-powered.bin" 'text-board-not-powered)
-(import "texts/charging.bin" 'text-charging)
-(import "texts/firmware-update.bin" 'text-firmware-update)
-(import "texts/gear.bin" 'text-gear)
-(import "texts/initiate-pairing.bin" 'text-initiate-pairing)
-(import "texts/km-h.bin" 'text-km-h)
-(import "texts/pairing.bin" 'text-pairing)
-(import "texts/pairing-failed.bin" 'text-pairing-failed)
-(import "texts/remote-battery-low.bin" 'text-remote-battery-low)
-(import "texts/%.bin" 'text-percent)
-(import "texts/throttle-not-active.bin" 'text-throttle-inactive)
-(import "texts/press-to-activate.bin" 'text-press-to-activate)
-(import "texts/release-throttle-first.bin" 'text-release-throttle-first)
-(import "texts/throttle-now-active.bin" 'text-throttle-now-active)
-(import "texts/warning-msg.bin" 'text-warning-msg)
+(import "../assets/texts/bin/board-not-powered.bin" 'text-board-not-powered)
+(import "../assets/texts/bin/charging.bin" 'text-charging)
+(import "../assets/texts/bin/firmware-update.bin" 'text-firmware-update)
+(import "../assets/texts/bin/gear.bin" 'text-gear)
+(import "../assets/texts/bin/initiate-pairing.bin" 'text-initiate-pairing)
+(import "../assets/texts/bin/km-h.bin" 'text-km-h)
+(import "../assets/texts/bin/pairing.bin" 'text-pairing)
+(import "../assets/texts/bin/pairing-failed.bin" 'text-pairing-failed)
+(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+(import "../assets/texts/bin/%.bin" 'text-percent)
+(import "../assets/texts/bin/throttle-not-active.bin" 'text-throttle-inactive)
+(import "../assets/texts/bin/press-to-activate.bin" 'text-press-to-activate)
+(import "../assets/texts/bin/release-throttle-first.bin" 'text-release-throttle-first)
+(import "../assets/texts/bin/throttle-now-active.bin" 'text-throttle-now-active)
+(import "../assets/texts/bin/warning-msg.bin" 'text-warning-msg)
 
 ;;; Fonts
 
-(import "fonts/H1.bin" 'font-h1)
-(import "fonts/H3.bin" 'font-h3)
-(import "fonts/B1.bin" 'font-b1)
+(import "../assets/fonts/bin/H1.bin" 'font-h1)
+(import "../assets/fonts/bin/H3.bin" 'font-h3)
+(import "../assets/fonts/bin/B1.bin" 'font-b1)
 ; (import "fonts/B3.bin" 'font-b3)
 ; font B3 was moved to top
 
