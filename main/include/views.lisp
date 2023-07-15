@@ -64,9 +64,9 @@
 
     (def view-thr-buf (create-sbuf 'indexed4 24 158 142 8))
 
-    (var text (img-buffer-from-bin text-throttle-not-active))
-    (def view-thr-not-active-buf (create-sbuf 'indexed2 30 152 130 19))
-    (sbuf-blit view-thr-not-active-buf text 0 0 ())
+    (var text (img-buffer-from-bin text-throttle-inactive))
+    (def view-inactive-buf (create-sbuf 'indexed2 22 154 145 17)) ; this is one pixel lower than in the design...
+    (sbuf-blit view-inactive-buf text 0 0 ())
 
     ; subview init
     (match (state-get 'view-main-subview)
@@ -78,7 +78,7 @@
     (def view-bms-soc-buf (create-sbuf 'indexed4 34 185 123 123))
     ; (def view-bms-soc-marker-buf (create-sbuf 'indexed2 93 199 4 8))
     ; (sbuf-exec img-rectangle view-bms-soc-marker-buf 0 0 (4 8 1 '(filled) '(rounded 2)))
-    (sbuf-exec img-rectangle view-bms-soc-buf 59 14 (4 8 3 '(filled) '(rounded 2)))
+    (sbuf-exec img-rectangle view-bms-soc-buf 59 14 (4 8 1 '(filled) '(rounded 2)))
     (var icon (img-buffer-from-bin icon-bolt-colored))
     (sbuf-blit view-bms-soc-buf icon 53 100 ())
 
@@ -151,16 +151,17 @@
     (match (state-get 'view-main-subview)
         (gear {
             (sbuf-render-changes subview-gear-num-buf (list col-menu col-fg))
-            ; (sbuf-render-changes subview-gear-left-buf (list col-menu col-menu-btn-fg col-menu-btn-bg col-menu-btn-disabled-fg))
-            ; (sbuf-render-changes subview-gear-right-buf (list col-menu col-menu-btn-fg col-menu-btn-bg col-menu-btn-disabled-fg))
-            ((if (eq subview-left-bg-col nil)
+            (var render (if (eq subview-left-bg-col nil)
                 sbuf-render-changes
                 sbuf-render
-            ) subview-gear-left-buf (list col-menu col-menu-btn-fg subview-left-bg-col col-menu-btn-disabled-fg))
-            ((if (eq subview-right-bg-col nil)
+            ))
+            (render subview-gear-left-buf (list col-menu col-menu-btn-fg subview-left-bg-col col-menu-btn-disabled-fg))
+            
+            (var render (if (eq subview-right-bg-col nil)
                 sbuf-render-changes
                 sbuf-render
-            ) subview-gear-right-buf (list col-menu col-menu-btn-fg subview-right-bg-col col-menu-btn-disabled-fg))
+            ))
+            (render subview-gear-right-buf (list col-menu col-menu-btn-fg subview-right-bg-col col-menu-btn-disabled-fg))
         })
         (speed 
             (sbuf-render-changes subview-speed-num-buf (list col-menu col-fg))
@@ -170,7 +171,7 @@
     (state-with-changed '(thr-active) (fn (thr-active) {
         (sbuf-render view-thr-bg-buf (list col-bg col-menu))
         (if (not thr-active)
-            (sbuf-render view-thr-not-active-buf (list col-menu col-fg))
+            (sbuf-render view-inactive-buf (list col-menu col-fg))
             ; ? is this necessary?
             ; (sbuf-render view-thr-buf (list col-menu col-menu-btn-bg gradient col-error))
         )
@@ -181,13 +182,13 @@
         ; (sbuf-render view-thr-buf (list col-menu col-menu-btn-bg col-error col-error))
     )
     
-    (sbuf-render-changes view-bms-soc-buf (list col-bg col-menu soc-color col-fg))
+    (sbuf-render-changes view-bms-soc-buf (list col-bg col-fg soc-color col-menu))
     ; (sbuf-render view-bms-soc-marker-buf (list col-bg col-menu-btn-bg))
 })
 
 (defun view-cleanup-main () {
     (def view-thr-buf nil)
-    (def view-thr-not-active-buf nil)
+    (def view-inactive-buf nil)
     (def view-bms-soc-buf nil)
     ; (def view-bms-soc-marker-buf nil)
     ; (undefine 'view-thr-buf)

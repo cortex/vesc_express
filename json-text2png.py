@@ -32,8 +32,9 @@ The text files should consist of json in the following format:
     "font-family": "<font-family>",
     "font-size": <font-size>,
     "line-height": "<line-height>",
-    "font-weight": <font-weight>,
+    "[font-weight]": <font-weight>,
     "align": "<align>"
+    "[dominant-baseline]": "<baseline>"
 }
 ```
 where
@@ -41,12 +42,21 @@ where
 - <width> [int]: output image width in pixels
 - <font-family> [str]: css font family name
 - <font-size> [int]: font size in pixels as int
-- <line-height> [str]: line height in pixels without unit **or** percentage of
+- <line-height> [str]: line height in pixels without unit, 'normal', **or** percentage of
   font-size, with percentage unit, eg: "line-height": "72" or "line-height":
   "120%"
 - <font-weight> [int] (optional): css font weight number as int
 - <align> [str]: how to horizontally justify the text (valid values: "start",
   "middle", "end")
+- <baseline> [str] (optional): In case the font has issues with vertical
+  centering, you can try changing this to 'middle'. This corresponds to the
+  'dominant-baseline' svg property
+  (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/dominant-baseline)
+  Note that I don't really understand how this property works...
+  Valid values are {'central', 'middle', 'auto', 'ideographic', 'alphabetic',
+  'hanging', 'mathematical', 'text-after-edge', 'text-before-edge', 'text-top'} 
+  Default is 'central' (I recommend sticking to this unless you encounter
+  vertical alignment problems).
 """
 
 import argparse
@@ -77,7 +87,7 @@ class TextJustify(Enum):
     End = 2
 
 
-def build_text_svg(text: str, width: int, height: Optional[int], font_family: str, font_size: int, line_height: int, font_weight: int, text_align: TextJustify) -> str:
+def build_text_svg(text: str, width: int, height: Optional[int], font_family: str, font_size: int, line_height: int, font_weight: int, text_align: TextJustify, dominant_baseline: str) -> str:
     if height == None:
         height = (text.count("\n") + 1) * line_height
 
@@ -105,7 +115,7 @@ def build_text_svg(text: str, width: int, height: Optional[int], font_family: st
     text_elements = ""
     lines = text.split("\n")
     for i, line in zip(range(len(lines)), lines):
-        text_elements += f'<text x="{x_pos}" y="{line_height * i + y_offset}" font-family="{font_family}" font-size="{font_size}" font-weight="{font_weight}" fill="white" dominant-baseline="middle" text-anchor="{anchor}">'
+        text_elements += f'<text x="{x_pos}" y="{line_height * i + y_offset}" font-family="{font_family}" font-size="{font_size}" font-weight="{font_weight}" fill="white" dominant-baseline="{dominant_baseline}" text-anchor="{anchor}">'
         text_elements += line
         text_elements += "</text>"
         text_elements += "\n"
@@ -120,7 +130,7 @@ def handle_text_json_file(file_path: str, dest_directory: str):
     def access_helper(key: str, dictionary: dict) -> str:
         if key not in dictionary:
             panic(
-                f"json of file '{file_path}' didn't contain required key '{key}'")
+                f"json of file '{file_path}' didn't contain required property '{key}'")
         return str(dictionary[key])
 
     def optional_access_helper(key: str, dictionary: dict, default: str) -> str:
@@ -149,7 +159,7 @@ def handle_text_json_file(file_path: str, dest_directory: str):
                 align = TextJustify.End
             case _:
                 panic(
-                    f"file '{file_path}': json key 'align' did not contain valid value: '{align_str}'. Valid values are 'start', 'middle', or 'end'.")
+                    f"file '{file_path}': json property 'align' did not contain valid value: '{align_str}'. Valid values are 'start', 'middle', or 'end'.")
 
         if line_height_str.endswith("%"):
             line_height = int(
@@ -157,8 +167,17 @@ def handle_text_json_file(file_path: str, dest_directory: str):
         else:
             line_height = int(line_height_str)
 
+        dominant_baseline = optional_access_helper(
+            "dominant-baseline", data, "central")
+        if dominant_baseline not in ['central', 'middle', 'auto', 'ideographic', 'alphabetic',
+                                     'hanging', 'mathematical', 'text-after-edge', 'text-before-edge', 'text-top']:
+            panic(f"file '{file_path}': json property 'dominant-baseline' contained invalid value: '{dominant_baseline}'. Valid values are"
+                  "'central', 'middle', 'auto', 'ideographic', 'alphabetic', 'hanging',"
+                  "'mathematical', 'text-after-edge', 'text-before-edge', or 'text-top'.")
+
         svg = build_text_svg(text, width, None, font_family,
-                             font_size, line_height, font_weight, align)
+                             font_size, line_height, font_weight, align, dominant_baseline)
+        # print(svg)
 
         text_svg_path = os.path.join(
             tempfile.gettempdir(), "json-text2png.py.text-svg.svg")

@@ -1,9 +1,9 @@
 {
-    "text": "Throttle is\nnow active",
+    "text": "Throttle\nis\nnow active",
     "width": 140,
-    "font-family": "Inconsolata",
-    "font-size": 24,
-    "line-height": "100%",
+    "font-family": "Roboto mono",
+    "font-size": 22,
+    "line-height": "110%",
     "font-weight": 500,
     "align": "middle"
 }

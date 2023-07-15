@@ -91,7 +91,7 @@
 (import "texts/pairing-failed.bin" 'text-pairing-failed)
 (import "texts/remote-battery-low.bin" 'text-remote-battery-low)
 (import "texts/%.bin" 'text-percent)
-(import "texts/throttle-not-active.bin" 'text-throttle-not-active)
+(import "texts/throttle-not-active.bin" 'text-throttle-inactive)
 (import "texts/press-to-activate.bin" 'text-press-to-activate)
 (import "texts/release-throttle-first.bin" 'text-release-throttle-first)
 (import "texts/throttle-now-active.bin" 'text-throttle-now-active)
@@ -376,11 +376,11 @@
     ; necessarilly be overdrawn.
     (draw-rounded-circle-segment sbuf 62 62 (+ 62 2) 14 120 60 0)
 
-    (draw-circle-segment-meter sbuf 62 62 62 10 120 60 charge 1 2)
+    (draw-circle-segment-meter sbuf 62 62 62 10 120 60 charge 3 2)
 
     (var text-y 40)
     (var text (str-merge (str-from-n (to-i (* charge 100))) ""))
-    (var x-coords (draw-text-centered sbuf 0 text-y -1 0 20 3 font-h3 3 0 text))
+    (var x-coords (draw-text-centered sbuf 0 text-y -1 0 20 3 font-h3 1 0 text))
     (var percent (img-buffer-from-bin text-percent))
     (sbuf-blit sbuf percent (ix x-coords 1) (+ text-y 15 -2) ())
 })

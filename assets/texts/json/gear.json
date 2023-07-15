@@ -1,9 +1,9 @@
 {
     "text": "Gear",
-    "width": 33,
-    "font-family": "Inconsolata",
-    "font-size": 18,
-    "line-height": "100%",
+    "width": 44,
+    "font-family": "Roboto mono",
+    "font-size": 16,
+    "line-height": "110%",
     "font-weight": 400,
-    "align": "middle"
+    "align": "end"
 }
