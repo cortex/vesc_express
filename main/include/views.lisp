@@ -151,6 +151,8 @@
     (match (state-get 'view-main-subview)
         (gear {
             (sbuf-render-changes subview-gear-num-buf (list col-menu col-fg))
+            ; (sbuf-render-changes subview-gear-num-buf (list col-gray-3 col-fg))
+            
             (var render (if (eq subview-left-bg-col nil)
                 sbuf-render-changes
                 sbuf-render
@@ -237,11 +239,11 @@
 ;;;; Main - gear
 
 (defun subview-init-gear () {
-    (def subview-gear-num-buf (create-sbuf 'indexed2 70 46 55 90))
-    (def subview-gear-left-buf (create-sbuf 'indexed4 26 75 25 25))
+    (def subview-gear-num-buf (create-sbuf 'indexed2 20 45 110 90))
+    (def subview-gear-left-buf (create-sbuf 'indexed4 139 (- 75 25) 25 25))
     (def subview-gear-right-buf (create-sbuf 'indexed4 139 75 25 25))
     
-    ; Unsure if this will draw a perfect sphere...
+    ; This won't draw a perfect sphere...
     (sbuf-exec img-rectangle subview-gear-left-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
     (sbuf-exec img-rectangle subview-gear-right-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
 
@@ -249,7 +251,7 @@
     (def subview-right-bg-col col-menu)
 
     (var gear-text (img-buffer-from-bin text-gear))
-    (def subview-gear-text-buf (create-sbuf 'indexed2 131 108 33 19))
+    (def subview-gear-text-buf (create-sbuf 'indexed2 125 108 44 17))
     (sbuf-blit subview-gear-text-buf gear-text 0 0 ())
 
     ; Reset dependencies
@@ -258,9 +260,13 @@
 
 (defun subview-draw-gear () {
     ; Gear number text
-    (state-with-changed '(gear) (fn (gear)
-        (sbuf-exec img-text subview-gear-num-buf 0 0 (1 0 font-h1 (str-from-n gear)))
-    ))
+    (state-with-changed '(gear) (fn (gear) {
+        (var gear-str (if (and (< gear 10))
+            (str-merge "0" (str-from-n gear))
+            (str-from-n gear)
+        ))
+        (sbuf-exec img-text subview-gear-num-buf 0 0 (1 0 font-h1 gear-str))
+    }))
     
     ; left button
     (state-with-changed '(main-left-fadeout-t left-pressed gear) (fn (main-left-fadeout-t left-pressed gear) {

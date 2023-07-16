@@ -8,20 +8,20 @@
 ;;; gui inset (see the comment for `screen-inset-x`).
 ;;; This struct is represented by an associative list containing the following keys:
 ;;; - 'buf
-;;; - 'x
-;;; - 'y
-;;; - 'w
-;;; - 'h
-;;; - 'real-x
-;;; - 'real-w
+;;; - 'x the virtual x coordinate
+;;; - 'y the real y coordinate
+;;; - 'w the virtual width
+;;; - 'h the real height
+;;; - 'real-x the real x coordinate past on to `disp-render`
 ;;; - 'x-offset
 ;;; - 'changed: if the buffer content has changed since rendering it last.
+;;; (the real width isn't stored as it's never needed)
 
-; Create a smart buffer struct. Unlike normal buffers, the x position does not
+; Create a smart buffer struct. Unlike normal buffers, the x position *and* width does not
 ; need to be a multiple of 4.
 (defun create-sbuf (color-fmt x y width height) (let (
     ((real-x x-offset) (previous-multiple (+ x screen-inset-x) 4))
-    ((real-w w-offset) (next-multiple (+ width x-offset screen-inset-x) 4))
+    ((real-w w-offset) (next-multiple (+ width x-offset) 4))
     (buff (img-buffer color-fmt real-w height))
 ) {
     (list

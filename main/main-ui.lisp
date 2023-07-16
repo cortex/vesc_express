@@ -109,6 +109,16 @@
 
 (read-eval-program code-theme)
 
+;;; Utilities
+
+(read-eval-program code-utils)
+(read-eval-program code-draw-utils)
+
+;;; Connection and input
+
+(read-eval-program code-connection)
+(read-eval-program code-input)
+
 ;;; Math Constants
 
 (def pi 3.14159265359)
@@ -183,13 +193,15 @@
 ; failed.
 (def is-connected false)
 
-; (def gear 3) ; 1 to 5, default should be 5
 (def gear-min 1)
-(def gear-max 9)
+(def gear-max 15)
+
+; (defun equaly-spaced-)
 
 ; (def gear-ratios (list 0.0 0.5 0.625 0.75 0.875 1.0))
-(def gear-ratios (list 0.0 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0))
+; (def gear-ratios (list 0.0 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0))
 ; (def gear-ratios (list 0.0 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0))
+(def gear-ratios (append '(0) (evenly-place-points 0.2 1.0 15)))
 
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)
@@ -243,7 +255,7 @@
     
     (cons 'kmh 0.0)
 
-    ; 1 to 5, default is 1
+    ; 1 to 15, default is 1
     (cons 'gear 1)
 
     ; The last angle that any rotating animation was during this frame.
@@ -311,16 +323,6 @@
 
 (def bevel-medium 15)
 (def bevel-small 13)
-
-;;; Utilities
-
-(read-eval-program code-utils)
-(read-eval-program code-draw-utils)
-
-;;; Connection and input
-
-(read-eval-program code-connection)
-(read-eval-program code-input)
 
 ;;; Input handlers
 ;;; These are set to nil when the current view doesn't need a handler.

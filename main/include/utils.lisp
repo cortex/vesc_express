@@ -129,15 +129,22 @@
 
 ; Returns a list of values, with a delta equal to the specified interval.
 ; Usefull for placing equally spaced points.
-(defun regularly-place-points (from to interval)
-    {
-        (var diff (- to from))
-        (var cnt (+ (to-i (/ (abs diff) interval)) 1))
-        (var delta (if (> diff 0) interval (* interval -1)))
+(defun regularly-place-points (from to interval) {
+    (var diff (- to from))
+    (var cnt (+ (to-i (/ (abs diff) interval)) 1))
+    (var delta (if (> diff 0) interval (* interval -1)))
 
-        (map (fn (n) (+ (to-i (* delta n)) from)) (range cnt))
-    }
-)
+    (map (fn (n) (+ (to-i (* delta n)) from)) (range cnt))
+})
+
+; Returns a list of values of specified lenght, covering a specified range.
+; The range is inclusive.
+(defun evenly-place-points (from to len) {
+    (var diff (- to from))
+    (var delta (/ diff (- len 1)))
+
+    (map (fn (n) (+ (* delta n) from)) (range len))
+})
 
 ; Calculates the position that a box should have to be center aligned within a
 ; container, given that the box's position refers to its left/upper corner.
