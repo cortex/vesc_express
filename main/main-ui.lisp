@@ -18,8 +18,8 @@
 
 (def version-str "v0.1")
 
-(import "icons/logo-vertical-lockup.bin" 'logo-vertical-lockup) ; size: 116x84
-(import "fonts/B3.bin" 'font-b3)
+(import "../assets/icons/bin/logo-vertical-lockup.bin" 'logo-vertical-lockup) ; size: 116x84
+(import "../assets/fonts/bin/B3.bin" 'font-b3)
 {
     (var logo (img-buffer-from-bin logo-vertical-lockup))
     (var logo-buf (img-buffer 'indexed2 119 84))
@@ -99,10 +99,10 @@
 
 ;;; Fonts
 
+; (import "../assets/Gilroy-h1.bin" 'font-h1)
 (import "../assets/fonts/bin/H1.bin" 'font-h1)
 (import "../assets/fonts/bin/H3.bin" 'font-h3)
-(import "../assets/fonts/bin/B1.bin" 'font-b1)
-; (import "fonts/B3.bin" 'font-b3)
+; (import "../assets/fonts/bin/B3.bin" 'font-b3)
 ; font B3 was moved to top
 
 ;;; Colors
@@ -338,7 +338,7 @@
 @const-end
 
 (def small-battery-buf (create-sbuf 'indexed2 76 13 8 14))
-(def small-soc-text-buf (create-sbuf 'indexed2 88 12 40 16))
+(def small-soc-text-buf (create-sbuf 'indexed2 88 12 (* 10 4) 17))
 
 @const-start
 

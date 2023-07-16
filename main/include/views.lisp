@@ -237,7 +237,7 @@
 ;;;; Main - gear
 
 (defun subview-init-gear () {
-    (def subview-gear-num-buf (create-sbuf 'indexed2 70 46 52 90))
+    (def subview-gear-num-buf (create-sbuf 'indexed2 70 46 55 90))
     (def subview-gear-left-buf (create-sbuf 'indexed4 26 75 25 25))
     (def subview-gear-right-buf (create-sbuf 'indexed4 139 75 25 25))
     

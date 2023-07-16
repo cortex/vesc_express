@@ -1,16 +1,16 @@
 # H1.bin
 
-font: Gilroy-Medium
+font: Roboto Mono Medium
 height: 90
-width: 50
-characters: 0123456789
+width: 55
+characters: numbers only
 
 # H3.bin
 
-font: Gilroy-Medium
+font: Roboto Mono Medium
 height: 38
-width: 24
-characters: 0123456789
+width: 23
+characters: numbers only
 
 # B1.bin
 
@@ -21,7 +21,7 @@ characters: 0123456789%
 
 # B3.bin
 
-font: Heeboo-SemiBold
-height: 16
+font: Roboto Mono SemiBold
+height: 17
 width: 10
-characters: 0123456789%v.
+characters: all
