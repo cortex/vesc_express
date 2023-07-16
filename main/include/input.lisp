@@ -119,7 +119,7 @@
         (var new-down false)
         (var new-left false)
         (var new-right false)
-        (if (and (> btn-adc 0.1) (< btn-adc 0.4))
+        (if (and (> btn-adc 0.2) (< btn-adc 0.4))
             (set 'new-down t)
         )
         (if (and (> btn-adc 0.4) (< btn-adc 0.7))
@@ -132,26 +132,22 @@
         (if (and (> btn-adc 1.25) (< btn-adc 1.65))
             (set 'new-left t)
         )
-        (if (and (> btn-adc 1.65) (< btn-adc 1.72)) {
+        (if (and (> btn-adc 1.65) (< btn-adc 1.78)) {
             (set 'new-down t)
             (set 'new-left t)
         })
-        (if (and (> btn-adc 1.78) (< btn-adc 1.9)) {
+        (if (and (> btn-adc 1.78) (< btn-adc 2.0)) {
             (set 'new-right t)
             (set 'new-left t)                                
         })
-        (if (and (> btn-adc 2.0) (< btn-adc 2.16))
+        (if (and (> btn-adc 2.0) (< btn-adc 2.34))
             (set 'new-up t)
         )
-        (if (and (> btn-adc 2.16) (< btn-adc 2.19)) {
-            (set 'new-down t)
-            (set 'new-up t)
-        })
-        (if (and (> btn-adc 2.19) (< btn-adc 2.23)) {
+        (if (and (> btn-adc 2.34) (< btn-adc 2.43)) {
             (set 'new-right t)
             (set 'new-up t)
         })
-        (if (and (> btn-adc 2.23) (< btn-adc 3.0)) {
+        (if (and (> btn-adc 2.43) (< btn-adc 3.0)) {
             (set 'new-left t)
             (set 'new-up t)
         })
