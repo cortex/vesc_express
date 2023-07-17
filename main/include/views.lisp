@@ -1,5 +1,85 @@
 @const-start
 
+;;; View input listeners
+;;; This is a function to avoid undefined dependencies at initial parse time
+(defun get-view-handlers () (list
+    (cons 'main (list
+        (cons 'up cycle-main-top-menu)
+        (cons 'down try-activate-thr)
+        (cons 'down-long enter-sleep)
+        (cons 'left decrease-gear)
+        (cons 'right increase-gear)
+    ))
+    
+    (cons 'board-info (list
+        ; These are temporary for dev
+        (cons 'up nil)
+        (cons 'down (fn () {
+            (change-view 'main)
+        }))
+        (cons 'down-long enter-sleep)
+        (cons 'left (fn () {
+            (state-set 'board-info-msg (match (state-get-live 'board-info-msg)
+                (initiate-pairing 'pairing)
+                (pairing 'board-not-powered)
+                (board-not-powered 'pairing-failed)
+                (pairing-failed 'initiate-pairing)
+            ))
+        }))
+        (cons 'right (fn () {
+            (state-set 'board-info-msg (match (state-get-live 'board-info-msg)
+                (initiate-pairing 'pairing-failed)
+                (pairing 'initiate-pairing)
+                (board-not-powered 'pairing)
+                (pairing-failed 'board-not-powered)
+            ))
+        }))
+    ))
+    
+    (cons 'thr-activation (list
+        (cons 'up nil)
+        (cons 'down try-activate-thr)
+        (cons 'down-long enter-sleep)
+        (cons 'left nil)
+        (cons 'right nil)
+        ; (cons 'left (fn () {
+        ;     (match (state-get-live 'thr-activation-state)
+        ;         (reminder (activate-thr))
+        ;         (release-warning (activate-thr-reminder))
+        ;         (countdown (activate-thr-warning))
+        ;     )
+        ; }))
+        ; (cons 'right (fn () {
+        ;     (match (state-get-live 'thr-activation-state)
+        ;         (reminder (activate-thr-warning))
+        ;         (release-warning (activate-thr))
+        ;         (countdown (activate-thr-reminder))
+        ;     )
+        ; }))
+    ))
+    
+    (cons 'status-msg (list
+        (cons 'up nil)
+        (cons 'down nil)
+        (cons 'down-long enter-sleep)
+        (cons 'left nil)
+        (cons 'right nil)
+    ))
+))
+
+@const-end
+
+;;; Input handlers
+;;; These are updated automatically using `view-handlers`.
+;;; A value of `nil` means that the current view doesn't need a handler.
+(def on-up-pressed nil)
+(def on-down-pressed nil)
+(def on-left-pressed nil)
+(def on-right-pressed nil)
+(def on-down-long-pressed nil)
+
+@const-start
+
 ;;; Views
 
 ; Change the current view. The update will take effect next time `tick` is called.
@@ -38,6 +118,7 @@
 
     (cleanup)
     (init)
+    (activate-current-view-listeners)
     (render-current-view)
 })
 
@@ -50,6 +131,19 @@
         (_ (print "no active current view"))
     )
 })
+
+; Set the on-<btn>-pressed variables with the appropriate input handles for the
+; current view. 
+(defun activate-current-view-listeners () (let (
+    (view (state-get 'view))
+    (handlers (assoc (get-view-handlers) view))
+) {
+    (def on-up-pressed (assoc handlers 'up))
+    (def on-down-pressed (assoc handlers 'down))
+    (def on-down-long-pressed (assoc handlers 'down-long))
+    (def on-left-pressed (assoc handlers 'left))
+    (def on-right-pressed (assoc handlers 'right))
+}))
 
 ;;;; Main
 
@@ -81,15 +175,6 @@
     (sbuf-exec img-rectangle view-bms-soc-buf 59 14 (4 8 1 '(filled) '(rounded 2)))
     (var icon (img-buffer-from-bin icon-bolt-colored))
     (sbuf-blit view-bms-soc-buf icon 53 100 ())
-
-    ; event listeners
-    (def on-up-pressed cycle-main-top-menu)
-    (def on-down-pressed try-activate-thr)
-    (def on-down-long-pressed enter-sleep) ; TODO: figure out map situation
-    ; (def on-down-long-pressed nil)
-
-    (def on-left-pressed decrease-gear)
-    (def on-right-pressed increase-gear)
 })
 
 (defun view-render-main () {
@@ -379,30 +464,6 @@
         col-gray-1
         col-accent
     ))
-
-    ; event listeners
-    (def on-up-pressed nil)
-    (def on-down-pressed (fn () {
-        (change-view 'main)
-    })) ; TODO: what should this do?
-    (def on-down-long-pressed enter-sleep) ; TODO: figure out map situation
-
-    (def on-left-pressed (fn () {
-        (state-set 'board-info-msg (match (state-get-live 'board-info-msg)
-            (initiate-pairing 'pairing)
-            (pairing 'board-not-powered)
-            (board-not-powered 'pairing-failed)
-            (pairing-failed 'initiate-pairing)
-        ))
-    }))
-    (def on-right-pressed (fn () {
-        (state-set 'board-info-msg (match (state-get-live 'board-info-msg)
-            (initiate-pairing 'pairing-failed)
-            (pairing 'initiate-pairing)
-            (board-not-powered 'pairing)
-            (pairing-failed 'board-not-powered)
-        ))
-    }))
 })
 
 (defun view-render-board-info () {
@@ -486,28 +547,6 @@
 
     ; status text
     (def view-status-text-buf (create-sbuf 'indexed2 25 240 140 78))
-
-    ; event listeners
-    (def on-up-pressed nil)
-    (def on-down-pressed try-activate-thr)
-    (def on-down-long-pressed enter-sleep)
-
-    (def on-left-pressed nil)
-    (def on-right-pressed nil)
-    ; (def on-left-pressed (fn () {
-    ;     (match (state-get-live 'thr-activation-state)
-    ;         (reminder (activate-thr))
-    ;         (release-warning (activate-thr-reminder))
-    ;         (countdown (activate-thr-warning))
-    ;     )
-    ; }))
-    ; (def on-right-pressed (fn () {
-    ;     (match (state-get-live 'thr-activation-state)
-    ;         (reminder (activate-thr-warning))
-    ;         (release-warning (activate-thr))
-    ;         (countdown (activate-thr-reminder))
-    ;     )
-    ; }))
 })
 
 (defun view-render-thr-activation () {
@@ -582,15 +621,6 @@
 
     (state-set-current 'gradient-period 0)
     (state-set-current 'gradient-phase 0)
-
-
-    ; event listeners
-    (def on-up-pressed nil)
-    (def on-down-pressed nil)
-    (def on-down-long-pressed nil)
-
-    (def on-left-pressed nil)
-    (def on-right-pressed nil)
 })
 
 (defun view-render-status-msg () {

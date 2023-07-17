@@ -195,9 +195,9 @@
         )
         
         ; long presses fire as soon as possible and not on release
-        (if (and (>= btn-down 2) (>= (secs-since btn-down-start) 1.0) (not-eq on-down-long-pressed nil)) {
-            (on-down-long-pressed)
-        })
+        (if (and (>= btn-down 2) (>= (secs-since btn-down-start) 1.0))
+            (maybe-call (on-down-long-pressed))
+        )
     })
 })
 

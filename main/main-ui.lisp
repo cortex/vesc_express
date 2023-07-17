@@ -119,6 +119,8 @@
 (read-eval-program code-connection)
 (read-eval-program code-input)
 
+@const-start
+
 ;;; Math Constants
 
 (def pi 3.14159265359)
@@ -312,8 +314,6 @@
 ; every frame. Reading from this is safe from any race conditions.
 (def ui-state-current ui-state) ; This is a bit dirty, it should make a copy instead. Seems to be fine though
 
-; (print ui-state)
-
 ;;; GUI dimentions
 
 ; how far the area of the screen used by the gui is inset (see 'Masked Area' vs
@@ -324,16 +324,7 @@
 (def bevel-medium 15)
 (def bevel-small 13)
 
-;;; Input handlers
-;;; These are set to nil when the current view doesn't need a handler.
 
-@const-end
-
-(def on-up-pressed nil)
-(def on-down-pressed nil)
-(def on-left-pressed nil)
-(def on-right-pressed nil)
-(def on-down-long-pressed nil)
 
 ;;; Specific UI components
 
@@ -411,12 +402,14 @@
     ))
 })
 
-(read-eval-program code-views)
-
 ;;; State management
 
 (read-eval-program code-ui-state)
 (read-eval-program code-state-management)
+
+;;; Views
+
+(read-eval-program code-views)
 
 @const-start
 
