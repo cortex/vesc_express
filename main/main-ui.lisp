@@ -34,6 +34,8 @@
     (disp-render version-buf x 319 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
 }
 
+@const-start
+
 ; parse string containing unsigned binary integer
 (def ascii-0 48)
 (def ascii-1 49)
@@ -52,13 +54,28 @@
     )
 })
 
+(import "include/vib-reg.lisp" 'code-vib-reg)
+(read-eval-program code-vib-reg)
+
+@const-start
+
 ; (def cal-result (vib-cal))
 ; (print (to-str "calibration result:" cal-result))
 ; (vib-cal-set (ix cal-result 0) (ix cal-result 1) (ix cal-result 2))
 (vib-cal-set (parse-bin (str-merge "1" "000" "11" "01")) 13 102)
-
-
-@const-start
+; these don't seem to make any noticable difference...
+; (vib-i2c-write (vib-get-reg 'reg-control1)
+;     (bitwise-or
+;         (parse-bin "0b10000000")
+;         (vib-i2c-read (vib-get-reg 'reg-control1))
+;     )
+; )
+; (vib-i2c-write (vib-get-reg 'reg-control2)
+;     (bitwise-and
+;         (parse-bin "0b10111111")
+;         (vib-i2c-read (vib-get-reg 'reg-control2))
+;     )
+; )
 
 ;;; Dev flags (these disable certain features)
 
