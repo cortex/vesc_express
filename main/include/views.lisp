@@ -194,14 +194,18 @@
     )
 
     ; thrust slider rendering
+    (def gear-end 142)
+    (def dots-end 140)
+    (def dots-interval 10)
+    
     (var gear-width (to-i (* 142 (current-gear-ratio))))
     (var thr-width (to-i (* gear-width (state-get 'thr-input))))
     
     (state-with-changed '(gear thr-active) (fn (gear thr-active) {
         (sbuf-clear view-thr-buf)
-
+        
         (if thr-active {
-            (var dots-x (regularly-place-points 138 (+ gear-width 4) 9)) ; That 4 is completely arbitrary...
+            (var dots-x (regularly-place-points dots-end (- gear-width 2) dots-interval))
             (loopforeach x dots-x {
                 (sbuf-exec img-circle view-thr-buf x 4 (2 1 '(filled)))
             })

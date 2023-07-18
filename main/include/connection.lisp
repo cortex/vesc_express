@@ -160,7 +160,7 @@
 })
 
 (defun connect-tick () {
-    (if (> (secs-since last-input-time) 30.0) {
+    (if (and (> (secs-since last-input-time) 30.0) (not dev-disable-inactivity-check)) {
         (set-thr-is-active false)
         (def thr 0.0)
     } {

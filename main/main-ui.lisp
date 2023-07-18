@@ -82,6 +82,7 @@
 (def dev-disable-low-battery-msg true)
 (def dev-disable-charging-msg false) ; does nothing right now...
 (def dev-short-thr-activation true)
+(def dev-disable-inactivity-check true) ; disables the check that deactivates the thrust upon 30 seconds of inactivity.
 ; (dev disable-sleep-button true)
 
 (def dev-force-view false) ; always show a specific view
@@ -204,11 +205,6 @@
 (def gear-max 15)
 
 ; (defun equaly-spaced-)
-
-; (def gear-ratios (list 0.0 0.5 0.625 0.75 0.875 1.0))
-; (def gear-ratios (list 0.0 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0))
-; (def gear-ratios (list 0.0 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0))
-(def gear-ratios (append '(0) (evenly-place-points 0.2 1.0 15)))
 
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)

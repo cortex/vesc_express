@@ -42,7 +42,7 @@
     (def ui-state-current (copy-alist ui-state))
 ))
 
-; This should be called at the end of every frame.
+; This should be called once at the end of every frame.
 (defun state-store-last () (atomic
     (def ui-state-last (copy-alist ui-state-current))
 ))

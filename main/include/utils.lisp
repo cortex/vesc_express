@@ -111,16 +111,29 @@
     (map (fn (item) `(quote ,item)) lst)
 )
 
+; Performs euclidian modulo.
+; This plays nicer around negative values. (too lazy to explain nicely)
+; source: https://internals.rust-lang.org/t/mathematical-modulo-operator/5952/4
+; and https://stackoverflow.com/a/11714601/15507414
+(defun euclid-mod (a b) (let (
+    (rem (mod a b))
+)
+    (if (>= rem 0)
+        rem
+        (+ rem (abs b))
+    )
+))
+
 ; Returns list containting the closest multiple of factor that is greater than
 ; or equal to a, and the difference between the input and output number.
 ; Ex: (next-multiple 40 4) gives '(40, 0), while (next-multiple 41 4) gives
 ; '(44, 3)
 ; potential optimization (get rid of the branch?): https://stackoverflow.com/q/2403631
 (defun next-multiple (a factor) (let (
-    (rem (mod a factor))
+    (rem (euclid-mod a factor))
 ) (cond
-    ((= rem 0) `(,a 0))
-    (t (list (+ a (- 4 rem)) (- 4 rem)))
+    ((= rem 0) (list a 0))
+    (t (list (+ a (- factor rem)) (- factor rem)))
 )))
 
 ; Returns list containting the closest multiple of factor that is smaller than
@@ -129,8 +142,18 @@
 ; Ex: (previous-multiple 40 4) gives '(40, 0), while (previous-multiple 41 4) gives
 ; '(40, 1)
 (defun previous-multiple (a factor) (let (
-    (rem (mod a factor))
+    (rem (euclid-mod a factor))
 ) (list (- a rem) rem)))
+
+; Returns list containting the closest multiple of factor to a, and the
+; difference between the output and input number (it's always positive).
+(defun nearest-multiple (a factor) (let (
+    (rem (euclid-mod a factor))
+    (half-factor (/ factor 2))
+) (if (>= rem half-factor) 
+    (list (+ a (- factor rem)) (- factor rem))
+    (list (- a rem) rem)
+)))
 
 ; Returns a list of values, with a delta equal to the specified interval.
 ; Usefull for placing equally spaced points.
@@ -139,7 +162,18 @@
     (var cnt (+ (to-i (/ (abs diff) interval)) 1))
     (var delta (if (> diff 0) interval (* interval -1)))
 
-    (map (fn (n) (+ (to-i (* delta n)) from)) (range cnt))
+    (map (fn (n) (+ (* delta n) from)) (range cnt))
+})
+
+(defun regularly-place-points-stretch (from to interval) {
+    (var diff (- to from))
+    (var cnt (+ (to-i (/ (abs diff) interval)) 1))
+    (var delta (if (<= cnt 1)
+        0
+        (/ (to-float diff) (- cnt 1))
+    ))
+
+    (map (lambda (n) (+ (to-i (* delta n)) from)) (range cnt))
 })
 
 ; Returns a list of values of specified lenght, covering a specified range.
