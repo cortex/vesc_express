@@ -83,6 +83,7 @@
 (def dev-disable-charging-msg false) ; does nothing right now...
 (def dev-short-thr-activation true)
 (def dev-disable-inactivity-check true) ; disables the check that deactivates the thrust upon 30 seconds of inactivity.
+(def dev-disable-connection-check true) ; disables the check that deactivates the thrust when connection has been lost.
 ; (dev disable-sleep-button true)
 
 (def dev-force-view false) ; always show a specific view
@@ -96,6 +97,8 @@
 (def dev-soc-bms-thr-ratio 0.25) ; thr-input is multiplied by this value before being assigned to the bms soc
 (def dev-bind-soc-remote-to-thr false) ; bind thrust input to the displayed remote soc. Usefull to test different values in a dynamic manner.
 (def dev-bind-speed-to-thr false) ; bind thrust input to the displayed remote soc. Usefull to test different values in a dynamic manner.
+
+(def dev-simulate-connection false)
 
 ;;; Included files
 
@@ -215,7 +218,7 @@
 (def main-button-fadeout-secs 0.8)
 
 ; How many seconds the thrust activation countdown lasts.
-(def thr-countdown-len-secs (if dev-short-thr-activation 1.0 5.0))
+(def thr-countdown-len-secs (if dev-short-thr-activation 1.0 3.0))
 
 ; The timestamp when the thottle activation countdown animation last started.
 (def thr-countdown-start (systime))

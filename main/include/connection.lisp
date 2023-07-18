@@ -1,5 +1,7 @@
 @const-end
 
+(def thr-active true)
+
 (def esp-rx-cnt 0)
 
 @const-start
@@ -92,7 +94,7 @@
 })
 
 ; debug ping simulator
-(defun ping-battery () {
+(defun dbg-ping-battery () {
     (sleep 0.001) ; simulate battery ping duration (poorly)
     (if (and
         ping-should-fail
@@ -104,15 +106,15 @@
     (not ping-should-fail)
 })
 
-; ; Pings the battery and returns a bool indicating if it was succesfully
-; ; recieved.
-; ; Essentially checks if there is a connection.
-; (defun ping-battery ()
-;     (if batt-addr-rx
-;         (esp-now-send batt-addr "")
-;         false
-;     )
-; )
+; Pings the battery and returns a bool indicating if it was succesfully
+; recieved.
+; Essentially checks if there is a connection.
+(defun ping-battery ()
+    (if batt-addr-rx
+        (esp-now-send batt-addr "")
+        false
+    )
+)
 
 ; Thread whose only purpose is to check for a connection with the battery
 @const-end
@@ -123,6 +125,10 @@
 @const-start
 
 (defun check-connection-tick () {
+    (var ping-battery (if dev-simulate-connection
+        dbg-ping-battery
+        ping-battery
+    ))
     (var start (systime))
     
     (var new-success (ping-battery))
@@ -167,7 +173,7 @@
         (def thr (thr-apply-gear thr-input))
     })
     
-    (if (not is-connected)
+    (if (and (not is-connected) (not dev-disable-connection-check))
         (set-thr-is-active false)
     )
     
