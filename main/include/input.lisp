@@ -1,3 +1,50 @@
+@const-end
+
+; Filtered x-value of magnetometer 0, was namned m0x-f
+(def magn0x-f -150.0)
+(def magn0y-f -150.0)
+(def magn0z-f -150.0)
+
+; Throttle value calculated from magnetometer, 0.0 to 1.0.
+(def thr-input 0.0)
+; Final throttle that's adjusted for the current gear, 0.0 to 1.0.
+(def thr 0.0)
+
+; If the thr is enabled, causing thr-input to be sent to the battery.
+(def thr-enabled false)
+
+; Seems to control with what method thr is sent to the battery.
+(def thr-mode 1)
+
+; Buttons
+(def btn-up 0)
+(def btn-down 0)
+(def btn-left 0)
+(def btn-right 0)
+
+; Timestamp when the buttons were last pressed down (the rising edge). 
+(def btn-up-start 0)
+(def btn-down-start 0)
+(def btn-left-start 0)
+(def btn-right-start 0)
+
+; If the buttons have already been fired after long pressing them down.
+; These are reset on release.
+(def btn-up-long-fired false)
+(def btn-down-long-fired false)
+(def btn-left-long-fired false)
+(def btn-right-long-fired false)
+
+
+; State of charge reported by BMS, 0.0 to 1.0
+(def soc-bms 0.0)
+
+; State of charge of remote, 0.0 to 1.0
+(def soc-remote 0.0)
+
+; Total motor power, kw
+(def motor-kw 0.0)
+
 @const-start
 
 ;;; Thrust caluculations
@@ -166,16 +213,16 @@
         })
 
         ; buttons are pressed on release
-        (if (and (>= btn-down 2) (not new-down))
+        (if (and (>= btn-down 2) (not new-down) (not btn-down-long-fired))
             (maybe-call (on-down-pressed))
         )
-        (if (and (>= btn-up 2) (not new-up))
+        (if (and (>= btn-up 2) (not new-up) (not btn-up-long-fired))
             (maybe-call (on-up-pressed))
         )
-        (if (and (>= btn-left 2) (not new-left))
+        (if (and (>= btn-left 2) (not new-left) (not btn-left-long-fired))
             (maybe-call (on-left-pressed))
         )
-        (if (and (>= btn-right 2) (not new-right))
+        (if (and (>= btn-right 2) (not new-right) (not btn-right-long-fired))
             (maybe-call (on-right-pressed))
         )
 
@@ -190,14 +237,41 @@
         (state-set 'left-pressed (!= btn-left 0))
         (state-set 'right-pressed (!= btn-right 0))
 
+        (if (= btn-up 1)
+            (def btn-up-start (systime))
+        )
         (if (= btn-down 1)
             (def btn-down-start (systime))
         )
+        (if (= btn-left 1)
+            (def btn-left-start (systime))
+        )
+        (if (= btn-right 1)
+            (def btn-right-start (systime))
+        )
         
         ; long presses fire as soon as possible and not on release
-        (if (and (>= btn-down 2) (>= (secs-since btn-down-start) 1.0))
+        (if (and (>= btn-up 2) (>= (secs-since btn-up-start) 1.0) (not btn-up-long-fired)) {
+            (def btn-up-long-fired true)
+            (maybe-call (on-up-long-pressed))
+        })
+        (if (and (>= btn-down 2) (>= (secs-since btn-down-start) 1.0) (not btn-down-long-fired)) {
+            (def btn-down-long-fired true)
             (maybe-call (on-down-long-pressed))
-        )
+        })
+        (if (and (>= btn-left 2) (>= (secs-since btn-left-start) 1.0) (not btn-left-long-fired)) {
+            (def btn-left-long-fired true)
+            (maybe-call (on-left-long-pressed))
+        })
+        (if (and (>= btn-right 2) (>= (secs-since btn-right-start) 1.0) (not btn-right-long-fired)) {
+            (def btn-right-long-fired true)
+            (maybe-call (on-right-long-pressed))
+        })
+        
+        (if (= btn-up 0) (def btn-up-long-fired false))
+        (if (= btn-down 0) (def btn-down-long-fired false))
+        (if (= btn-left 0) (def btn-left-long-fired false))
+        (if (= btn-right 0) (def btn-right-long-fired false))
     })
 })
 

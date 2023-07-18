@@ -31,6 +31,30 @@
     ; (disp-render version-buf 72 328 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
 }
 
+; parse string containing unsigned binary integer
+(def ascii-0 48)
+(def ascii-1 49)
+(defun parse-bin (bin-str) {
+    (var bin-str (str-replace bin-str "0b" ""))
+    (var bits (str-len bin-str))
+    (foldl
+        (fn (init char-pair) 
+            (bitwise-or init (shl (if (= (first char-pair) ascii-1) 1 0) (rest char-pair)))
+        
+        )
+        0
+        (map (fn (i)
+            (cons (bufget-u8 bin-str i) (- bits i 1))
+        ) (range bits))
+    )
+})
+
+; (def cal-result (vib-cal))
+; (print (to-str "calibration result:" cal-result))
+; (vib-cal-set (ix cal-result 0) (ix cal-result 1) (ix cal-result 2))
+(vib-cal-set (parse-bin (str-merge "1" "000" "11" "01")) 13 102)
+
+
 @const-start
 
 ;;; Dev flags (these disable certain features)
@@ -119,13 +143,6 @@
 (read-eval-program code-connection)
 (read-eval-program code-input)
 
-@const-start
-
-;;; Math Constants
-
-(def pi 3.14159265359)
-(def two-pi 6.28318530718)
-
 @const-end
 
 (def start-tick (systime))
@@ -134,44 +151,11 @@
 ;;; using esp-now from the battery. We use code streaming to make updating
 ;;; them convenient.
 
-; Filtered x-value of magnetometer 0, was namned m0x-f
-(def magn0x-f -150.0)
-(def magn0y-f -150.0)
-(def magn0z-f -150.0)
-
-; Throttle value calculated from magnetometer, 0.0 to 1.0.
-(def thr-input 0.0)
-; Final throttle that's adjusted for the current gear, 0.0 to 1.0.
-(def thr 0.0)
-
-; If the thr is enabled, causing thr-input to be sent to the battery.
-(def thr-enabled false)
-
-; Seems to control with what method thr is sent to the battery.
-(def thr-mode 1)
-
 ; Timestamp of the last tick with input
 (def last-input-time 0)
 
 ; Timestamp of the end of last frame
 (def last-frame-time (systime))
-
-; Buttons
-(def btn-up 0)
-(def btn-down 0)
-(def btn-left 0)
-(def btn-right 0)
-(def btn-down-start 0) ; Timestamp when the down button was last pressed down (the rising edge). 
-
-
-; State of charge reported by BMS, 0.0 to 1.0
-(def soc-bms 0.0)
-
-; State of charge of remote, 0.0 to 1.0
-(def soc-remote 0.0)
-
-; Total motor power, kw
-(def motor-kw 0.0)
 
 ; Duty cycle. 0.93 means that motor is at full speed and no
 ; more current can be pushed.
@@ -221,98 +205,6 @@
 
 ; Whether or not the screen is currently enabled.
 (def draw-enabled true)
-
-;;; UI state
-;;; This is a thread safe abstraction for storing values used by the UI rendering.
-
-; The live unstatle UI state thats written to by multiple threads.
-(def ui-state (list
-    ; Currently open menu (right now only 'main is supported)
-    (cons 'view 'main)
-    ; What is currently being displayed on the top menu of the main view.
-    ; Valid values are 'gear or 'speed
-    (cons 'view-main-subview 'gear)
-
-    ; Whether or not the small soc battery is displayed at the top of the screen.
-    (cons 'soc-bar-visible true)
-
-    (cons 'up-pressed false)
-    (cons 'down-pressed false)
-    (cons 'left-pressed false)
-    (cons 'right-pressed false)
-
-    (cons 'thr-active false)
-
-    ; Throttle value calculated from magnetometer, 0.0 to 1.0
-    (cons 'thr-input 0.0)
-
-    ; State of charge reported by BMS, 0.0 to 1.0
-    (cons 'soc-remote 0.0)
-    ; State of charge reported by BMS, 0.0 to 1.0
-    (cons 'soc-bms 0.0)
-
-    ; Whether or not the remote is currently connected to a board.
-    ; Currently only used for debugging
-    (cons 'is-connected false)
-    
-    (cons 'kmh 0.0)
-
-    ; 1 to 15, default is 1
-    (cons 'gear 1)
-
-    ; The last angle that any rotating animation was during this frame.
-    ; Used for keeping track of the angle of the last frame.
-    (cons 'animation-angle 0.0)
-
-    ;;; main specific state
-    
-    ; How many long into the fadeout animation the gear '+' and '-' buttons
-    ; are. From 0.0 to 1.0.
-    ; These are nil if the animation isn't currently playing
-    (cons 'main-left-fadeout-t nil)
-    (cons 'main-right-fadeout-t nil)
-    
-    ;;; board-info specific state
-
-    ; The currently displayed message and icon
-    ; Can be one of 'initiate-pairing, 'pairing, 'board-not-powered,
-    ; 'pairing-failed, 'pairing-success
-    (cons 'board-info-msg nil)
-
-    ;;; thr-activation specific state
-
-    ; The specific section of the throttle activation screen that's currently
-    ; enabled.
-    ; Valid values:
-    ; - nil: throttle screen not active
-    ; - 'reminder: the screen that reminds user to activate throttle
-    ; - 'release-warning: if the throttle was already held down on activation
-    ; - 'countdown: the countdown before the throttle is activated
-    (cons 'thr-activation-state nil)
-    ; How many seconds have passed since the throttle activation countdown last started
-    (cons 'thr-countdown-secs 0.0)
-    
-    ;;; status-msg specific state
-
-    ; Which status message is currently shown
-    ; - nil: status msg screen is not active
-    ; - 'low-battery: the remote has low battery
-    ; - 'charging: the remote is currently plugged in and charging
-    ; - 'warning-msg: idk TODO: what should this do?
-    ; - 'firmware-update: a firmware update is currently being installed
-    (cons 'status-msg nil)
-
-    (cons 'gradient-period 0)
-    (cons 'gradient-phase 0)
-))
-
-; Contains the state from the last time it was rendered.
-; (any 'reset values signal that the value has changed, we use 'reset to
-; differentiate nil values from manually reset values)
-(def ui-state-last (map (fn (pair) (cons (car pair) 'reset)) ui-state))
-; The currently used UI state, thats updated to match ui-state at the start of
-; every frame. Reading from this is safe from any race conditions.
-(def ui-state-current ui-state) ; This is a bit dirty, it should make a copy instead. Seems to be fine though
 
 ;;; GUI dimentions
 

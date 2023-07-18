@@ -76,7 +76,11 @@
 (def on-down-pressed nil)
 (def on-left-pressed nil)
 (def on-right-pressed nil)
+
+(def on-up-long-pressed nil)
 (def on-down-long-pressed nil)
+(def on-left-long-pressed nil)
+(def on-right-long-pressed nil)
 
 @const-start
 

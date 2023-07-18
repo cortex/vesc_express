@@ -128,6 +128,7 @@
     (var new-success (ping-battery))
     (if (and new-success (not ping-success)) {
         (print "connection restored")
+        (vib-play-bms-connect)
     })
     (if (and (not new-success) ping-success) {
         (def ping-fail-time (systime))
@@ -149,6 +150,7 @@
             (def is-connected false)
             
             (print (str-merge "connection has been lost (took " (to-str failed-pings) " pings)"))
+            (vib-play-bms-disconnect)
         })
         (setq tick-duration 0.004) ; 4 ms
     })

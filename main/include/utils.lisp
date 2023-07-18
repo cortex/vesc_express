@@ -1,5 +1,10 @@
 @const-start
 
+;;; Math Constants
+
+(def pi 3.14159265359)
+(def two-pi 6.28318530718)
+
 ;;; Generic utility functions.
 
 ; Print values on the same line with spaces between them. For debugging.
@@ -254,11 +259,29 @@
     (/ (- 1 (cos (* pi x))) 2)
 )
 
+(defun ease-in-quad (x) 
+    (* x x)
+)
+
+(defun ease-in-out-quart (x)
+    (if (< x 0.5)
+        (* 8 x x x x)
+        (- 1 (/ (pow (+ (* -2.0 x) 2.0) 4) 2.0))
+    )
+)
+
 ; x is meant to be a number from 0.0 to 1.0.
 ; It isn't clamped to be in the range though.
 ; Source: https://gizma.com/easing/#easeOutQuint
 (defun ease-out-quint (x)
     (- 1 (pow (- 1 x) 5))
+)
+
+(defun ease-in-out-quint (x)
+    (if (< x 0.5)
+        (* 16 x x x x x)
+        (- 1 (/ (pow (+ (* -2.0 x) 2.0) 5) 2.0))
+    )
 )
 
 @const-end
