@@ -23,10 +23,11 @@
 # sudo apt-get install inkscape
 
 """
-Text json format
-The text files should consist of json in the following format:
+Text JSON format
+The text files should consist of JSON in the following format:
 ```json
 {
+    "$schema": "../../../json-text-schema.json",
     "text": "<text>",
     "width": <width>,
     "font-family": "<font-family>",
@@ -35,15 +36,17 @@ The text files should consist of json in the following format:
     "[font-weight]": <font-weight>,
     "align": "<align>"
     "[dominant-baseline]": "<baseline>"
-}
+    "[y-offset]": "<y-offset>"
+} 
 ```
+(the schema link assumes the JSON document is located inside assets/texts/json/)
 where
 - <text> [str]: text lines separated by newlines
 - <width> [int]: output image width in pixels
 - <font-family> [str]: css font family name
 - <font-size> [int]: font size in pixels as int
-- <line-height> [str]: line height in pixels without unit, 'normal', **or** percentage of
-  font-size, with percentage unit, eg: "line-height": "72" or "line-height":
+- <line-height> [str|int]: line height in pixels without unit, 'normal', **or** percentage of
+  font-size, with percentage unit, eg: "line-height": 72 or "line-height":
   "120%"
 - <font-weight> [int] (optional): css font weight number as int
 - <align> [str]: how to horizontally justify the text (valid values: "start",
@@ -57,6 +60,9 @@ where
   'hanging', 'mathematical', 'text-after-edge', 'text-before-edge', 'text-top'} 
   Default is 'central' (I recommend sticking to this unless you encounter
   vertical alignment problems).
+- <y-offset> [int] (optional): An extra offset in pixels. The text will be
+  shifted *down* by this amount. May be negative. This is useful for bad
+  behaving fonts which are not properly vertically aligned.
 """
 
 import argparse
@@ -87,7 +93,7 @@ class TextJustify(Enum):
     End = 2
 
 
-def build_text_svg(text: str, width: int, height: Optional[int], font_family: str, font_size: int, line_height: int, font_weight: int, text_align: TextJustify, dominant_baseline: str) -> str:
+def build_text_svg(text: str, width: int, height: Optional[int], font_family: str, font_size: int, line_height: int, font_weight: int, text_align: TextJustify, dominant_baseline: str, y_offset: int) -> str:
     if height == None:
         height = (text.count("\n") + 1) * line_height
 
@@ -98,8 +104,12 @@ def build_text_svg(text: str, width: int, height: Optional[int], font_family: st
     # # Assumes that the offset specifies the distance from the top edge to the
     # # baseline.
     # # This appears to be true for Gilroy
-    # y_offset = font_size + (liqne_height - font_size) / 2  # can be optimized
-    y_offset = line_height / 2.0
+    # y_offset = font_size + (line_height - font_size) / 2  # can be optimized
+
+    # y_offset is the position where the the center of the text will be located
+    # (assuming dominant_baseline is 'central')
+    # there seems to be an issue where it's off by one pixel
+    y_offset += line_height / 2.0 + 1.0
 
     match text_align:
         case TextJustify.Start:
@@ -175,8 +185,11 @@ def handle_text_json_file(file_path: str, dest_directory: str):
                   "'central', 'middle', 'auto', 'ideographic', 'alphabetic', 'hanging',"
                   "'mathematical', 'text-after-edge', 'text-before-edge', or 'text-top'.")
 
+        y_offset = int(optional_access_helper(
+            "y-offset", data, "0"))
+
         svg = build_text_svg(text, width, None, font_family,
-                             font_size, line_height, font_weight, align, dominant_baseline)
+                             font_size, line_height, font_weight, align, dominant_baseline, y_offset)
         # print(svg)
 
         text_svg_path = os.path.join(

@@ -162,8 +162,8 @@
 
     (def view-thr-buf (create-sbuf 'indexed4 24 158 142 8))
 
-    (var text (img-buffer-from-bin text-throttle-inactive))
-    (def view-inactive-buf (create-sbuf 'indexed2 22 154 145 17)) ; this is one pixel lower than in the design...
+    (var text (img-buffer-from-bin text-throttle-off))
+    (def view-inactive-buf (create-sbuf 'indexed2 33 153 124 17)) ; ~~this is one pixel lower than in the design...~~
     (sbuf-blit view-inactive-buf text 0 0 ())
 
     ; subview init
@@ -260,11 +260,12 @@
     )
 
     (state-with-changed '(thr-active) (fn (thr-active) {
-        (sbuf-render view-thr-bg-buf (list col-bg col-menu))
+        (sbuf-render view-thr-bg-buf (list col-bg (if thr-active
+            col-menu
+            col-white
+        )))
         (if (not thr-active)
-            (sbuf-render view-inactive-buf (list col-menu col-fg))
-            ; ? is this necessary?
-            ; (sbuf-render view-thr-buf (list col-menu col-menu-btn-bg gradient col-error))
+            (sbuf-render view-inactive-buf (list col-white col-black))
         )
     }))
 

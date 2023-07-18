@@ -21,6 +21,7 @@
 (def col-menu-btn-bg col-gray-2)
 (def col-menu-btn-fg col-white) ; gray 1 for style B1 and B2
 (def col-menu-btn-disabled-fg col-gray-2) ; gray 3 for style B1 and B2
+(def col-highlight-bg col-gray-2)
 (def col-fg col-white)
 (def col-dim-fg col-gray-2) ; only for the version display on the loading screen
 (def col-label-fg col-white) ; gray 1 for style B1 and B2
