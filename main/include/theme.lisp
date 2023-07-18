@@ -10,7 +10,9 @@
 (def col-gray-1 0xa7a9ac)
 (def col-gray-2 0x676767)
 (def col-gray-3 0x1c1c1c)
-(def col-gray-4 0x151515)
+(def col-gray-4 0x2E2E2E)
+; (def col-gray-4 0x1f1f1f)
+; (def col-gray-4 0x151515)
 
 ;;; Semantic color definitions.
 
