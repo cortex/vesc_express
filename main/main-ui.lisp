@@ -16,19 +16,22 @@
 
 ;;; Render loading screen
 
-(def version-str "v0.1")
+(def version-str "v0.01")
 
-(import "../assets/icons/bin/logo-vertical-lockup.bin" 'logo-vertical-lockup) ; size: 116x84
+(import "../assets/icons/bin/icon-lind-logo.bin" 'icon-lind-logo) ; size: 116x84
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
 {
-    (var logo (img-buffer-from-bin logo-vertical-lockup))
-    (var logo-buf (img-buffer 'indexed2 119 84))
-    (img-blit logo-buf logo 3 0 -1)
-    (disp-render logo-buf 36 120 (list 0x0 0xffffff))
+    (var logo (img-buffer-from-bin icon-lind-logo))
+    (var logo-buf (img-buffer 'indexed2 120 19))
+    (img-blit logo-buf logo 2 0 -1)
+    (disp-render logo-buf 36 156 (list 0x0 0xffffff))
     
-    (var version-buf (img-buffer 'indexed2 (* 10 (str-len version-str)) 16))
+    (var w (* (bufget-u8 font-b3 0) (str-len version-str)))
+    (var screen-w 194) ; this is the total width, including the screen inset
+    (var x (/ (- screen-w w) 2))
+    (var version-buf (img-buffer 'indexed2 w 16))
     (img-text version-buf 0 0 1 0 font-b3 version-str)
-    ; (disp-render version-buf 72 328 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
+    (disp-render version-buf x 319 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
 }
 
 ; parse string containing unsigned binary integer
