@@ -79,11 +79,11 @@
 
 ;;; Dev flags (these disable certain features)
 
-(def dev-disable-low-battery-msg true)
+(def dev-disable-low-battery-msg false)
 (def dev-disable-charging-msg false) ; does nothing right now...
-(def dev-short-thr-activation true)
-(def dev-disable-inactivity-check true) ; disables the check that deactivates the thrust upon 30 seconds of inactivity.
-(def dev-disable-connection-check true) ; disables the check that deactivates the thrust when connection has been lost.
+(def dev-short-thr-activation false)
+(def dev-disable-inactivity-check false) ; disables the check that deactivates the thrust upon 30 seconds of inactivity.
+(def dev-disable-connection-check false) ; disables the check that deactivates the thrust when connection has been lost.
 ; (dev disable-sleep-button true)
 
 (def dev-force-view false) ; always show a specific view
@@ -91,7 +91,7 @@
 (def dev-status-msg 'charging) ; only relevant when dev-view is 'status-msg
 (def dev-board-info-msg 'pairing) ; only relevant when dev-view is 'board-info
 
-(def dev-soc-remote 0.5) ; act as though the remote has the specified soc, nil to disable
+(def dev-soc-remote nil) ; act as though the remote has the specified soc, nil to disable
 
 (def dev-bind-soc-bms-to-thr false) ; bind thrust input to bms soc meter. Usefull to test different values in a dynamic manner.
 (def dev-soc-bms-thr-ratio 0.25) ; thr-input is multiplied by this value before being assigned to the bms soc
@@ -412,24 +412,28 @@
     (state-activate-current)
 
     ; global tick
+    
+    (if (not-eq dev-soc-remote nil) {
+        (state-set-current 'soc-remote dev-soc-remote)
+    })
 
-    ; (state-with-changed '(soc-remote view status-msg) (fn (soc-remote view status-msg) {
-    ;     (if (and 
-    ;         (<= soc-remote 0.05)
-    ;         (not-eq view 'status-msg)
-    ;         (not-eq status-msg 'low-battery)
-    ;         (not dev-disable-low-battery-msg)
-    ;     ) {
-    ;         (show-low-battery-status)
-    ;     })
-    ;     (if (and
-    ;         (> soc-remote 0.05)
-    ;         (eq view 'status-msg)
-    ;         (eq status-msg 'low-battery)
-    ;     ) {
-    ;         (change-view 'main)
-    ;     })
-    ; }))
+    (state-with-changed '(soc-remote view status-msg) (fn (soc-remote view status-msg) {
+        (if (and 
+            (<= soc-remote 0.05)
+            (not-eq view 'status-msg)
+            (not-eq status-msg 'low-battery)
+            (not dev-disable-low-battery-msg)
+        ) {
+            (show-low-battery-status)
+        })
+        (if (and
+            (> soc-remote 0.05)
+            (eq view 'status-msg)
+            (eq status-msg 'low-battery)
+        ) {
+            (change-view 'main)
+        })
+    }))
 
     (if dev-bind-soc-remote-to-thr {
         (state-set 'soc-remote (state-get 'thr-input))
