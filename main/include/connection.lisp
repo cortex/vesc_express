@@ -55,17 +55,18 @@
         (send-code str)
 ))
 
-(defun send-thr (thr)
-    (if batt-addr-rx
-        (cond
-            ((= thr-mode 0) (send-thr-nf thr))
-            ((= thr-mode 1) (send-thr-rf thr))
-            ((= thr-mode 2)
-                (if (send-thr-rf thr)
-                    true
-                    (send-thr-nf thr)
-            ))
-)))
+(defun send-thr (thr) (if batt-addr-rx
+    (cond
+        ((= thr-mode 0) (send-thr-nf thr))
+        ((= thr-mode 1) (send-thr-rf thr))
+        ((= thr-mode 2)
+            (if (send-thr-rf thr)
+                true
+                (send-thr-nf thr)
+            )
+        )
+    )
+))
 
 @const-end
 

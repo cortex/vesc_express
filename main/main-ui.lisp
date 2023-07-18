@@ -504,12 +504,14 @@
 @const-end
 
 ; Check connection
-(spawn 120 (fn ()
-    (loopwhile t
-        (check-connection-tick)
-        ; this tick function handles its own sleep time
-    )
-))
+(if (not dev-disable-connection-check)
+    (spawn 120 (fn ()
+        (loopwhile t
+            (check-connection-tick)
+            ; this tick function handles its own sleep time
+        )
+    ))    
+)
 
 ; Communication
 (spawn 120 (fn ()
