@@ -560,14 +560,13 @@
 
 (defun view-render-thr-activation () {
     (state-with-changed '(thr-activation-state) (fn (thr-activation-state) {
-        ; (print "init thr activation circle")
         (sbuf-exec img-circle view-graphic-buf 66 66 (66 1 '(filled)))
-        ; (print-vars (thr-activation-state))
 
         (if (or
             (eq thr-activation-state 'release-warning)
             (eq thr-activation-state 'countdown)
         ) {
+            ; exclamation mark
             (draw-vert-line view-graphic-buf 67 40 78 5 3)
             (sbuf-exec img-circle view-graphic-buf 67 88 (5 3 '(filled)))
         } {
@@ -594,15 +593,10 @@
     }))
 
     (if (eq (state-get 'thr-activation-state) 'countdown) {
-        ; (if (not-eq (state-last-get 'thr-activation-state) 'countdown) {
-        ;     (sbuf-clear view-graphic-buf)
-        ; })
         (var secs (state-get 'thr-countdown-secs))
-        ; (print secs)
         (var value (/ secs thr-countdown-len-secs))
         (var angle (+ 90 (* value 360)))
-        ; (print-vars (secs angle))
-        ; (print-vars (angle))
+        
         (draw-rounded-circle-segment view-graphic-buf 66 66 57 8 90 angle 3)
     })
 
@@ -688,11 +682,8 @@
 
             
             (var icon-pos (bounds-centered-position 56 73 84 146))
-            ; (var height (to-i (* 115 soc-remote)))
             (var height 115)
             (var x (+ (ix icon-pos 0) 11))
-            ; (var y (+ (ix icon-pos 1) (- 135 height)))
-            ; (var y (+ (ix icon-pos 1) 20))
             (var y 0)
             (sbuf-exec img-rectangle view-icon-buf x (+ (ix icon-pos 1) 20) (62 115 0 '(filled) '(rounded 5)))
             (sbuf-exec img-rectangle view-icon-buf x y (62 height 2 '(filled) '(rounded 5)))
@@ -702,13 +693,9 @@
             } {
                 (state-set-current 'gradient-period (to-i (* soc-remote height)))
             })
-            ; (var gradient-period (* height))
-            ; (var gradient-phase (* y -1))
-            ; (var gradient-phase -45)
             (var gradient-period (state-get 'gradient-period))
             (var gradient-phase (state-get 'gradient-phase))
             (println (gradient-period gradient-phase))
-            ; (var drawn-phase (* gradient-phase -1))
             (var drawn-phase gradient-phase)
             (println ("drawn-y" drawn-phase (+ drawn-phase gradient-period)))
 
@@ -729,9 +716,6 @@
             (var angle-delta 14.0) ; This is quite arbitrary. It just needs to be enough to comfortably cover the arc obscured by the last circle.
             (sbuf-exec img-arc view-icon-buf 56 73 (47 (- last-angle angle-delta) (+ last-angle angle-delta) 2 '(thickness 5)))
         })
-        ; (sbuf-clear view-icon-buf)
-        ; (sbuf-exec img-circle view-icon-buf 56 73 (47 2 '(thickness 5)))
-
         
         (var anim-speed 0.75) ; rev per second
         (var animation-timeline (* anim-speed (get-timestamp)))

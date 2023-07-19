@@ -224,7 +224,7 @@
 
 (defun draw-vert-line (sbuf x y0 y1 radius color) {
     (var x0 (- x radius))
-    (var x1 (+ x radius))
+    (var x1 (+ x radius 1))
 
     (if (> y0 y1) (swap-in-place y0 y1))
     (cond

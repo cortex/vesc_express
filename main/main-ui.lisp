@@ -252,14 +252,10 @@
 ; likely be view-bms-soc-buf.
 ; Charge is in range 0.0 to 1.0
 (defun draw-bms-soc (sbuf charge) {
-    ; (var charge (* charge 0.25))
-
-    ; (img-clear (sbuf-img sbuf) 0)
-
-    ; Ensure that any old pixels from draw-circle-segment-meter are cleared,
-    ; as the arc algorithm isn't pixel consistent and old pixels won't
-    ; necessarilly be overdrawn.
-    (draw-rounded-circle-segment sbuf 62 62 (+ 62 2) 14 120 60 0)
+    ; ; Ensure that any old pixels from draw-circle-segment-meter are cleared,
+    ; ; as the arc algorithm isn't pixel consistent and old pixels won't
+    ; ; necessarilly be overdrawn.
+    ; (draw-rounded-circle-segment sbuf 62 62 (+ 62 2) 14 120 60 0)
 
     (draw-circle-segment-meter sbuf 62 62 62 10 120 60 charge 3 2)
 
