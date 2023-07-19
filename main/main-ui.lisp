@@ -12,6 +12,54 @@
 (disp-load-sh8501b 6 5 7 8 40)
 (disp-reset)
 
+@const-start
+
+;;; Dev flags
+(import "../.dev-flags.lisp" 'code-dev-flags)
+(read-eval-program code-dev-flags)
+
+;;; Check and render remote low battery screen
+
+(defun get-remote-soc () {
+    (var clamp01 (lambda (v) (cond
+        ((< v 0.0) 0.0)
+        ((> v 1.0) 1.0)
+        (t v)
+    )))
+    (var map-range-01 (lambda (v min max)
+        (clamp01 (/ (- (to-float v) min) (- max min)))
+    ))
+    
+    (if (not-eq dev-soc-remote nil)
+        dev-soc-remote
+        (map-range-01 (vib-vmon) 3.4 4.2)
+    )
+})
+
+(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+(import "../assets/icons/bin/icon-low-battery.bin" 'icon-low-battery) ; 84x146 indexed4; bg: 0, fg: 1
+
+{
+    (if (and (<= (get-remote-soc) 0.05) (not dev-disable-low-battery-msg)) { ; 5%
+        (print "low battery!")
+        (var icon (img-buffer-from-bin icon-low-battery))
+        (var icon-buf (img-buffer 'indexed2 88 146))
+        (img-blit icon-buf icon 1 0 -1)
+        
+        (var text (img-buffer-from-bin text-remote-battery-low))
+        (var text-buf (img-buffer 'indexed2 144 72))
+        (img-blit text-buf text 1 0 -1)
+        
+        (disp-render icon-buf 52 74 '(0x0 0xe65f5c))
+        (disp-render text-buf 24 240 '(0x0 0xffffff))
+        
+        (sleep 10)
+        (print "entering sleep (low power)...")
+        (disp-clear)
+        (go-to-sleep -1)
+    })
+}
+
 ;;; Render loading screen
 
 (def version-str "v0.01")
@@ -31,8 +79,6 @@
     (img-text version-buf 0 0 1 0 font-b3 version-str)
     (disp-render version-buf x 319 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
 }
-
-@const-start
 
 ; parse string containing unsigned binary integer
 (def ascii-0 48)
@@ -77,10 +123,6 @@
 ;     )
 ; )
 
-;;; Dev flags
-(import "../.dev-flags.lisp" 'code-dev-flags)
-(read-eval-program code-dev-flags)
-
 ;;; Included files
 
 (import "include/utils.lisp" code-utils)
@@ -104,9 +146,8 @@
 (import "../assets/icons/bin/icon-bolt-inverted.bin" 'icon-bolt-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-unlock-trigger-inverted.bin" 'icon-unlock-trigger-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-battery-border.bin" 'icon-large-battery) ; 84x146 indexed4; bg: 0, fg: 1
-(import "../assets/icons/bin/icon-low-battery.bin" 'icon-low-battery) ; 84x146 indexed4; bg: 0, fg: 1
 (import "../assets/icons/bin/icon-warning.bin" 'icon-warning) ; 113x94 indexed4; bg: 0, fg: 1
-; (import )
+; icon-low-battery.bin was moved to top
 
 ;;; Texts
 
@@ -118,7 +159,6 @@
 (import "../assets/texts/bin/km-h.bin" 'text-km-h)
 (import "../assets/texts/bin/pairing.bin" 'text-pairing)
 (import "../assets/texts/bin/pairing-failed.bin" 'text-pairing-failed)
-(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
 (import "../assets/texts/bin/%.bin" 'text-percent)
 ; (import "../assets/texts/bin/throttle-not-active.bin" 'text-throttle-inactive)
 (import "../assets/texts/bin/throttle-off.bin" 'text-throttle-off)
@@ -126,10 +166,10 @@
 (import "../assets/texts/bin/release-throttle-first.bin" 'text-release-throttle-first)
 (import "../assets/texts/bin/throttle-now-active.bin" 'text-throttle-now-active)
 (import "../assets/texts/bin/warning-msg.bin" 'text-warning-msg)
+; remote-battery-low.bin was moved to top
 
 ;;; Fonts
 
-; (import "../assets/Gilroy-h1.bin" 'font-h1)
 (import "../assets/fonts/bin/H1.bin" 'font-h1)
 (import "../assets/fonts/bin/H3.bin" 'font-h3)
 ; (import "../assets/fonts/bin/B3.bin" 'font-b3)
@@ -245,7 +285,11 @@
     (var text (str-merge (str-from-n (to-i (* charge 100))) "%  "))
     (sbuf-exec img-text small-soc-text-buf 0 0 (1 0 font-b3 text))
 
-    (sbuf-render small-battery-buf (list col-bg col-fg))
+    (var color (if (< charge 0.15)
+        col-error
+        col-fg
+    ))
+    (sbuf-render small-battery-buf (list col-bg color))
     (sbuf-render small-soc-text-buf (list col-bg col-fg))
 })
 
@@ -520,7 +564,7 @@
 ; Slow updates
 (spawn 120 (fn ()
     (loopwhile t {
-        (def soc-remote (map-range-01 (vib-vmon) 3.4 4.2))
+        (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
         ; (print soc-bms)
         (state-set 'soc-bms soc-bms)

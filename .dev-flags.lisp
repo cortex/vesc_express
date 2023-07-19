@@ -1,7 +1,7 @@
-;;; Dev flags (these disable certain features)
+;;; Dev flags (these disable/simulate certain features)
 
 (def dev-disable-low-battery-msg false)
-(def dev-disable-charging-msg false) ; does nothing right now...
+(def dev-disable-charging-msg false)
 (def dev-short-thr-activation false)
 (def dev-disable-inactivity-check false) ; disables the check that deactivates the thrust upon 30 seconds of inactivity.
 (def dev-disable-connection-check false) ; disables the check that deactivates the thrust when connection has been lost.
