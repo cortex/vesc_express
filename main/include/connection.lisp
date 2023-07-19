@@ -3,6 +3,7 @@
 (def thr-active true)
 
 (def esp-rx-cnt 0)
+(def batt-addr-rx false)
 
 @const-start
 
@@ -21,12 +22,16 @@
         (free data)
 })
 
+@const-end
+
 (defun event-handler ()
     (loopwhile t
         (recv
             ((event-esp-now-rx (? src) (? des) (? data)) (proc-data src des data))
             (_ nil)
 )))
+
+@const-start
 
 (defun send-code (str)
     (if batt-addr-rx
