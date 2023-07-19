@@ -39,6 +39,31 @@
     `(print (str-merge ,@pair-strings))
 }))
 
+; Convert positive integer to string in a binary format.
+; This probably won't work with negative integers, unsure though.
+; It will pad the binary number with zeros until it reaches `bits` in length.
+; If it's nill the bits are determined by it's type (e.g. 32 bits for an i32)
+; Ex: (str-from-bin 57 8)
+; > "00111001"
+(defunret str-from-bin (n bits) {
+    (var bits (if (not-eq bits nil)
+        bits
+        (match (type-of n)
+            (type-i32 32)
+            (type-u32 32)
+            (type-i64 64)
+            (type-u64 64)
+            (type-byte 8)
+            (_ 'type_error)
+        )
+    ))
+    (if (eq bits 'type_error)
+        (return 'type_error)
+    )
+    (apply str-merge (map (fn (bit)
+        (to-str (shr (bitwise-and n (shl 1 bit)) bit))
+    ) (range bits 0)))
+})
 
 ; Swap the values of a and b. ex: (swap-in-place var1 var2)
 (define swap-in-place (macro (a b) `(let (
