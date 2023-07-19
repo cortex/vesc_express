@@ -139,6 +139,9 @@
         (var c1 (/ (- (+ (sq d1) (sq c)) (sq d2)) (* 2 c)))
         (var ratio (/ c1 c))
         
+        ; Deviation from path
+;        (def h (sqrt (- (sq d1) (sq c1))))
+        
         (+ p1-travel (* ratio (- p2-travel p1-travel)))
 })
 
@@ -160,17 +163,19 @@
 
 ;;; Input
 
-(defun input-tick () {
-    ; Throttle
-    ; (print (str-merge (to-str (mag-get-x 0)) " " (to-str (mag-get-y 0)) " " (to-str (mag-get-z 0)))) ; always prints the same "15.000000f32 -5.000000f32 -54.000000f32"
-    (def magn0x-f (lpf magn0x-f (mag-get-x 0)))
-    (def magn0y-f (lpf magn0y-f (mag-get-y 0)))
-    (def magn0z-f (lpf magn0z-f (mag-get-z 0)))
+(defun input-read-tick () {
+        ; Throttle
+        ; (print (str-merge (to-str (mag-get-x 0)) " " (to-str (mag-get-y 0)) " " (to-str (mag-get-z 0)))) ; always prints the same "15.000000f32 -5.000000f32 -54.000000f32"
+        (def magn0x-f (lpf magn0x-f (mag-get-x 0)))
+        (def magn0y-f (lpf magn0y-f (mag-get-y 0)))
+        (def magn0z-f (lpf magn0z-f (mag-get-z 0)))
         
-    (def magn1x-f (lpf magn1x-f (mag-get-x 1)))
-    (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
-    (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
-        
+        (def magn1x-f (lpf magn1x-f (mag-get-x 1)))
+        (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
+        (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
+})
+
+(defun input-tick () {    
     (def travel (thr-interpolate))
     (def thr-input (* (map-range-01 travel 2.0 11.0)))
     
