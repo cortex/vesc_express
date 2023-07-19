@@ -60,7 +60,9 @@
 ; (def cal-result (vib-cal))
 ; (print (to-str "calibration result:" cal-result))
 ; (vib-cal-set (ix cal-result 0) (ix cal-result 1) (ix cal-result 2))
+
 (vib-cal-set (parse-bin (str-merge "1" "000" "11" "01")) 13 102)
+
 ; these don't seem to make any noticable difference...
 ; (vib-i2c-write (vib-get-reg 'reg-control1)
 ;     (bitwise-or
@@ -489,7 +491,7 @@
             (check-connection-tick)
             ; this tick function handles its own sleep time
         )
-    ))    
+    ))
 )
 
 ; Communication
@@ -541,3 +543,5 @@
         (sleep (- 0.05 elapsed))
     })
 ))
+
+(connect-start-events)

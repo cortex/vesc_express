@@ -39,9 +39,6 @@
         nil
 ))
 
-(event-register-handler (spawn 120 event-handler))
-(event-enable 'event-esp-now-rx)
-
 (defun str-crc-add (str)
     (str-merge str (str-from-n (crc16 str) "%04x"))
 )
@@ -191,6 +188,11 @@
     (state-set 'kmh kmh)
     (state-set 'is-connected is-connected)
     ; (state-set 'is-connected (!= esp-rx-cnt 0))    
+})
+
+(defun connect-start-events () {
+        (event-register-handler (spawn 120 event-handler))
+        (event-enable 'event-esp-now-rx)
 })
 
 @const-start
