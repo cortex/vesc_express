@@ -79,7 +79,6 @@
 (import "../.dev-flags.lisp" 'code-dev-flags)
 (read-eval-program code-dev-flags)
 
-
 ;;; Included files
 
 (import "include/utils.lisp" code-utils)
@@ -499,6 +498,15 @@
         (connect-tick)
         
         (sleep 0.04)
+    })
+))
+
+; Throttle read and filter
+(spawn 120 (fn ()
+    (loopwhile t {
+        (input-read-tick)
+
+        (sleep 0.01)
     })
 ))
 
