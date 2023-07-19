@@ -8,9 +8,7 @@
 
 (init-hw)
 
-(gpio-configure 0 'pin-mode-out)
-(gpio-write 0 1)
-
+(set-disp-pwr 1)
 (disp-load-sh8501b 6 5 7 8 40)
 (disp-reset)
 
