@@ -9,6 +9,15 @@ with VESC tool. You can move the entire `main/` directory around, just make sure
 that you have all the files under the `main/` folder present, with the original
 relative paths to `main_ui.lisp` so that it can find them.
 
+There are some development flags to disable or simulate certain functions,
+located in `.dev-flags.lisp`. I recommend that you run the following command to
+remove the file's changes from being tracked locally, so that you're changes
+don't get pushed.
+
+```bash
+git update-index --assume-unchanged .dev-flags.lisp
+```
+
 ## Assets
 
 All original and processed assets can be found under `assets/`.
