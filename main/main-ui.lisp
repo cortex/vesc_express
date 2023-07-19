@@ -60,7 +60,9 @@
 ; (def cal-result (vib-cal))
 ; (print (to-str "calibration result:" cal-result))
 ; (vib-cal-set (ix cal-result 0) (ix cal-result 1) (ix cal-result 2))
+
 (vib-cal-set (parse-bin (str-merge "1" "000" "11" "01")) 13 102)
+
 ; these don't seem to make any noticable difference...
 ; (vib-i2c-write (vib-get-reg 'reg-control1)
 ;     (bitwise-or
@@ -78,7 +80,6 @@
 ;;; Dev flags
 (import "../.dev-flags.lisp" 'code-dev-flags)
 (read-eval-program code-dev-flags)
-
 
 ;;; Included files
 
@@ -486,7 +487,7 @@
             (check-connection-tick)
             ; this tick function handles its own sleep time
         )
-    ))    
+    ))
 )
 
 ; Communication
@@ -495,6 +496,15 @@
         (connect-tick)
         
         (sleep 0.04)
+    })
+))
+
+; Throttle read and filter
+(spawn 120 (fn ()
+    (loopwhile t {
+        (input-read-tick)
+
+        (sleep 0.01)
     })
 ))
 
@@ -529,3 +539,5 @@
         (sleep (- 0.05 elapsed))
     })
 ))
+
+(connect-start-events)

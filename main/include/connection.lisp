@@ -3,6 +3,7 @@
 (def thr-active true)
 
 (def esp-rx-cnt 0)
+(def batt-addr-rx false)
 
 @const-start
 
@@ -21,6 +22,8 @@
         (free data)
 })
 
+@const-end
+
 (defun event-handler ()
     (loopwhile t
         (recv
@@ -28,14 +31,13 @@
             (_ nil)
 )))
 
+@const-start
+
 (defun send-code (str)
     (if batt-addr-rx
         (esp-now-send batt-addr str)
         nil
 ))
-
-(event-register-handler (spawn 120 event-handler))
-(event-enable 'event-esp-now-rx)
 
 (defun str-crc-add (str)
     (str-merge str (str-from-n (crc16 str) "%04x"))
@@ -186,6 +188,11 @@
     (state-set 'kmh kmh)
     (state-set 'is-connected is-connected)
     ; (state-set 'is-connected (!= esp-rx-cnt 0))    
+})
+
+(defun connect-start-events () {
+        (event-register-handler (spawn 120 event-handler))
+        (event-enable 'event-esp-now-rx)
 })
 
 @const-start
