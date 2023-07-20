@@ -427,6 +427,8 @@
 })
 
 (def fps 0.0)
+(def frame-ms 0.0)
+(def state-with-changed-frame-ms 0.0)
 (defun tick () {
     (var start (systime))
 
@@ -514,10 +516,15 @@
     ; (def ui-state-last (copy-alist ui-state))
     (state-store-last)
     
-    (def frame-ms (* (secs-since start) 1000))
+    (var smoothing 0.1) ; lower is smoother
+    ; (def frame-ms (* (secs-since start) 1000))
+    (def frame-ms (+ (* (* (secs-since start) 1000) smoothing) (* frame-ms (- 1.0 smoothing))))
+    
+    (def ms (get-with-changed-frame-time-ms))
+    (def state-with-changed-frame-ms (+ (* ms smoothing) (* state-with-changed-frame-ms (- 1.0 smoothing))))
     
     ; source: https://stackoverflow.com/a/87333/15507414
-    (var smoothing 0.5) ; lower is smoother
+    (var smoothing 0.1) ; lower is smoother
     (def fps (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps (- 1.0 smoothing))))
     (def last-frame-time (systime))
 })
