@@ -76,25 +76,15 @@
 ; with-fn is a function taking as many arguments as there are keys: the current values.
 ; The result of with-fn is then returned if the value has changed, or nil
 ; otherwise.
-; fps values (without time measuring code)
-; start avg fps: 20fps
-; start avg fps (with measuring): 18.5fps
-; end avg fps: 19-21fps (really big improvement... ;) )
 ;
-; start avg frame part: 30ms
-; 1 optim avg frame part: 22-26ms
-; 2 optim avg frame part: 21-26ms
-; 3 optim avg frame part: 21-26ms
-; 4 optim avg frame part: 17-21ms
+; initial avg frame part: 30ms
+; optim avg frame part: 17-21ms
 (defun state-with-changed (keys with-fn) {
-    ; (if (foldl (fn (any key) (or any (state-value-changed key))) false keys)
-    ; (var start (systime))
-    
     (let (
         (foldl-local (lambda (f init lst) (if (eq lst nil) init (foldl-local f (f init (car lst)) (cdr lst))) nil))
     )
         (if (foldl-local
-            (fn (any key) (not-eq (assoc ui-state-current key) (assoc ui-state-last key)))
+            (fn (any key) (or any (not-eq (assoc ui-state-current key) (assoc ui-state-last key))))
             false
             keys
         )
@@ -105,40 +95,6 @@
             nil
         )
     )
-    ; (if (foldl
-    ;     (fn (any key) (not-eq (assoc ui-state-current key) (assoc ui-state-last key)))
-    ;     false
-    ;     keys
-    ; )
-    ;     (eval (cons with-fn
-    ;         (map (fn (key) `(quote ,(assoc ui-state-current key))) keys)
-    ;         ; (map quote (map state-get keys))
-    ;     ))
-    ;     nil
-    ; )
-    ; (if (foldl
-    ;     (fn (any key) (state-value-changed key))
-    ;     false
-    ;     keys
-    ; )
-    ;     ; (eval (cons with-fn (quote-items
-    ;     ;     (map state-get keys)
-    ;     ; )))
-    ;     (eval (cons with-fn
-    ;         (map (fn (key) `(quote ,(state-get key))) keys)
-    ;         ; (map quote (map state-get keys))
-    ;     ))
-    ;     ; (eval (cons with-fn
-    ;     ;     (map (fn (value) `(quote ,value)) (map state-get keys))
-    ;     ; ))
-    ;     nil
-    ; )
-    ; (if (any (map (fn (key) (state-value-changed key)) keys))
-    ;     (apply with-fn (quote-items (map (fn (key) (state-get key)) keys)))
-    ;     nil
-    ; )
-    
-    ; (def with-changed-frame-time-secs (+ with-changed-frame-time-secs (secs-since start)))
 })
 
 @const-end
