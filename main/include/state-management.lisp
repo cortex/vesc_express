@@ -7,7 +7,7 @@
 
 ; The live unstatle UI state thats written to by multiple threads.
 (def ui-state (list
-    ; Currently open menu (right now only 'main is supported)
+    ; Currently open view (one of 'main, 'board-info, 'thr-activation, or 'status-msg)
     (cons 'view 'main)
     ; What is currently being displayed on the top menu of the main view.
     ; Valid values are 'gear or 'speed
@@ -30,6 +30,8 @@
     (cons 'soc-remote 0.0)
     ; State of charge reported by BMS, 0.0 to 1.0
     (cons 'soc-bms 0.0)
+    
+    (cons 'charger-plugged-in false)
 
     ; Whether or not the remote is currently connected to a board.
     ; Currently only used for debugging
@@ -82,8 +84,8 @@
     ; - 'firmware-update: a firmware update is currently being installed
     (cons 'status-msg nil)
 
-    (cons 'gradient-period 0)
-    (cons 'gradient-phase 0)
+    (cons 'gradient-width 0)
+    (cons 'gradient-offset 0)
 ))
 
 ; Contains the state from the last time it was rendered.

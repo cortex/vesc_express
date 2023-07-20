@@ -246,6 +246,20 @@
     )
 })
 
+(defun draw-rounded-rect (sbuf x y w h radius color) {
+    (var x-thin (<= w (* radius 2)))
+    (var y-thin (<= h (* radius 2)))
+    (var radius (cond
+        ((and x-thin y-thin)
+            (/ (if (< w h) w h) 2)
+        )
+        (x-thin (/ w 2))
+        (y-thin (/ h 2))
+        (t radius)
+    ))
+    (sbuf-exec img-rectangle sbuf x y (w h color '(filled) `(rounded ,radius)))
+})
+
 ; Draw a circle segment with rounded end caps with the specified center. This
 ; will overwrite the middle with the bg color. The radius specifies the width
 ; from the center to the outer edge. See `img-circle-sector` for angle0 and

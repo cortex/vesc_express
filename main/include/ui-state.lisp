@@ -38,6 +38,8 @@
 )
 
 ; This should be called at the start of every frame.
+; initial frame fps: 19-21fps
+; initial frame ms: 19-25ms
 (defun state-activate-current () (atomic
     (def ui-state-current (copy-alist ui-state))
 ))
@@ -49,26 +51,20 @@
 
 ; Resets memory of all values from the last UI state.
 ; This will rerender everything.
-(defun state-reset-all-last ()
+(defun state-reset-all-last () (atomic
     (def ui-state-last (map (fn (pair) (cons (car pair) 'reset)) ui-state-current))
-)
+))
 
 ; Resets memory of the given key values from the last UI state.
 ; This will rerender all components that depend on any of the keys.
-(defun state-reset-keys-last (keys)
-    (loopforeach pair ui-state-last {
-        ; (if (includes keys (car pair)))
-        (if (includes keys (car pair))
-            (setassoc ui-state-last (car pair) 'reset)
-        )
-    })
-)
-
-(def with-changed-frame-time-secs 0.0)
-(defun get-with-changed-frame-time-ms () {
-    (var secs with-changed-frame-time-secs)
-    (def with-changed-frame-time-secs 0.0)
-    (* secs 1000.0)
+(defun state-reset-keys-last (keys) {
+    (def ui-state-last (map
+        (fn (pair) (if (includes keys (car pair))
+            (cons (car pair) 'reset)
+            pair
+        ))
+        ui-state-last
+    ))
 })
 
 ; Run function with values of the keys if any changed since last frame.
@@ -84,7 +80,7 @@
         (foldl-local (lambda (f init lst) (if (eq lst nil) init (foldl-local f (f init (car lst)) (cdr lst))) nil))
     )
         (if (foldl-local
-            (fn (any key) (or any (not-eq (assoc ui-state-current key) (assoc ui-state-last key))))
+            (fn (any key) (or any (state-value-changed key)))
             false
             keys
         )

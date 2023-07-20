@@ -439,12 +439,24 @@
     (if (not-eq dev-soc-remote nil) {
         (state-set-current 'soc-remote dev-soc-remote)
     })
+    
+    (state-with-changed '(charger-plugged-in) (fn (charger-plugged-in) {
+        (if (and
+            charger-plugged-in
+            (not dev-disable-charging-msg)
+        ) {
+            (show-charging-status)
+        } {
+            (change-view 'main) ; TODO: figure out proper way to do this
+        })
+    }))
 
-    (state-with-changed '(soc-remote view status-msg) (fn (soc-remote view status-msg) {
+    (state-with-changed '(soc-remote view status-msg charger-plugged-in) (fn (soc-remote view status-msg charger-plugged-in) {
         (if (and 
             (<= soc-remote 0.05)
             (not-eq view 'status-msg)
             (not-eq status-msg 'low-battery)
+            (not charger-plugged-in)
             (not dev-disable-low-battery-msg)
         ) {
             (show-low-battery-status)
@@ -453,6 +465,7 @@
             (> soc-remote 0.05)
             (eq view 'status-msg)
             (eq status-msg 'low-battery)
+            (not charger-plugged-in)
         ) {
             (change-view 'main)
         })

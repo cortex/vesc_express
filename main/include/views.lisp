@@ -182,6 +182,7 @@
 })
 
 (defun view-render-main () {
+    ; (print (state-value-changed 'view-main-subview))
     (state-with-changed '(view-main-subview) (lambda (view) (main-update-displayed-subview)))
     ; (if (not-eq view-main-displayed-subview view-main-subview)
     ;     (main-update-displayed-subview)
@@ -622,15 +623,15 @@
     
     (def view-status-text-buf (create-sbuf 'indexed2 25 240 140 78))
 
-    (state-set-current 'gradient-period 0)
-    (state-set-current 'gradient-phase 0)
+    (state-set-current 'gradient-width 0)
+    (state-set-current 'gradient-offset 0)
 })
 
 (defun view-render-status-msg () {
     (state-with-changed '(status-msg) (fn (status-msg) {
         (setix view-icon-palette 1 (match status-msg
             (low-battery col-error)
-            (charging col-gray-1)
+            (charging col-gray-2)
             (warning-msg col-error)
             (firmware-update col-accent)
             (_ 0x0)
@@ -681,28 +682,18 @@
             (sbuf-blit view-icon-buf icon (ix icon-pos 0) (ix icon-pos 1) ())
 
             
-            (var icon-pos (bounds-centered-position 56 73 84 146))
-            (var height 115)
+            ; (var icon-pos (bounds-centered-position 56 73 84 146))
+            (var height (to-i (* soc-remote 115.0)))
             (var x (+ (ix icon-pos 0) 11))
-            (var y 0)
-            (sbuf-exec img-rectangle view-icon-buf x (+ (ix icon-pos 1) 20) (62 115 0 '(filled) '(rounded 5)))
-            (sbuf-exec img-rectangle view-icon-buf x y (62 height 2 '(filled) '(rounded 5)))
-            
-            (if (state-get 'up-pressed) {
-                (state-set-current 'gradient-phase (to-i (* soc-remote height)))
-            } {
-                (state-set-current 'gradient-period (to-i (* soc-remote height)))
-            })
-            (var gradient-period (state-get 'gradient-period))
-            (var gradient-phase (state-get 'gradient-phase))
-            (println (gradient-period gradient-phase))
-            (var drawn-phase gradient-phase)
-            (println ("drawn-y" drawn-phase (+ drawn-phase gradient-period)))
+            (var y (+ (ix icon-pos 1) 20 (- 115 height)))
+            (sbuf-exec img-rectangle view-icon-buf x (+ (ix icon-pos 1) 20) (62 115 0 '(filled)))
+            (draw-rounded-rect view-icon-buf x y 62 height 5 2)
 
-            (sbuf-exec img-rectangle view-icon-buf 0 drawn-phase (113 1 2 '(filled)))
-            (sbuf-exec img-rectangle view-icon-buf 0 (+ drawn-phase gradient-period) (113 1 2 '(filled)))
+            ; The gradient should start at 100% - 92% = 8%
+            (var gradient-width (to-i (* height 0.92)))
+            (var gradient-offset (+ y (to-i (* height 0.08))))
 
-            (setix view-icon-palette 2 (img-color 'gradient_y col-accent col-white gradient-period gradient-phase))
+            (setix view-icon-palette 2 (img-color 'gradient_y_pre col-accent col-white gradient-width gradient-offset))
         })
     }))
 

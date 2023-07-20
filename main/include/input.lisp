@@ -179,6 +179,8 @@
     (def travel (thr-interpolate))
     (def thr-input (* (map-range-01 travel 2.0 11.0)))
     
+    (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
+    
     ; Buttons with counters for debouncing
 
     (def btn-adc (get-adc 0))
