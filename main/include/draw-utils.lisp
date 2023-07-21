@@ -321,4 +321,16 @@
     })
 })
 
+; Precalculate a gradient using an easing function
+; `gradient` should be a precalculated gradient from `img-color`.
+(defun gradient-calculate-easing (gradient easing) {
+    (var col-a (img-color-get gradient 'color-0))
+    (var col-b (img-color-get gradient 'color-1))
+    
+    (var width (img-color-get gradient 'width))
+    (map (fn (i) 
+        (img-color-setpre gradient i (lerp-color col-a col-b (/ (to-float i) (to-float width))))
+    ) (range width))
+})
+
 @const-end

@@ -97,7 +97,7 @@
 ; This cleans up after the old view and initializes and renders the current view, even if it hasn't
 ; changed.
 (defun update-displayed-view () {
-    ; The cleanup function should *not* remove old renderd content
+    ; The cleanup function should *not* remove old rendered content
     (var cleanup (match (state-last-get 'view)
         (main view-cleanup-main)
         (board-info view-cleanup-board-info)
@@ -124,6 +124,8 @@
     (init)
     (activate-current-view-listeners)
     (render-current-view)
+    
+    (def view-timeline-start (systime))
 })
 
 (defun render-current-view () {
@@ -433,7 +435,7 @@
         ; (print kmh)
         (var too-large (>= kmh 100.0))
         (var font (if too-large font-h3 font-h1))
-        (if (< kmh 1000.0) { ; This safeguard is probably unecessary...
+        (if (< kmh 1000.0) { ; This safeguard is probably unnecessary...
             (sbuf-clear subview-speed-num-buf)
             (draw-text-right-aligned subview-speed-num-buf 100 0 0 0 (if too-large 3 2) font 1 0 (str-from-n (to-i kmh)))    
         }
@@ -686,14 +688,20 @@
             (var height (to-i (* soc-remote 115.0)))
             (var x (+ (ix icon-pos 0) 11))
             (var y (+ (ix icon-pos 1) 20 (- 115 height)))
+            (def view-bar-y y)
             (sbuf-exec img-rectangle view-icon-buf x (+ (ix icon-pos 1) 20) (62 115 0 '(filled)))
             (draw-rounded-rect view-icon-buf x y 62 height 5 2)
-
-            ; The gradient should start at 100% - 92% = 8%
-            (var gradient-width (to-i (* height 0.92)))
-            (var gradient-offset (+ y (to-i (* height 0.08))))
-
-            (setix view-icon-palette 2 (img-color 'gradient_y_pre col-accent col-white gradient-width gradient-offset))
+            
+            (var gradient-width (* height))
+            (var gradient-offset view-bar-y)
+            
+            ; (var col-secondary 0xE3FDEA)
+            ; (var col-secondary 0xbdf072)
+            (var col-secondary 0xdff3bd)
+        
+            (def gradient (img-color 'gradient_y_pre col-accent col-secondary gradient-width gradient-offset 'mirrored))
+            (gradient-calculate-easing gradient (weighted-ease ease-in-quint 0.2 0.8))
+            (setix view-icon-palette 2 gradient)
         })
     }))
 
@@ -718,9 +726,34 @@
         (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 56) (+ (ix pos 1) 73) (8 1 '(filled)))
         (state-set-current 'animation-angle angle)
     })
-
+    
+    (if (eq (state-get 'status-msg) 'charging) {
+        (var height (to-i (* (state-get 'soc-remote) 115.0)))
+        
+        (var total-secs 4.0)
+        (var ease-secs 3.0)
+        (var secs (secs-since view-timeline-start))
+        (if (>= secs total-secs) {
+            (def view-timeline-start (systime))
+            (setq secs (- secs total-secs))
+        })
+        
+        (var anim-t (if (< secs ease-secs)
+            (/ secs ease-secs)
+            1.0
+        ))
+        
+        (var y-offset (to-i (* 2 height (- 1.0 ((weighted-smooth-ease ease-in-quart 0.4) anim-t)))))
+        
+        (var offset (+ view-bar-y y-offset))
+        (img-color-set (ix view-icon-palette 2) 'offset offset)
+        
+    })
   
-    (sbuf-render-changes view-icon-buf view-icon-palette)
+    (if (eq (state-get 'status-msg) 'charging) {
+        (sbuf-render view-icon-buf view-icon-palette)
+        (sbuf-render-changes view-icon-buf view-icon-palette)
+    })
     (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
 })
 

@@ -201,7 +201,7 @@
     (map (lambda (n) (+ (to-i (* delta n)) from)) (range cnt))
 })
 
-; Returns a list of values of specified lenght, covering a specified range.
+; Returns a list of values of specified length, covering a specified range.
 ; The range is inclusive.
 (defun evenly-place-points (from to len) {
     (var diff (- to from))
@@ -322,11 +322,23 @@
     (* x x)
 )
 
+(defun ease-in-quart (x)
+    (* x x x x)
+)
+
 (defun ease-in-out-quart (x)
     (if (< x 0.5)
         (* 8 x x x x)
         (- 1 (/ (pow (+ (* -2.0 x) 2.0) 4) 2.0))
     )
+)
+
+(defun ease-in-quint (x)
+    (pow x 5)
+)
+
+(defun ease-in-pow (x n)
+    (pow x n)
 )
 
 ; x is meant to be a number from 0.0 to 1.0.
@@ -342,5 +354,40 @@
         (- 1 (/ (pow (+ (* -2.0 x) 2.0) 5) 2.0))
     )
 )
+
+; Construct an ease-in-out function using an ease-in function and a proportion `prop`.
+; This proportion is the x-pos where it switches over from the ease-in portion
+; to the ease-out portion.
+; This could for instance be used to create easing functions with a very quick acceleration and
+; slow deceleration.
+; `prop` should be from 0.0 to 1.0, but are not forced to.
+; 
+; The height of the point where it switches is also scaled for the given
+; proportion. So if `prop` was 0.3, the height would also be equal to 0.3 at
+; that point. This is to ensure that the transition has a continuous derivative,
+; i.e that it's smooth.
+; 
+; The ease-out function is generated from the ease-in function.
+;
+; Usage example: `(weighted-ease ease-in-quart 0.3)`
+(defun weighted-smooth-ease (ease-in prop) (lambda (x) {
+    (var ease-out (fn (x) (- 1.0 (ease-in (- 1.0 x)))))
+    
+    (if (< x prop)
+        (* (ease-in (/ x prop)) prop)
+        (+ (* (ease-out (/ (- x prop) (- 1 prop))) (- 1 prop)) prop)
+    )
+}))
+
+; mid-x and mid-y specify the point where the ease-in and -out functions should
+; meet. Both should be from 0.0 to 1.0, but are not forced to.
+(defun weighted-ease (ease-in mid-x mid-y) (lambda (x) {
+    (var ease-out (fn (x) (- 1.0 (ease-in (- 1.0 x)))))
+    
+    (if (< x mid-x)
+        (* (ease-in (/ x mid-x)) mid-y)
+        (+ (* (ease-out (/ (- x mid-x) (- 1 mid-x))) (- 1 mid-y)) mid-y)
+    )
+}))
 
 @const-end

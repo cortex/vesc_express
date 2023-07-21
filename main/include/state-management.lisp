@@ -207,7 +207,7 @@
 
 ;;; Vibration sequences
 
-; Run vibration motor at value strenght for duration seconds.
+; Run vibration motor at value strength for duration seconds.
 ; value should be in the range 0.0 to 1.0.
 ; This function blocks for the entire duration.
 (defun vib-constant (value duration) {

@@ -109,7 +109,7 @@
 
 (vib-cal-set (parse-bin (str-merge "1" "000" "11" "01")) 13 102)
 
-; these don't seem to make any noticable difference...
+; these don't seem to make any noticeable difference...
 ; (vib-i2c-write (vib-get-reg 'reg-control1)
 ;     (bitwise-or
 ;         (parse-bin "0b10000000")
@@ -228,8 +228,6 @@
 (def gear-min 1)
 (def gear-max 15)
 
-; (defun equaly-spaced-)
-
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)
 
@@ -244,10 +242,14 @@
 ; The timestamp when the thottle activation countdown animation last started.
 (def thr-countdown-start (systime))
 
+; A timestamp when the view last change, used for animations. The view is free
+; to use/refresh this as it wants
+(def view-timeline-start (systime))
+
 ; Whether or not the screen is currently enabled.
 (def draw-enabled true)
 
-;;; GUI dimentions
+;;; GUI dimensions
 
 ; how far the area of the screen used by the gui is inset (see 'Masked Area' vs
 ; 'Actual Display' in the figma design document)
