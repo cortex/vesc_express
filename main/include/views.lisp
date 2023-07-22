@@ -712,7 +712,7 @@
             (var col-secondary 0xdff3bd)
         
             (def gradient (img-color 'gradient_y_pre col-accent col-secondary gradient-width gradient-offset 'mirrored))
-            (gradient-calculate-easing gradient (weighted-ease ease-in-quint 0.2 0.8))
+            (gradient-calculate-easing gradient (weighted-ease ease-in-quint (construct-ease-out ease-in-quint) 0.2 0.8))
             (setix view-icon-palette 2 gradient)
             
             ; charging percent
@@ -759,7 +759,8 @@
             1.0
         ))
         
-        (var y-offset (to-i (* 2 height (- 1.0 ((weighted-smooth-ease ease-in-quart 0.6) anim-t)))))
+        (var y-offset (to-i (* 2 height (- 1.0 ((weighted-smooth-ease ease-in-back ease-out-quint 0.6) anim-t)))))
+        ; (var y-offset (to-i (* 2 height (- 1.0 (ease-in-back anim-t)))))
         
         (var offset (+ view-bar-y y-offset))
         (img-color-set (ix view-icon-palette 2) 'offset offset)

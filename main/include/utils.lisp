@@ -355,6 +355,14 @@
     )
 )
 
+(defun ease-in-back (x)
+    (- (* 2.70158 x x x) (* 1.70158 x x))
+)
+
+(defun construct-ease-out (ease-in) (lambda (x) (
+    (- 1.0 (ease-in (- 1.0 x)))
+)))
+
 ; Construct an ease-in-out function using an ease-in function and a proportion `prop`.
 ; This proportion is the x-pos where it switches over from the ease-in portion
 ; to the ease-out portion.
@@ -367,27 +375,23 @@
 ; that point. This is to ensure that the transition has a continuous derivative,
 ; i.e that it's smooth.
 ; 
-; The ease-out function is generated from the ease-in function.
+; The ease-out function can easily be generated with the `construct-ease-out` function.
 ;
-; Usage example: `(weighted-ease ease-in-quart 0.3)`
-(defun weighted-smooth-ease (ease-in prop) (lambda (x) {
-    (var ease-out (fn (x) (- 1.0 (ease-in (- 1.0 x)))))
-    
+; Usage example: `(weighted-ease ease-in-quart (construct-ease-out ease-in-quart) 0.3)`
+(defun weighted-smooth-ease (ease-in ease-out prop) (lambda (x) 
     (if (< x prop)
         (* (ease-in (/ x prop)) prop)
         (+ (* (ease-out (/ (- x prop) (- 1 prop))) (- 1 prop)) prop)
     )
-}))
+))
 
 ; mid-x and mid-y specify the point where the ease-in and -out functions should
 ; meet. Both should be from 0.0 to 1.0, but are not forced to.
-(defun weighted-ease (ease-in mid-x mid-y) (lambda (x) {
-    (var ease-out (fn (x) (- 1.0 (ease-in (- 1.0 x)))))
-    
+(defun weighted-ease (ease-in ease-out mid-x mid-y) (lambda (x) 
     (if (< x mid-x)
         (* (ease-in (/ x mid-x)) mid-y)
         (+ (* (ease-out (/ (- x mid-x) (- 1 mid-x))) (- 1 mid-y)) mid-y)
     )
-}))
+))
 
 @const-end
