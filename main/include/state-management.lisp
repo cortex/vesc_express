@@ -107,12 +107,14 @@
 
 ;;;; High-level actions
 
+; Should only be called outside render thread
 (defun cycle-main-top-menu () {
     ; (print "cycle-main-top-menu")
     (var next (if (eq (state-get-live 'view-main-subview) 'gear) 'speed 'gear))
     (main-subview-change next)
 })
 
+; Should only be called outside render thread
 (defun increase-gear () {
     (var gear (state-get-live 'gear))
     (state-set 'gear (if (= gear gear-max)
@@ -120,6 +122,7 @@
         (+ gear 1)
     ))
 })
+; Should only be called outside render thread
 (defun decrease-gear () {
     (var gear (state-get-live 'gear))
     (state-set 'gear (if (= gear gear-min)
@@ -128,7 +131,7 @@
     ))
 })
 
-; Should be called outside render loop
+; Should only be called outside render thread
 (defun try-activate-thr () {
     (var view (state-get 'view)) ; ? should these use state-get or state-get-live?
     (var thr-state (state-get 'thr-activation-state))
@@ -158,51 +161,66 @@
 
 ;;;; Lower-level functions
 
+; Should be called outside render thread
 (defun set-thr-is-active (is-active) {
     (def thr-active is-active)
     (state-set 'thr-active is-active)
 })
 
+; Should only be called in render thread
+(defun set-thr-is-active-current (is-active) {
+    (def thr-active is-active)
+    (state-set-current 'thr-active is-active)
+})
+
+; Should only be called in render thread
 (defun activate-thr-reminder () (atomic
-    (state-set 'view 'thr-activation)
-    (state-set 'thr-activation-state 'reminder)
+    (state-set-current 'view 'thr-activation)
+    (state-set-current 'thr-activation-state 'reminder)
 ))
 
+; Should only be called in render thread
 (defun activate-thr-warning () (atomic
-    (state-set 'view 'thr-activation)
-    (state-set 'thr-activation-state 'release-warning)
+    (state-set-current 'view 'thr-activation)
+    (state-set-current 'thr-activation-state 'release-warning)
 ))
 
+; Should only be called in render thread
 (defun activate-thr-countdown () (atomic
     (def thr-countdown-start (systime))
-    (state-set 'view 'thr-activation)
-    (state-set 'thr-activation-state 'countdown)    
+    (state-set-current 'view 'thr-activation)
+    (state-set-current 'thr-activation-state 'countdown)    
 ))
 
+; Should only be called in render thread
 ; Valid values are 'initiate-pairing, 'pairing, 'board-not-powered,
 ; 'pairing-failed, and 'pairing-success
 (defun set-board-info-status-text (text)
-    (state-set 'board-info-msg text)
+    (state-set-current 'board-info-msg text)
 )
 
+; Should only be called in render thread
 (defun show-low-battery-status () {
-    (change-view 'status-msg)
-    (state-set 'status-msg 'low-battery)
+    (change-view-current 'status-msg)
+    (state-set-current 'status-msg 'low-battery)
 })
 
+; Should only be called in render thread
 (defun show-charging-status () {
-    (change-view 'status-msg)
-    (state-set 'status-msg 'charging)
+    (change-view-current 'status-msg)
+    (state-set-current 'status-msg 'charging)
 })
 
+; Should only be called in render thread
 (defun show-warning-msg () {
-    (change-view 'status-msg)
-    (state-set 'status-msg 'warning-msg)
+    (change-view-current 'status-msg)
+    (state-set-current 'status-msg 'warning-msg)
 })
 
+; Should only be called in render thread
 (defun show-firmware-update-status () {
-    (change-view 'status-msg)
-    (state-set 'status-msg 'firmware-update)
+    (change-view-current 'status-msg)
+    (state-set-current 'status-msg 'firmware-update)
 })
 
 ;;; Vibration sequences

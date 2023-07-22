@@ -76,6 +76,14 @@
 ; initial avg frame part: 30ms
 ; optim avg frame part: 17-21ms
 (defun state-with-changed (keys with-fn) {
+    ; (print "before")
+    ; (var temp (map (fn (key) `(quote ,(assoc ui-state-current key))) keys))
+    ; (print temp)
+    ; (eval (cons with-fn
+    ;     temp
+    ; ))
+    ; (print "after")
+    
     (let (
         (foldl-local (lambda (f init lst) (if (eq lst nil) init (foldl-local f (f init (car lst)) (cdr lst))) nil))
     )

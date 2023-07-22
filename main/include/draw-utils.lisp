@@ -117,7 +117,7 @@
 ; Draw text horizontally centered inside container.
 ; The contianer's top left corner is specified by x and y.
 ; The container's height is the font's height.
-; If container-w is -1, the container will strech to fill the remaining space in
+; If container-w is -1, the container will stretch to fill the remaining space in
 ; the smart buffer.
 ; `max-characters` specifies the expected maximum amount of characters that
 ; could be drawn with this function. The space around shorter text will then

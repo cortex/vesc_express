@@ -8,6 +8,7 @@
 
 (init-hw)
 
+; disp size (accounting for inset): 190x350
 (set-disp-pwr 1)
 (disp-load-sh8501b 6 5 7 8 40)
 (disp-reset)
@@ -160,7 +161,6 @@
 (import "../assets/texts/bin/pairing.bin" 'text-pairing)
 (import "../assets/texts/bin/pairing-failed.bin" 'text-pairing-failed)
 (import "../assets/texts/bin/%.bin" 'text-percent)
-; (import "../assets/texts/bin/throttle-not-active.bin" 'text-throttle-inactive)
 (import "../assets/texts/bin/throttle-off.bin" 'text-throttle-off)
 (import "../assets/texts/bin/press-to-activate.bin" 'text-press-to-activate)
 (import "../assets/texts/bin/release-throttle-first.bin" 'text-release-throttle-first)
@@ -172,7 +172,7 @@
 
 (import "../assets/fonts/bin/H1.bin" 'font-h1)
 (import "../assets/fonts/bin/H3.bin" 'font-h3)
-; (import "../assets/fonts/bin/B3.bin" 'font-b3)
+(import "../assets/fonts/bin/B1.bin" 'font-b1)
 ; font B3 was moved to top
 
 ;;; Colors
@@ -273,19 +273,22 @@
 ; Updates and renders the small battery at the top of the screen.
 ; Charge is from 0.0 to 1.0
 (defun render-status-battery (charge) {
-    ; (def soc-remote 0.5) ; temp for dev
+    (if (state-get 'soc-bar-visible) {
+        (var icon (img-buffer-from-bin icon-small-battery))
+        (sbuf-blit small-battery-buf icon 0 0 ())
     
-    (var icon (img-buffer-from-bin icon-small-battery))
-    (sbuf-blit small-battery-buf icon 0 0 ())
-
-    (var bar-height (to-i (* 11 charge)))
-    (if (!= bar-height 0) {
-        (var y (- 13 bar-height))
-        (sbuf-exec img-rectangle small-battery-buf 1 y (6 bar-height 1 '(filled)))
+        (var bar-height (to-i (* 11 charge)))
+        (if (!= bar-height 0) {
+            (var y (- 13 bar-height))
+            (sbuf-exec img-rectangle small-battery-buf 1 y (6 bar-height 1 '(filled)))
+        })
+    
+        (var text (str-merge (str-from-n (to-i (* charge 100))) "%  "))
+        (sbuf-exec img-text small-soc-text-buf 0 0 (1 0 font-b3 text))        
+    } {
+        (sbuf-clear small-battery-buf)
+        (sbuf-clear small-soc-text-buf)
     })
-
-    (var text (str-merge (str-from-n (to-i (* charge 100))) "%  "))
-    (sbuf-exec img-text small-soc-text-buf 0 0 (1 0 font-b3 text))
 
     (var color (if (< charge 0.15)
         col-error
@@ -353,14 +356,14 @@
 (defun view-tick-main () {
     (if (not (state-get 'left-pressed)) {
         (var secs (secs-since main-left-held-last-time))
-        (state-set 'main-left-fadeout-t
+        (state-set-current 'main-left-fadeout-t
             (if (> secs main-button-fadeout-secs)
                 nil
                 (clamp01 (/ secs main-button-fadeout-secs))
             )
         )
     } {
-        (state-set 'main-left-fadeout-t nil)
+        (state-set-current 'main-left-fadeout-t nil)
         (if (!= (state-get 'gear) gear-min)
             (def main-left-held-last-time (systime))
         )
@@ -368,14 +371,14 @@
     
     (if (not (state-get 'right-pressed)) {
         (var secs (secs-since main-right-held-last-time))
-        (state-set 'main-right-fadeout-t
+        (state-set-current 'main-right-fadeout-t
             (if (> secs main-button-fadeout-secs)
                 nil
                 (clamp01 (/ secs main-button-fadeout-secs))
             )
         )
     } {
-        (state-set 'main-right-fadeout-t nil)
+        (state-set-current 'main-right-fadeout-t nil)
         (if (!= (state-get 'gear) gear-max)
             (def main-right-held-last-time (systime))
         )
@@ -414,8 +417,8 @@
                         (activate-thr-warning)
                     )
                     ((>= thr-countdown-secs thr-countdown-len-secs) {
-                        (set-thr-is-active true)
-                        (change-view 'main)
+                        (set-thr-is-active-current true)
+                        (change-view-current 'main)
                     })
                 )
             })
@@ -449,11 +452,16 @@
         ) {
             (show-charging-status)
         } {
-            (change-view 'main) ; TODO: figure out proper way to do this
+            (change-view-current 'main) ; TODO: figure out proper way to do this
         })
     }))
 
     (state-with-changed '(soc-remote view status-msg charger-plugged-in) (fn (soc-remote view status-msg charger-plugged-in) {
+        (state-set-current 'soc-bar-visible (not (and
+            (eq view 'status-msg)
+            (eq status-msg 'charging)
+        )))
+        
         (if (and 
             (<= soc-remote 0.05)
             (not-eq view 'status-msg)
@@ -469,27 +477,27 @@
             (eq status-msg 'low-battery)
             (not charger-plugged-in)
         ) {
-            (change-view 'main)
+            (change-view-current 'main)
         })
     }))
 
     (if dev-bind-soc-remote-to-thr {
-        (state-set 'soc-remote (state-get 'thr-input))
+        (state-set-current 'soc-remote (state-get 'thr-input))
     })
     (if dev-bind-soc-bms-to-thr {
-        (state-set 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
+        (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
     })
     (if dev-bind-speed-to-thr {
-        (state-set 'kmh (* (state-get 'thr-input) 40.0))
+        (state-set-current 'kmh (* (state-get 'thr-input) 40.0))
     })
 
     (if dev-force-view {
-        (change-view dev-view)
+        (change-view-current dev-view)
         (if (eq dev-view 'status-msg) {
-            (state-set 'status-msg dev-status-msg)
+            (state-set-current 'status-msg dev-status-msg)
         })
         (if (eq dev-view 'board-info) {
-            (state-set 'board-info-msg dev-board-info-msg)
+            (state-set-current 'board-info-msg dev-board-info-msg)
         })
     })
 
@@ -500,7 +508,7 @@
         (thr-activation (view-tick-thr-activation))
     )
 
-    (state-activate-current)
+    ; (state-activate-current)
 
     ; (print-vars ((state-get 'thr-countdown-secs)))
 
@@ -510,7 +518,7 @@
     ))
 
     (state-with-changed '(soc-bar-visible soc-remote) (fn (soc-bar-visible soc-remote) {
-        (if soc-bar-visible (render-status-battery soc-remote))
+        (render-status-battery soc-remote)
     }))
 
     ; (if (not-eq script-start nil) {

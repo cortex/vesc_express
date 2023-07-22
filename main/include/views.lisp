@@ -86,10 +86,16 @@
 
 ;;; Views
 
-; Change the current view. The update will take effect next time `tick` is called.
+; Change the current view. The update will take effect next time `tick` is
+; called.
+; Should only be called outside the render thread
 (defun change-view (new-view)
     (state-set 'view new-view)
-    ; (def view new-view)
+)
+
+; Should only be called inside the render thread
+(defun change-view-current (new-view)
+    (state-set-current 'view new-view)
 )
 
 ; This should only be called by `tick`, and not directly. To edit the view, call
@@ -123,7 +129,7 @@
     (cleanup)
     (init)
     (activate-current-view-listeners)
-    (render-current-view)
+    ; (render-current-view)
     
     (def view-timeline-start (systime))
 })
@@ -624,6 +630,8 @@
     (def view-icon-palette (list 0x0 0x0 0x0 col-error))
     
     (def view-status-text-buf (create-sbuf 'indexed2 25 240 140 78))
+    ; x pos is for it to be centered
+    (def view-charging-percent-buf (create-sbuf 'indexed2 67 (+ 240 24) 56 26))
 
     (state-set-current 'gradient-width 0)
     (state-set-current 'gradient-offset 0)
@@ -652,6 +660,7 @@
                 (low-battery icon-low-battery)
                 (charging icon-large-battery)
                 (warning-msg icon-warning)
+                (_ icon-warning) ; failsafe
             )))
             (var dims (img-dims icon))
             (var icon-pos (bounds-centered-position 56 73 (ix dims 0) (ix dims 1)))
@@ -667,6 +676,7 @@
             (charging text-charging)
             (warning-msg text-warning-msg)
             (firmware-update text-firmware-update)
+            (_ text-warning-msg) ; failsafe
         )))
         (sbuf-blit view-status-text-buf text 0 0 ())
     }))
@@ -674,11 +684,13 @@
     (state-with-changed '(status-msg soc-remote) (fn (status-msg soc-remote) {
         (if (eq status-msg 'charging) {
             (sbuf-clear view-icon-buf)
-            (var icon (img-buffer-from-bin (match status-msg
-                (low-battery icon-low-battery)
-                (charging icon-large-battery)
-                (warning-msg icon-warning)
-            )))
+            ; (var icon (img-buffer-from-bin (match status-msg
+            ;     (low-battery icon-low-battery)
+            ;     (charging icon-large-battery)
+            ;     (warning-msg icon-warning)
+            ;     (_ )
+            ; )))
+            (var icon (img-buffer-from-bin icon-large-battery))
             (var dims (img-dims icon))
             (var icon-pos (bounds-centered-position 56 73 (ix dims 0) (ix dims 1)))
             (sbuf-blit view-icon-buf icon (ix icon-pos 0) (ix icon-pos 1) ())
@@ -702,6 +714,10 @@
             (def gradient (img-color 'gradient_y_pre col-accent col-secondary gradient-width gradient-offset 'mirrored))
             (gradient-calculate-easing gradient (weighted-ease ease-in-quint 0.2 0.8))
             (setix view-icon-palette 2 gradient)
+            
+            ; charging percent
+            (var percent-text (str-merge (str-from-n (to-i (* soc-remote 100.0))) "%"))
+            (draw-text-centered view-charging-percent-buf 0 0 56 0 0 4 font-b1 1 0 percent-text)
         })
     }))
 
@@ -743,24 +759,25 @@
             1.0
         ))
         
-        (var y-offset (to-i (* 2 height (- 1.0 ((weighted-smooth-ease ease-in-quart 0.4) anim-t)))))
+        (var y-offset (to-i (* 2 height (- 1.0 ((weighted-smooth-ease ease-in-quart 0.6) anim-t)))))
         
         (var offset (+ view-bar-y y-offset))
         (img-color-set (ix view-icon-palette 2) 'offset offset)
-        
     })
   
+    (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
     (if (eq (state-get 'status-msg) 'charging) {
         (sbuf-render view-icon-buf view-icon-palette)
         (sbuf-render-changes view-icon-buf view-icon-palette)
+        (sbuf-render-changes view-charging-percent-buf (list col-bg col-fg))
     })
-    (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
 })
 
 (defun view-cleanup-status-msg () {
     (def view-icon-buf nil)
     (def view-icon-palette nil)
     (def view-status-text-buf nil)
+    (def view-charging-percent-buf nil)
 })
 
 @const-end
