@@ -109,8 +109,8 @@
     (not ping-should-fail)
 })
 
-; Pings the battery and returns a bool indicating if it was succesfully
-; recieved.
+; Pings the battery and returns a bool indicating if it was successfully
+; received.
 ; Essentially checks if there is a connection.
 (defun ping-battery ()
     (if batt-addr-rx

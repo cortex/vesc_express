@@ -5,7 +5,7 @@
 ;;; UI state
 ;;; This is a thread safe abstraction for storing values used by the UI rendering.
 
-; The live unstatle UI state thats written to by multiple threads.
+; The live unstable UI state thats written to by multiple threads.
 (def ui-state (list
     ; Currently open view (one of 'main, 'board-info, 'thr-activation, or 'status-msg)
     (cons 'view 'main)

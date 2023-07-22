@@ -62,7 +62,7 @@
     (sbuf-flag-changed ,sbuf)
 }))
 
-; ; Destructevly set the position of the smart buffer.
+; ; Destructively set the position of the smart buffer.
 ; (defun sbuf-move (sbuf x y) {
 ;     (setassoc sbuf 'real-x (- x (assoc sbuf 'x-offset)))
 ;     (setassoc sbuf 'x x)
@@ -281,7 +281,7 @@
     (var angle1 (angle-normalize angle1))
 
     ; degrees per arc length
-    (var length2degree-ratio (* two-pi radius (/ 1.0 360))) ; TODO: Move out (* two-pi (/ 1.0 360)) to gloabl constant for performance
+    (var length2degree-ratio (* two-pi radius (/ 1.0 360))) ; TODO: Move out (* two-pi (/ 1.0 360)) to global constant for performance
 
     (var angle-error (* path-radius length2degree-ratio))
 

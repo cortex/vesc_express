@@ -57,7 +57,7 @@
 
 @const-start
 
-;;; Thrust caluculations
+;;; Thrust calculations
 
 (def samples '(
         (0.000000f32 (77.155090f32 -56.166470f32 -71.169586f32 118.287262f32 0.719051f32 28.381599f32))

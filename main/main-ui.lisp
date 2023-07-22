@@ -239,7 +239,7 @@
 ; How many seconds the thrust activation countdown lasts.
 (def thr-countdown-len-secs (if dev-short-thr-activation 1.0 3.0))
 
-; The timestamp when the thottle activation countdown animation last started.
+; The timestamp when the throttle activation countdown animation last started.
 (def thr-countdown-start (systime))
 
 ; A timestamp when the view last change, used for animations. The view is free
@@ -304,7 +304,7 @@
 (defun draw-bms-soc (sbuf charge) {
     ; ; Ensure that any old pixels from draw-circle-segment-meter are cleared,
     ; ; as the arc algorithm isn't pixel consistent and old pixels won't
-    ; ; necessarilly be overdrawn.
+    ; ; necessarily be overdrawn.
     ; (draw-rounded-circle-segment sbuf 62 62 (+ 62 2) 14 120 60 0)
 
     (draw-circle-segment-meter sbuf 62 62 62 10 120 60 charge 3 2)
