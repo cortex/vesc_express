@@ -135,6 +135,12 @@
 (import "include/connection.lisp" code-connection)
 (import "include/input.lisp" code-input)
 
+;;;; Views
+(import "include/views/view-main.lisp" 'code-view-main)
+(import "include/views/view-thr-activation.lisp" 'code-view-thr-activation)
+(import "include/views/view-board-info.lisp" 'code-view-board-info)
+(import "include/views/view-status-msg.lisp" 'code-view-status-msg)
+
 ;;; Icons
 
 (import "../assets/icons/bin/icon-small-battery-border.bin" 'icon-small-battery)

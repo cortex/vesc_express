@@ -96,6 +96,15 @@
 ; every frame. Reading from this is safe from any race conditions.
 (def ui-state-current ui-state) ; This is a bit dirty, it should make a copy instead. Seems to be fine though
 
+; ; List which specifies which views could be the current view.
+; ; The first view which is renderable is set as the current view.
+; (def ui-views-renderable (list
+;     (cons 'board-info false)
+;     (cons 'thr-activation false)
+;     (cons 'status-msg false)
+;     (cons 'main false)
+; ))
+
 @const-start
 
 ; Get a timestamp in the form of seconds since startup.
