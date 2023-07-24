@@ -1,5 +1,12 @@
 ;;; low-battery
 
+(defun view-is-visible-low-battery () 
+    (and
+        (<= (state-get 'soc-remote) 0.05)
+        (not dev-disable-low-battery-msg)
+    )
+)
+
 (defun view-init-low-battery () {
     (def view-icon-buf (create-sbuf 'indexed2 54 74 84 146))
     (var icon (img-buffer-from-bin icon-large-battery))

@@ -99,6 +99,13 @@
     )
 }))
 
+; Block thread until expression `expr` is true.
+; This funcion sleeps for 10 ms between checks. If `expr` is true immediately,
+; it does not sleep at all.
+(def block-until (macro (expr) `(loopwhile (not ,expr)
+    (sleep 0.01)
+)))
+
 ; Returns a copy of lst, to use with setix (or similar) without side effects.
 ; Note: this is non-tail-recursive, don't use this on large lists!
 ; Note 2: This doesn't work on alists.

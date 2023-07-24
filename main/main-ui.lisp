@@ -393,10 +393,15 @@
     })
 ))
 
+; True when input tick has ran to completion at least once.
+(def input-has-ran false)
+
 ; Throttle and button read and filter
 (spawn 200 (fn ()
     (loopwhile t {
         (input-tick)
+        
+        (def input-has-ran true)
 
         (sleep 0.015)
     })
@@ -417,6 +422,7 @@
 (spawn 200 (fn ()
     (loopwhile t {
         (var start (systime))
+        (block-until input-has-ran)
         (tick)
         ; (gc)
         ; (sleep 0.05)

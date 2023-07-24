@@ -1,5 +1,9 @@
 ;;; warning
 
+(defun view-is-visible-warning () {
+    false ; unused
+})
+
 (defun view-init-warning () {
     (def view-icon-buf (create-sbuf 'indexed2 39 105 113 94))
     (var icon (img-buffer-from-bin icon-warning))

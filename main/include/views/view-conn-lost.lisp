@@ -1,5 +1,12 @@
 ;;; conn-lost
 
+(defun view-is-visible-conn-lost () {
+    (and
+        (not (state-get 'is-connected))
+        (not dev-disable-connection-check)
+    )
+})
+
 (defun view-init-conn-lost () {
     (def view-icon-buf (create-sbuf 'indexed4 73 65 (+ 45 18) 153))
     

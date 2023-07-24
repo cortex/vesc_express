@@ -1,6 +1,10 @@
 
 ;;;; Main
 
+(defun view-is-visible-main () 
+    true ; main is always showable
+)
+
 (defun view-init-main () {
     ; top menu
     (def view-top-menu-bg-buf (create-sbuf 'indexed2 15 41 160 100))
@@ -11,6 +15,7 @@
     (sbuf-exec img-rectangle view-thr-bg-buf 0 0 (160 26 1 '(filled) `(rounded ,bevel-small)))
 
     (def view-thr-buf (create-sbuf 'indexed4 24 158 142 8))
+    (def view-thr-gradient (img-color 'gradient_x col-fg col-accent 142 0))
 
     (var text (img-buffer-from-bin text-throttle-off))
     (def view-inactive-buf (create-sbuf 'indexed2 33 153 124 17)) ; ~~this is one pixel lower than in the design...~~
@@ -51,6 +56,7 @@
     
     (var gear-width (to-i (* 142 (current-gear-ratio))))
     (var thr-width (to-i (* gear-width (state-get 'thr-input))))
+    (img-color-set view-thr-gradient 'width thr-width)
     
     (state-with-changed '(gear thr-active) (fn (gear thr-active) {
         (sbuf-clear view-thr-buf)
@@ -69,8 +75,6 @@
             (draw-horiz-line view-thr-buf 0 thr-width 4 4 2)
         })
     }))
-
-    (var gradient (img-color 'gradient_x col-fg col-accent thr-width 0)) ; I have no idea why thr-width needs to be doubled...
 
     ; bms soc rendering
     (state-with-changed '(soc-bms) (lambda (soc-bms) {
@@ -125,9 +129,9 @@
         )
     }))
 
-    (if (state-get 'thr-active)
-        (sbuf-render-changes view-thr-buf (list col-menu col-menu-btn-bg gradient col-error))
-    )
+    (if (state-get 'thr-active) {
+        (sbuf-render-changes view-thr-buf (list col-menu col-menu-btn-bg view-thr-gradient col-error))
+    })
     
     (var soc-color (if (> (state-get 'soc-bms) 0.2) col-accent col-error))
     (sbuf-render-changes view-bms-soc-buf (list col-bg col-fg soc-color col-menu))    
@@ -141,6 +145,8 @@
     ; (undefine 'view-thr-buf)
     (def view-top-menu-bg-buf nil)
     (def view-thr-bg-buf nil)
+    
+    (def view-thr-gradient nil)
 
     (subview-cleanup-gear)
     (subview-cleanup-speed)

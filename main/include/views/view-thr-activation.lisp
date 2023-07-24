@@ -1,5 +1,12 @@
 ;;;; thr-activation
 
+(defun view-is-visible-thr-activation () {
+    (and
+        (not (state-get 'thr-enabled))
+        (state-get 'thr-activation-shown)
+    )
+})
+
 (defun view-init-thr-activation () {
     ; large center graphic
     (def view-graphic-buf (create-sbuf 'indexed4 29 83 132 132))

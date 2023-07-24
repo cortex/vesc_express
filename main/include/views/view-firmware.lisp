@@ -1,5 +1,9 @@
 ;;; firmware
 
+(defun view-is-visible-firmware () {
+    false ; unused
+})
+
 (defun view-init-firmware () {
     (def view-icon-buf (create-sbuf 'indexed4 43 98 110 110))  
     (sbuf-exec img-circle view-icon-buf 55 55 (52 2 '(thickness 10)))

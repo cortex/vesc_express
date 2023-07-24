@@ -1,6 +1,10 @@
 
 ;;;; Board-Info
 
+(defun view-is-visible-board-info () {
+    false ; unused
+})
+
 (defun view-init-board-info () {
     ; Large board icon
     (var icon (img-buffer-from-bin icon-board))

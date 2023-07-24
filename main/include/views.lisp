@@ -15,7 +15,8 @@
         ; These are temporary for dev
         (cons 'up nil)
         (cons 'down (fn () {
-            (change-view 'main)
+            (print "tried to change view to main")
+            ; (change-view 'main)
         }))
         (cons 'down-long enter-sleep)
         (cons 'left (fn () {
@@ -99,6 +100,24 @@
     ))
 ))
 
+; For every view, these functions tell you if it want's to be displayed
+; currently. The order decide the priority, with the earlier views having higher
+; priority. For example, the main view always want's to be displayed, but is
+; last, so it's only displayed if no other view want's to.
+(defun get-view-is-visible-functions () (list
+    (cons 'low-battery view-is-visible-low-battery)
+    (cons 'warning view-is-visible-warning)
+    (cons 'firmware view-is-visible-firmware)
+    (cons 'charging view-is-visible-charging)
+    
+    (cons 'board-info view-is-visible-board-info)
+    (cons 'thr-activation view-is-visible-thr-activation)
+    
+    (cons 'conn-lost view-is-visible-conn-lost)
+    (cons 'main view-is-visible-main)
+))
+
+
 @const-end
 
 ;;; Input handlers
@@ -123,17 +142,34 @@
 
 ;;; Views
 
-; Change the current view. The update will take effect next time `tick` is
-; called.
-; Should only be called outside the render thread
-(defun change-view (new-view)
-    (state-set 'view new-view)
-)
+; Calculate which view should be displayed according to the functions and
+; priorities defined by `get-view-is-visible-functions`.
+(defun calc-displayed-view () (if (not-eq dev-force-view nil) dev-force-view {
+    (var view nil)
+    (map (lambda (pair) 
+        (if (and
+            (eq view nil)
+            ((cdr pair))
+        ) {
+            (setq view (car pair))
+        })
+    ) (get-view-is-visible-functions))
+    
+    (if (eq view nil)
+        (print "no view want's to be displayed :/")
+    )
+    
+    view
+}))
 
-; Should only be called inside the render thread
-(defun change-view-current (new-view)
-    (state-set-current 'view new-view)
-)
+(def view-change-requested true) ; the view should be calculated at startup
+
+; Request for which view is currently displayed to be recalculated.
+; It's recalculated at the start of next frame according to the rules defined by
+; `calc-displayed-view` 
+(defun request-view-change () {
+    (def view-change-requested true)
+})
 
 ; This should only be called by `tick`, and not directly. To edit the view, call
 ; `change-view`.
@@ -171,6 +207,8 @@
     (init)
     (activate-current-view-listeners)
     
+    (tick-current-view)
+    
     (def view-timeline-start (systime))
 })
 
@@ -199,6 +237,15 @@
         (firmware (view-render-firmware))
         (conn-lost (view-render-conn-lost))
         (_ (print "no active current view"))
+    )
+})
+
+(defun tick-current-view () {
+    (match (state-get 'view)
+        (main (view-tick-main))
+        (thr-activation (view-tick-thr-activation))
+        (conn-lost (view-tick-conn-lost))
+        (_ ())
     )
 })
 

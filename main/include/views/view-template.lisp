@@ -3,6 +3,10 @@
 
 ;;; name
 
+(defun view-is-visible-name () {
+    
+})
+
 (defun view-init-name () {
     
 })

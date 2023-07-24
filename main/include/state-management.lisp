@@ -22,7 +22,13 @@
     (cons 'right-pressed false)
 
     (cons 'thr-active false)
-
+    
+    ; If the user has tried to use thrust while it was disabled or requested to
+    ; enable thrust.
+    (cons 'thr-activation-shown false)
+    ; If the user has pressed the enable thrust button.
+    (cons 'thr-requested false)
+    
     ; Throttle value calculated from magnetometer, 0.0 to 1.0
     (cons 'thr-input 0.0)
 
@@ -105,9 +111,9 @@
 
 ; Should only be called outside render thread
 (defun cycle-main-top-menu () {
-    ; (print "cycle-main-top-menu")
     (var next (if (eq (state-get-live 'view-main-subview) 'gear) 'speed 'gear))
     (main-subview-change next)
+    ; (print (to-str "cycle-main-top-menu" next))
 })
 
 ; Should only be called outside render thread
@@ -127,23 +133,12 @@
     ))
 })
 
-; Should only be called outside render thread
+; Should be called outside render thread, may be called inside, with a frame of
+; delay.
 (defun try-activate-thr () {
-    (var view (state-get 'view)) ; ? should these use state-get or state-get-live?
-    (var thr-state (state-get 'thr-activation-state))
-    (if (and
-        (not (state-get 'thr-active))
-        (or
-            (eq view 'main)
-            (and (eq view 'thr-activation) (eq thr-state 'reminder))
-        )
-    ) {
-        (if (!= (state-get 'thr-input) 0) { ; ? is floating point comparison ok?
-            (activate-thr-warning)
-        } {
-            (activate-thr-countdown)
-        })
-    })
+    (state-set 'thr-activation-shown true)
+    (state-set 'thr-requested true)
+    (request-view-change)
 })
 
 ; TODO: fix this
@@ -171,20 +166,19 @@
 
 ; Should only be called in render thread
 (defun activate-thr-reminder () (atomic
-    (state-set-current 'view 'thr-activation)
-    (state-set-current 'thr-activation-state 'reminder)
+    (state-set-current 'thr-activation-shown true)
+    (state-set-current 'thr-requested false)
+    (request-view-change)
 ))
 
 ; Should only be called in render thread
 (defun activate-thr-warning () (atomic
-    (state-set-current 'view 'thr-activation)
-    (state-set-current 'thr-activation-state 'release-warning)
+    (print "activate-thr-warning")
 ))
 
 ; Should only be called in render thread
 (defun activate-thr-countdown () (atomic
     (def thr-countdown-start (systime))
-    (state-set-current 'view 'thr-activation)
     (state-set-current 'thr-activation-state 'countdown)    
 ))
 
@@ -196,24 +190,24 @@
 )
 
 ; Should only be called in render thread
-(defun show-low-battery-status () {
-    (change-view-current 'low-battery)
-})
+; (defun show-low-battery-status () {
+;     (change-view-current 'low-battery)
+; })
 
 ; Should only be called in render thread
-(defun show-charging-status () {
-    (change-view-current 'charging)
-})
+; (defun show-charging-status () {
+;     (change-view-current 'charging)
+; })
 
 ; Should only be called in render thread
-(defun show-warning-msg () {
-    (change-view-current 'warning)
-})
+; (defun show-warning-msg () {
+;     (change-view-current 'warning)
+; })
 
 ; Should only be called in render thread
-(defun show-firmware-update-status () {
-    (change-view-current 'firmware)
-})
+; (defun show-firmware-update-status () {
+;     (change-view-current 'firmware)
+; })
 
 ;;; Vibration sequences
 

@@ -1,3 +1,9 @@
+;;; charging
+
+(defun view-is-visible-charging () {
+    (and (state-get 'charger-plugged-in) (not dev-disable-charging-msg))
+})
+
 (defun view-init-charging () {
     (def view-icon-buf (create-sbuf 'indexed4 54 74 84 146))
     (var icon (img-buffer-from-bin icon-large-battery))
