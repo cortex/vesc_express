@@ -89,6 +89,14 @@
         (cons 'left nil)
         (cons 'right nil)
     ))
+    
+    (cons 'conn-lost (list
+        (cons 'up nil)
+        (cons 'down nil)
+        (cons 'down-long enter-sleep)
+        (cons 'left nil)
+        (cons 'right nil)
+    ))
 ))
 
 @const-end
@@ -141,6 +149,7 @@
         (low-battery view-cleanup-low-battery)
         (warning view-cleanup-warning)
         (firmware view-cleanup-firmware)
+        (conn-lost view-cleanup-conn-lost)
         (_ (fn () ()))
     ))
 
@@ -154,6 +163,7 @@
         (low-battery view-init-low-battery)
         (warning view-init-warning)
         (firmware view-init-firmware)
+        (conn-lost view-init-conn-lost)
         (_ ())
     ))
 
@@ -173,6 +183,7 @@
         (low-battery (view-draw-low-battery))
         (warning (view-draw-warning))
         (firmware (view-draw-firmware))
+        (conn-lost (view-draw-conn-lost))
         (_ (print "no active current view"))
     )
 })
@@ -186,6 +197,7 @@
         (low-battery (view-render-low-battery))
         (warning (view-render-warning))
         (firmware (view-render-firmware))
+        (conn-lost (view-render-conn-lost))
         (_ (print "no active current view"))
     )
 })
@@ -237,5 +249,6 @@
 (read-eval-program code-view-low-battery)
 (read-eval-program code-view-warning)
 (read-eval-program code-view-firmware)
+(read-eval-program code-view-conn-lost)
 
 @const-end

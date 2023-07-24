@@ -143,6 +143,7 @@
 (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
+(import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
 
 ;;; Icons
 
@@ -175,6 +176,7 @@
 (import "../assets/texts/bin/release-throttle-first.bin" 'text-release-throttle-first)
 (import "../assets/texts/bin/throttle-now-active.bin" 'text-throttle-now-active)
 (import "../assets/texts/bin/warning-msg.bin" 'text-warning-msg)
+(import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
 ; remote-battery-low.bin was moved to top
 
 ;;; Fonts
@@ -362,7 +364,7 @@
 
 ;;; View tick functions
 
-(defun view-tick-main () {
+(defun view-tick-main () {    
     (if (not (state-get 'left-pressed)) {
         (var secs (secs-since main-left-held-last-time))
         (state-set-current 'main-left-fadeout-t
@@ -405,6 +407,10 @@
             (activate-thr-reminder)
         )
     }))
+
+    (if (not (state-get 'is-connected)) {
+        (change-view-current 'conn-lost)
+    })
 })
 
 (defun view-tick-thr-activation () {
@@ -438,6 +444,12 @@
     })
     (state-set-current 'thr-countdown-secs (secs-since thr-countdown-start))
     ; (println ("set thr-countdown-secs" (state-get 'thr-countdown-secs)))
+})
+
+(defun view-tick-conn-lost () {
+    (if (state-get 'is-connected) {
+        (change-view-current 'main)
+    })
 })
 
 (def fps 0.0)
@@ -510,6 +522,7 @@
     (match (state-get 'view)
         (main (view-tick-main))
         (thr-activation (view-tick-thr-activation))
+        (conn-lost (view-tick-conn-lost))
     )
 
     ; (state-activate-current)
