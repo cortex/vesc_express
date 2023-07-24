@@ -311,15 +311,22 @@
     (color-rgb-to-int (list r g b))
 })
 
-; x is meant to be a number from 0.0 to 1.0.
-; It isn't clamped to be in the range though.
-; Source: https://gizma.com/easing/#easeInOutSine
+;;; Easing functions
+;;; Most of the function are from here: https://gizma.com/easing/
+;;; The easing functions map the x-value from the range 0.0 to 1.0
+;;; to the same range.
+;;; The input and output values are not clamped to be within this range though.
+
 (defun ease-in-out-sine (x)
     (/ (- 1 (cos (* pi x))) 2)
 )
 
 (defun ease-in-quad (x) 
     (* x x)
+)
+
+(defun ease-in-cubic (x) 
+    (* x x x)
 )
 
 (defun ease-in-quart (x)
@@ -341,9 +348,6 @@
     (pow x n)
 )
 
-; x is meant to be a number from 0.0 to 1.0.
-; It isn't clamped to be in the range though.
-; Source: https://gizma.com/easing/#easeOutQuint
 (defun ease-out-quint (x)
     (- 1 (pow (- 1 x) 5))
 )
@@ -359,9 +363,19 @@
     (- (* 2.70158 x x x) (* 1.70158 x x))
 )
 
-(defun construct-ease-out (ease-in) (lambda (x) (
+(defun ease-in-out-back (x)
+    (if (< x 0.5)
+        (/ (* 4.0 x x (- (* 7.189819 x) 2.5949095)) 2.0)
+        {
+            (var temp (- (* 2.0 x) 2.0))
+            (/ (+ (* temp temp (+ (* 3.5949095 temp) 2.5949095)) 2.0) 2.0)
+        }
+    )
+)
+
+(defun construct-ease-out (ease-in) (lambda (x) 
     (- 1.0 (ease-in (- 1.0 x)))
-)))
+))
 
 ; Construct an ease-in-out function using an ease-in function and a proportion `prop`.
 ; This proportion is the x-pos where it switches over from the ease-in portion
