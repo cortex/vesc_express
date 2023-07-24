@@ -31,7 +31,7 @@
     (sbuf-blit view-bms-soc-buf icon 53 100 ())
 })
 
-(defun view-render-main () {
+(defun view-draw-main () {
     ; (print (state-value-changed 'view-main-subview))
     (state-with-changed '(view-main-subview) (lambda (view) (main-update-displayed-subview)))
     ; (if (not-eq view-main-displayed-subview view-main-subview)
@@ -78,8 +78,9 @@
         ; the angle of the circle arc is 60 degrees from the x-axis
         (draw-bms-soc view-bms-soc-buf soc-bms)
     }))
-    (var soc-color (if (> (state-get 'soc-bms) 0.2) col-accent col-error))
+})
 
+(defun view-render-main () {
     (state-with-changed '(view-main-subview) (fn (view-main-subview) {
         (sbuf-render view-top-menu-bg-buf (list col-bg col-menu))
         (match view-main-subview
@@ -126,11 +127,10 @@
 
     (if (state-get 'thr-active)
         (sbuf-render-changes view-thr-buf (list col-menu col-menu-btn-bg gradient col-error))
-        ; (sbuf-render view-thr-buf (list col-menu col-menu-btn-bg col-error col-error))
     )
     
-    (sbuf-render-changes view-bms-soc-buf (list col-bg col-fg soc-color col-menu))
-    ; (sbuf-render view-bms-soc-marker-buf (list col-bg col-menu-btn-bg))
+    (var soc-color (if (> (state-get 'soc-bms) 0.2) col-accent col-error))
+    (sbuf-render-changes view-bms-soc-buf (list col-bg col-fg soc-color col-menu))    
 })
 
 (defun view-cleanup-main () {

@@ -11,7 +11,7 @@
     (def view-last-angle 0.0)
 })
 
-(defun view-render-firmware () {
+(defun view-draw-firmware () {
     ; clear last circle
     (var pos (rot-point-origin 47 0 view-last-angle))
     (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 55) (+ (ix pos 1) 55) (8 0 '(filled)))
@@ -40,9 +40,10 @@
     
     (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 55) (+ (ix pos 1) 55) (8 1 '(filled)))
     
-    (def view-last-angle angle)
-    
-    
+    (def view-last-angle angle)    
+})
+
+(defun view-render-firmware () {
     (sbuf-render-changes view-icon-buf (list col-bg col-accent col-gray-2))
     (sbuf-render-changes view-text-buf (list col-bg col-white))
 })

@@ -13,7 +13,7 @@
     (def view-charging-percent-buf (create-sbuf 'indexed2 67 (+ 240 24) 56 26))
 })
 
-(defun view-render-charging () {
+(defun view-draw-charging () {
     (state-with-changed '(soc-remote) (fn (soc-remote) {
         ; clear old charge block
         (sbuf-exec img-rectangle view-icon-buf 11 20 (62 115 0 '(filled)))
@@ -51,8 +51,10 @@
     (var y-offset (to-i (* 2 height (- 1.0 ((weighted-smooth-ease ease-in-back ease-out-quint 0.6) anim-t)))))
     
     (var offset (+ view-bar-y y-offset))
-    (img-color-set view-gradient 'offset offset)
-    
+    (img-color-set view-gradient 'offset offset)    
+})
+
+(defun view-render-charging () {
     (sbuf-render view-icon-buf (list col-bg col-gray-1 view-gradient))
     (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
     (sbuf-render-changes view-charging-percent-buf (list col-bg col-fg))

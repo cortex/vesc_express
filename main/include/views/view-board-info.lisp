@@ -4,8 +4,8 @@
 (defun view-init-board-info () {
     ; Large board icon
     (var icon (img-buffer-from-bin icon-board))
-    (var icon-buf (create-sbuf 'indexed4 73 65 45 153))
-    (sbuf-blit icon-buf icon 0 0 ())
+    (def view-large-icon-buf (create-sbuf 'indexed4 73 65 45 153))
+    (sbuf-blit view-large-icon-buf icon 0 0 ())
 
     ; The small circular icon next to the board icon.
     (def view-icon-buf (create-sbuf 'indexed4 99 121 40 40))
@@ -15,18 +15,9 @@
 
     ; Status text
     (def view-status-text-buf (create-sbuf 'indexed2 25 240 140 78))
-
-    ; Board gradient
-    
-    (sbuf-render icon-buf (list 
-        col-bg
-        (img-color 'gradient_y col-gray-4 col-gray-2 137 9)
-        col-gray-1
-        col-accent
-    ))
 })
 
-(defun view-render-board-info () {
+(defun view-draw-board-info () {
     (state-with-changed '(board-info-msg) (fn (board-info-msg) {
         ; Status text
         ; 'initiate-pairing, 'pairing, 'board-not-powered,
@@ -81,15 +72,22 @@
 
     ; (var y (* (state-get 'thr-input) -200.0))
     ; (print y)
+})
 
-
-    (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
+(defun view-render-board-info () {
+    (sbuf-render-changes view-large-icon-buf (list
+        col-bg
+        (img-color 'gradient_y col-gray-4 col-gray-2 137 9)
+        col-gray-1
+        col-accent
+    ))
     (sbuf-render-changes view-icon-buf (list
         col-bg
         (img-color 'gradient_y col-gray-4 col-gray-2 137 -94) ; TODO: Figure out why this should be -94 specifically?? It should be -56 + 9 = -47
         col-gray-2
         view-icon-accent-col
     ))
+    (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
 })
 
 (defun view-cleanup-board-info () {

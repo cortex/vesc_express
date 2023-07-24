@@ -10,6 +10,8 @@
     (sbuf-blit view-text-buf text 0 0 ())
 })
 
+(defun view-draw-warning () {})
+
 (defun view-render-warning () {
     (sbuf-render-changes view-icon-buf (list col-bg col-error))
     (sbuf-render-changes view-text-buf (list col-bg col-fg))

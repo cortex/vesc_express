@@ -7,6 +7,10 @@
     
 })
 
+(defun view-draw-name () {
+    
+})
+
 (defun view-render-name () {
     
 })

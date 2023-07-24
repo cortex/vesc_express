@@ -12,7 +12,7 @@
     (def view-bar-visible-last false)
 })
 
-(defun view-render-low-battery () {
+(defun view-draw-low-battery () {
     (var total-secs 2.0)
     (var visible-secs 1.0)
     (var secs (secs-since view-timeline-start))
@@ -34,9 +34,11 @@
     })
     
     (def view-bar-visible-last visible)
-    
+})
+
+(defun view-render-low-battery () {
     (sbuf-render-changes view-icon-buf (list col-bg col-error))
-    (sbuf-render-changes view-text-buf (list col-bg col-fg))
+    (sbuf-render-changes view-text-buf (list col-bg col-fg))    
 })
 
 (defun view-cleanup-low-battery () {

@@ -9,7 +9,7 @@
     (def view-status-text-buf (create-sbuf 'indexed2 25 240 140 78))
 })
 
-(defun view-render-thr-activation () {
+(defun view-draw-thr-activation () {
     (state-with-changed '(thr-activation-state) (fn (thr-activation-state) {
         (sbuf-exec img-circle view-graphic-buf 66 66 (66 1 '(filled)))
 
@@ -50,7 +50,9 @@
         
         (draw-rounded-circle-segment view-graphic-buf 66 66 57 8 90 angle 3)
     })
+})
 
+(defun view-render-thr-activation () {
     (sbuf-render-changes view-graphic-buf (list col-bg col-gray-3 col-menu-btn-bg col-accent))
     (if (eq (state-get 'thr-activation-state) 'reminder)
         (sbuf-render-changes view-power-btn-buf (list col-bg col-gray-3 col-accent-border col-accent))

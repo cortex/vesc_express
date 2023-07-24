@@ -520,16 +520,20 @@
         (update-displayed-view)
         
     ))
-
-    (state-with-changed '(soc-bar-visible soc-remote) (fn (soc-bar-visible soc-remote) {
-        (render-status-battery soc-remote)
-    }))
-
     ; (if (not-eq script-start nil) {
     ;     (println ("load took" (* (secs-since script-start) 1000) "ms"))
     ; })
     
+    (draw-current-view)
+    (if (state-value-changed 'view)
+        (disp-clear)
+    )
     (render-current-view)
+    
+    (state-with-changed '(soc-bar-visible soc-remote) (fn (soc-bar-visible soc-remote) {
+        (render-status-battery soc-remote)
+    }))
+
 
     ; (if (not-eq script-start nil) {
     ;     (println ("render took" (* (secs-since script-start) 1000) "ms"))

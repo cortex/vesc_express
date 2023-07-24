@@ -132,7 +132,7 @@
 ; This cleans up after the old view and initializes and renders the current view, even if it hasn't
 ; changed.
 (defun update-displayed-view () {
-    ; The cleanup function should *not* remove old rendered content
+    ; The cleanup function should *not* clear old rendered content
     (var cleanup (match (state-last-get 'view)
         (main view-cleanup-main)
         (board-info view-cleanup-board-info)
@@ -144,11 +144,7 @@
         (_ (fn () ()))
     ))
 
-    (disp-clear)
-
     (state-reset-all-last)
-
-    ; (def displayed-view view)
 
     (var init (match (state-get 'view)
         (main view-init-main)
@@ -164,9 +160,21 @@
     (cleanup)
     (init)
     (activate-current-view-listeners)
-    ; (render-current-view)
     
     (def view-timeline-start (systime))
+})
+
+(defun draw-current-view () {
+    (match (state-get 'view)
+        (main (view-draw-main))
+        (board-info (view-draw-board-info))
+        (thr-activation (view-draw-thr-activation))
+        (charging (view-draw-charging))
+        (low-battery (view-draw-low-battery))
+        (warning (view-draw-warning))
+        (firmware (view-draw-firmware))
+        (_ (print "no active current view"))
+    )
 })
 
 (defun render-current-view () {
