@@ -58,10 +58,34 @@
         ; }))
     ))
     
-    (cons 'status-msg (list
+    (cons 'charging (list
         (cons 'up nil)
         (cons 'down nil)
         (cons 'down-long enter-sleep)
+        (cons 'left nil)
+        (cons 'right nil)
+    ))
+    
+    (cons 'low-battery (list
+        (cons 'up nil)
+        (cons 'down nil)
+        (cons 'down-long enter-sleep)
+        (cons 'left nil)
+        (cons 'right nil)
+    ))
+    
+    (cons 'warning (list
+        (cons 'up nil)
+        (cons 'down nil)
+        (cons 'down-long enter-sleep)
+        (cons 'left nil)
+        (cons 'right nil)
+    ))
+    
+    (cons 'firmware (list
+        (cons 'up nil)
+        (cons 'down nil)
+        (cons 'down-long nil)
         (cons 'left nil)
         (cons 'right nil)
     ))
@@ -113,7 +137,10 @@
         (main view-cleanup-main)
         (board-info view-cleanup-board-info)
         (thr-activation view-cleanup-thr-activation)
-        (status-msg view-cleanup-status-msg)
+        (charging view-cleanup-charging)
+        (low-battery view-cleanup-low-battery)
+        (warning view-cleanup-warning)
+        (firmware view-cleanup-firmware)
         (_ (fn () ()))
     ))
 
@@ -127,7 +154,10 @@
         (main view-init-main)
         (board-info view-init-board-info)
         (thr-activation view-init-thr-activation)
-        (status-msg view-init-status-msg)
+        (charging view-init-charging)
+        (low-battery view-init-low-battery)
+        (warning view-init-warning)
+        (firmware view-init-firmware)
         (_ ())
     ))
 
@@ -144,7 +174,10 @@
         (main (view-render-main))
         (board-info (view-render-board-info))
         (thr-activation (view-render-thr-activation))
-        (status-msg (view-render-status-msg))
+        (charging (view-render-charging))
+        (low-battery (view-render-low-battery))
+        (warning (view-render-warning))
+        (firmware (view-render-firmware))
         (_ (print "no active current view"))
     )
 })
@@ -192,6 +225,9 @@
 (read-eval-program code-view-main)
 (read-eval-program code-view-thr-activation)
 (read-eval-program code-view-board-info)
-(read-eval-program code-view-status-msg)
+(read-eval-program code-view-charging)
+(read-eval-program code-view-low-battery)
+(read-eval-program code-view-warning)
+(read-eval-program code-view-firmware)
 
 @const-end

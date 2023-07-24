@@ -139,7 +139,10 @@
 (import "include/views/view-main.lisp" 'code-view-main)
 (import "include/views/view-thr-activation.lisp" 'code-view-thr-activation)
 (import "include/views/view-board-info.lisp" 'code-view-board-info)
-(import "include/views/view-status-msg.lisp" 'code-view-status-msg)
+(import "include/views/view-charging.lisp" 'code-view-charging)
+(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
+(import "include/views/view-warning.lisp" 'code-view-warning)
+(import "include/views/view-firmware.lisp" 'code-view-firmware)
 
 ;;; Icons
 
@@ -462,16 +465,15 @@
         })
     }))
 
-    (state-with-changed '(soc-remote view status-msg charger-plugged-in) (fn (soc-remote view status-msg charger-plugged-in) {
-        (state-set-current 'soc-bar-visible (not (and
-            (eq view 'status-msg)
-            (eq status-msg 'charging)
+    (state-with-changed '(soc-remote view charger-plugged-in) (fn (soc-remote view charger-plugged-in) {
+        (state-set-current 'soc-bar-visible (not (or
+            (eq view 'charging)
+            (eq view 'low-battery)
         )))
         
         (if (and 
             (<= soc-remote 0.05)
-            (not-eq view 'status-msg)
-            (not-eq status-msg 'low-battery)
+            (not-eq view 'low-battery)
             (not charger-plugged-in)
             (not dev-disable-low-battery-msg)
         ) {
@@ -479,8 +481,7 @@
         })
         (if (and
             (> soc-remote 0.05)
-            (eq view 'status-msg)
-            (eq status-msg 'low-battery)
+            (eq view 'low-battery)
             (not charger-plugged-in)
         ) {
             (change-view-current 'main)
@@ -499,9 +500,6 @@
 
     (if dev-force-view {
         (change-view-current dev-view)
-        (if (eq dev-view 'status-msg) {
-            (state-set-current 'status-msg dev-status-msg)
-        })
         (if (eq dev-view 'board-info) {
             (state-set-current 'board-info-msg dev-board-info-msg)
         })

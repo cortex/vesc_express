@@ -73,19 +73,6 @@
     (cons 'thr-activation-state nil)
     ; How many seconds have passed since the throttle activation countdown last started
     (cons 'thr-countdown-secs 0.0)
-    
-    ;;; status-msg specific state
-
-    ; Which status message is currently shown
-    ; - nil: status msg screen is not active
-    ; - 'low-battery: the remote has low battery
-    ; - 'charging: the remote is currently plugged in and charging
-    ; - 'warning-msg: idk TODO: what should this do?
-    ; - 'firmware-update: a firmware update is currently being installed
-    (cons 'status-msg nil)
-
-    (cons 'gradient-width 0)
-    (cons 'gradient-offset 0)
 ))
 
 ; Contains the state from the last time it was rendered.
@@ -210,26 +197,22 @@
 
 ; Should only be called in render thread
 (defun show-low-battery-status () {
-    (change-view-current 'status-msg)
-    (state-set-current 'status-msg 'low-battery)
+    (change-view-current 'low-battery)
 })
 
 ; Should only be called in render thread
 (defun show-charging-status () {
-    (change-view-current 'status-msg)
-    (state-set-current 'status-msg 'charging)
+    (change-view-current 'charging)
 })
 
 ; Should only be called in render thread
 (defun show-warning-msg () {
-    (change-view-current 'status-msg)
-    (state-set-current 'status-msg 'warning-msg)
+    (change-view-current 'warning)
 })
 
 ; Should only be called in render thread
 (defun show-firmware-update-status () {
-    (change-view-current 'status-msg)
-    (state-set-current 'status-msg 'firmware-update)
+    (change-view-current 'firmware)
 })
 
 ;;; Vibration sequences

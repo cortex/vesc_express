@@ -8,8 +8,7 @@
 ; (dev disable-sleep-button true)
 
 (def dev-force-view false) ; always show a specific view
-(def dev-view 'board-info) ; the view that will be shown
-(def dev-status-msg 'charging) ; only relevant when dev-view is 'status-msg
+(def dev-view 'firmware) ; the view that will be shown
 (def dev-board-info-msg 'pairing) ; only relevant when dev-view is 'board-info
 
 (def dev-soc-remote nil) ; act as though the remote has the specified soc, nil to disable
