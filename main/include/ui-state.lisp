@@ -70,7 +70,7 @@
 ; Run function with values of the keys if any changed since last frame.
 ; keys is a list of keys.
 ; with-fn is a function taking as many arguments as there are keys: the current values.
-; The result of with-fn is then returned if the value has changed, or nil
+; The result of with-fn is then returned if any values have changed, or nil
 ; otherwise.
 ;
 ; initial avg frame part: 30ms

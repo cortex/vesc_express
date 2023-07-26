@@ -4,6 +4,7 @@
     (and
         (not (state-get 'is-connected))
         (not dev-disable-connection-check)
+        (not dev-disable-connection-lost-msg)
     )
 })
 

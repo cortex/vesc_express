@@ -175,9 +175,21 @@
         (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
 })
 
-(defun input-tick () {    
+(defun input-tick () {
+    (def magn0x-f (lpf magn0x-f (mag-get-x 0)))
+    (def magn0y-f (lpf magn0y-f (mag-get-y 0)))
+    (def magn0z-f (lpf magn0z-f (mag-get-z 0)))
+    
+    (def magn1x-f (lpf magn1x-f (mag-get-x 1)))
+    (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
+    (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
+        
     (def travel (thr-interpolate))
     (def thr-input (* (map-range-01 travel 2.0 11.0)))
+    
+    (state-set 'thr-input thr-input)
+    (state-set 'kmh kmh)
+    (state-set 'is-connected is-connected)
     
     (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
     
@@ -211,10 +223,10 @@
             (set 'new-right t)
             (set 'new-left t)                                
         })
-        (if (and (> btn-adc 2.0) (< btn-adc 2.34))
+        (if (and (> btn-adc 2.0) (< btn-adc 2.36))
             (set 'new-up t)
         )
-        (if (and (> btn-adc 2.34) (< btn-adc 2.43)) {
+        (if (and (> btn-adc 2.36) (< btn-adc 2.43)) {
             (set 'new-right t)
             (set 'new-up t)
         })
@@ -296,6 +308,14 @@
         (if (= btn-down 0) (def btn-down-long-fired false))
         (if (= btn-left 0) (def btn-left-long-fired false))
         (if (= btn-right 0) (def btn-right-long-fired false))
+        
+        (if (and
+            (!= btn-left 0)
+            (!= btn-right 0)
+            dev-enable-connection-dbg-menu
+        )
+            (cycle-main-dbg-menu)
+        )
     })
 })
 

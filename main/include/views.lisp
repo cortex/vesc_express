@@ -5,6 +5,7 @@
 (defun get-view-handlers () (list
     (cons 'main (list
         (cons 'up cycle-main-top-menu)
+        (cons 'up-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu nil))
         (cons 'down try-activate-thr)
         (cons 'down-long enter-sleep)
         (cons 'left decrease-gear)
@@ -257,9 +258,12 @@
 ) {
     (def on-up-pressed (assoc handlers 'up))
     (def on-down-pressed (assoc handlers 'down))
-    (def on-down-long-pressed (assoc handlers 'down-long))
     (def on-left-pressed (assoc handlers 'left))
     (def on-right-pressed (assoc handlers 'right))
+    (def on-up-long-pressed (assoc handlers 'up-long))
+    (def on-down-long-pressed (assoc handlers 'down-long))
+    (def on-left-long-pressed (assoc handlers 'left-long))
+    (def on-right-long-pressed (assoc handlers 'right-long))
 }))
 
 ; Failed experiment

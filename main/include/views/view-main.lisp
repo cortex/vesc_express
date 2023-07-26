@@ -15,7 +15,7 @@
     (sbuf-exec img-rectangle view-thr-bg-buf 0 0 (160 26 1 '(filled) `(rounded ,bevel-small)))
 
     (def view-thr-buf (create-sbuf 'indexed4 24 158 142 8))
-    (def view-thr-gradient (img-color 'gradient_x col-fg col-accent 142 0))
+    (def view-thr-gradient (img-color 'gradient_x col-fg col-accent 142 0 'mirrored))
 
     (var text (img-buffer-from-bin text-throttle-off))
     (def view-inactive-buf (create-sbuf 'indexed2 33 153 124 17)) ; ~~this is one pixel lower than in the design...~~
@@ -47,12 +47,13 @@
     (match (state-get 'view-main-subview)
         (gear (subview-draw-gear))
         (speed (subview-draw-speed))
+        (dbg (subview-draw-dbg))
     )
 
     ; thrust slider rendering
-    (def gear-end 142)
-    (def dots-end 140)
-    (def dots-interval 10)
+    (var gear-end 142)
+    (var dots-end 140)
+    (var dots-interval 10)
     
     (var gear-width (to-i (* 142 (current-gear-ratio))))
     (var thr-width (to-i (* gear-width (state-get 'thr-input))))
@@ -117,6 +118,11 @@
         (speed 
             (sbuf-render-changes subview-speed-num-buf (list col-menu col-fg))
         )
+        (dbg {
+            (sbuf-render-changes subview-text-buf (list col-menu col-fg))
+            (var color (if (state-get 'is-connected) col-accent col-error))
+            (sbuf-render subview-update-buf (list col-bg color))
+        })
     )
 
     (state-with-changed '(thr-active) (fn (thr-active) {
@@ -150,6 +156,7 @@
 
     (subview-cleanup-gear)
     (subview-cleanup-speed)
+    (subview-cleanup-dbg)
 })
 
 (defun main-subview-change (new-subview)
@@ -164,12 +171,14 @@
     (var cleanup (match old-view
         (gear subview-cleanup-gear)
         (speed subview-cleanup-speed)
+        (dbg subview-cleanup-dbg)
         (_ (fn () ()))
     ))
 
     (var init (match new-view
         (gear subview-init-gear)
         (speed subview-init-speed)
+        (dbg subview-init-dbg)
         (_ (fn () ()))
     ))
 
@@ -303,4 +312,69 @@
     (def subview-speed-num-buf nil)
     (def subview-speed-text-buf nil)
     ; (undefine 'subview-speed-num-buf)
+})
+
+(defun subview-init-dbg () {
+    ; 10 chars / 3 lines
+    (def subview-text-buf (create-sbuf 'indexed2 20 45 150 (* 26 4))) ; max width: 150
+    (def subview-update-buf (create-sbuf 'indexed2 100 320 16 16))
+})
+
+(def last-measurements-update false)
+(defun subview-draw-dbg () {
+    (if (and
+        (not measurements-updated)
+        last-measurements-update
+    ) {
+        (def last-measurements-update false)
+        (sbuf-clear subview-update-buf)
+    })
+    
+    (if measurements-updated {
+        (def last-measurements-update true)
+        (def measurements-updated false)
+        
+        (var failed-pings m-failed-pings)
+        (var last-failed-pings m-last-fail-count)
+        ; (var max-ping-fails m-max-ping-fails)
+        (var total-pings m-total-pings)
+        (var connections-lost-count connections-lost-count)
+        
+        (sbuf-clear subview-text-buf)
+        
+        (var lines (list
+            (str-merge "ping /s:" (str-from-n total-pings))
+            (str-merge "fail /s:" (str-from-n failed-pings))
+            (str-merge "last fl:" (str-from-n last-failed-pings))
+            (str-merge "lost #:" (str-from-n connections-lost-count))
+        ))
+        
+        (var y 0)
+        (map (fn (line) {
+            (sbuf-exec img-text subview-text-buf 0 y (1 0 font-b1 line))
+            (setq y (+ y 26))
+        }) lines)
+        
+        (sbuf-exec img-circle subview-update-buf 8 8 (8 1 '(filled)))
+    })
+    
+    (state-with-changed '(is-connected) (fn (is-connected) {
+        (if is-connected {
+            (if (and
+                (not measurements-updated)
+                (not last-measurements-update)
+            ) {
+                (sbuf-clear subview-update-buf)
+            })
+        } {
+            (if (not measurements-updated) {
+                (sbuf-clear subview-update-buf)
+            })
+        })
+    }))
+})
+
+(defun subview-cleanup-dbg () {
+    (def subview-text-buf nil)
+    (def subview-update-buf nil)
 })

@@ -117,6 +117,13 @@
 })
 
 ; Should only be called outside render thread
+(defun cycle-main-dbg-menu () {
+    (var next (if (eq (state-get-live 'view-main-subview) 'dbg) 'gear 'dbg))
+    (main-subview-change next)
+    (print (to-str "cycle-main-dbg-menu" next))
+})
+
+; Should only be called outside render thread
 (defun increase-gear () {
     (var gear (state-get-live 'gear))
     (state-set 'gear (if (= gear gear-max)
@@ -154,13 +161,19 @@
 
 ; Should be called outside render thread
 (defun set-thr-is-active (is-active) {
-    (def thr-active is-active)
+    (def thr-active (if dev-force-thr-enable
+        true
+        is-active
+    ))
     (state-set 'thr-active is-active)
 })
 
 ; Should only be called in render thread
 (defun set-thr-is-active-current (is-active) {
-    (def thr-active is-active)
+    (def thr-active (if dev-force-thr-enable
+        true
+        is-active
+    ))
     (state-set-current 'thr-active is-active)
 })
 

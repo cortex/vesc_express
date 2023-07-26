@@ -39,6 +39,10 @@
     `(print (str-merge ,@pair-strings))
 }))
 
+(defun ms-since (timestamp)
+    (* (secs-since timestamp) 1000.0)
+)
+
 ; Convert positive integer to string in a binary format.
 ; This probably won't work with negative integers, unsure though.
 ; It will pad the binary number with zeros until it reaches `bits` in length.

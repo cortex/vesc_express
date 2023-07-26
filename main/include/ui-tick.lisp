@@ -118,12 +118,11 @@
         (state-set-current 'soc-remote dev-soc-remote)
     })
     
-    (state-with-changed '(charger-plugged-in) (fn (-) {
+    (state-with-changed '(is-connected charger-plugged-in soc-remote) (fn (- - -) {
         (request-view-change)
     }))
 
-    (state-with-changed '(soc-remote charger-plugged-in) (fn (soc-remote view charger-plugged-in) {
-        (request-view-change)
+    (state-with-changed '(soc-remote view) (fn (soc-remote view) {
         (state-set-current 'soc-bar-visible (not (or
             (eq view 'charging)
             (eq view 'low-battery)

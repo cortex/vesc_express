@@ -104,11 +104,21 @@
 
 @const-start
 
-; (def cal-result (vib-cal))
-; (print (to-str "calibration result:" cal-result))
-; (vib-cal-set (ix cal-result 0) (ix cal-result 1) (ix cal-result 2))
+; {
+;     (def cal-result (vib-cal))
+;     (print (to-str "calibration result:" cal-result))
+    
+;     ; intersting bits are 6-4 and 3-2 (brake factor and loop gain)
+;     (var reg-feedback-control (bitwise-or
+;         (bitwise-and
+;             (ix cal-result 0)
+;             (parse-bin (str-merge "0" "111" "11" "00"))
+;         )
+;         (parse-bin (str-merge "0" "000" "11" "00"))
+;     ))
+;     (vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
+; }
 
-(vib-cal-set (parse-bin (str-merge "1" "000" "11" "01")) 13 102)
 
 ; these don't seem to make any noticeable difference...
 ; (vib-i2c-write (vib-get-reg 'reg-control1)
@@ -365,31 +375,15 @@
 
 (read-eval-program code-ui-tick)
 
-; Check connection
-(if (not dev-disable-connection-check)
-    (spawn 120 (fn ()
-        (loopwhile t
-            (check-connection-tick)
-            ; this tick function handles its own sleep time
-        )
-    ))
-)
-
+(def connection-start (systime))
 ; Communication
-(spawn 120 (fn ()
+(spawn 200 (fn ()
     (loopwhile t {
-        (connect-tick)
+        (def m-connection-tick-ms (ms-since connection-start))
+        (def connection-start (systime))
         
-        (sleep 0.04)
-    })
-))
-
-; Throttle read and filter
-(spawn 120 (fn ()
-    (loopwhile t {
-        (input-read-tick)
-
-        (sleep 0.01)
+        (connection-tick)
+        ; this tick function handles its own sleep time            
     })
 ))
 
@@ -402,8 +396,11 @@
         (input-tick)
         
         (def input-has-ran true)
-
-        (sleep 0.015)
+        
+        (sleep (if any-ping-has-failed
+            0.01 ; 0.1
+            0.01
+        ))
     })
 ))
 
@@ -412,7 +409,6 @@
     (loopwhile t {
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
-        ; (print soc-bms)
         (state-set 'soc-bms soc-bms)
         (sleep 1)
     })
@@ -427,7 +423,13 @@
         ; (gc)
         ; (sleep 0.05)
         (var elapsed (secs-since start))
-        (sleep (- 0.05 elapsed))
+        (sleep (-
+            (if any-ping-has-failed
+                0.05 ; 0.1
+                0.05
+            )
+            elapsed
+        ))
     })
 ))
 
