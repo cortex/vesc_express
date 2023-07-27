@@ -82,67 +82,81 @@
 (defun point6 () (list magn0x-f magn0y-f magn0z-f magn1x-f magn1y-f magn1z-f))
 (defun samp-dist (s1 s2)
     (sqrt (+
-            (sq (- (ix s2 0) (ix s1 0)))
-            (sq (- (ix s2 1) (ix s1 1)))
-            (sq (- (ix s2 2) (ix s1 2)))
-            (sq (- (ix s2 3) (ix s1 3)))
-            (sq (- (ix s2 4) (ix s1 4)))
-            (sq (- (ix s2 5) (ix s1 5)))
-)))
+        (sq (- (ix s2 0) (ix s1 0)))
+        (sq (- (ix s2 1) (ix s1 1)))
+        (sq (- (ix s2 2) (ix s1 2)))
+        (sq (- (ix s2 3) (ix s1 3)))
+        (sq (- (ix s2 4) (ix s1 4)))
+        (sq (- (ix s2 5) (ix s1 5)))
+    ))
+)
 
 (defun thr-interpolate () {
-        (var pos (point6))
-        (var dist-last (samp-dist pos (first samples-nodist)))
-        (var ind-closest 0)
+    (var samp-dist-total-ms 0.0)
+    
+    (var pos (point6))
+    ; (print-vars '((point6)))
+    (var dist-last (take-time-return (samp-dist pos (first samples-nodist))))
+    (+set samp-dist-total-ms (read-stored-time))
+    (var ind-closest 0)
+    
+    (var cnt 0)
+    
+    (loopforeach i samples-nodist {
+        (var dist (take-time-return (samp-dist pos i)))
+        (+set samp-dist-total-ms (read-stored-time))
+        (if (< dist dist-last) {
+            (setq dist-last dist)
+            (setq ind-closest cnt)
+        })
+        (setq cnt (+ cnt 1))
+    })
+    
+    (var p1 ind-closest)
+    (var p2 (+ ind-closest 1))
+    
+    (cond
+        ; First point
+        ((= p1 0) nil)
         
-        (var cnt 0)
-        
-        (loopforeach i samples-nodist {
-                (var dist (samp-dist pos i))
-                (if (< dist dist-last) {
-                        (setq dist-last dist)
-                        (setq ind-closest cnt)
-                })
-                (setq cnt (+ cnt 1))
+        ; Last point
+        ((= p1 (- (length samples) 1)) {
+            (setq p1 (- ind-closest 1))
+            (setq p2 ind-closest)
         })
         
-        (var p1 ind-closest)
-        (var p2 (+ ind-closest 1))
-        
-        (cond
-            ; First point
-            ((= p1 0) nil)
+        ; Somewhere in-between
+        (true {
+            (var dist-prev (take-time-return (samp-dist pos (ix samples-nodist (- ind-closest 1)))))
+            (+set samp-dist-total-ms (read-stored-time))
+            (var dist-next (take-time-return (samp-dist pos (ix samples-nodist (+ ind-closest 1)))))
+            (+set samp-dist-total-ms (read-stored-time))
             
-            ; Last point
-            ((= p1 (- (length samples) 1)) {
-                    (setq p1 (- ind-closest 1))
-                    (setq p2 ind-closest)
-            })
             
-            ; Somewhere in-between
-            (true {
-                    (var dist-prev (samp-dist pos (ix samples-nodist (- ind-closest 1))))
-                    (var dist-next (samp-dist pos (ix samples-nodist (+ ind-closest 1))))
-                    
-                    (if (< dist-prev dist-next) {
-                            (setq p1 (- ind-closest 1))
-                            (setq p2 ind-closest)
-                    })
+            (if (< dist-prev dist-next) {
+                (setq p1 (- ind-closest 1))
+                (setq p2 ind-closest)
             })
-        )
-        
-        (var d1 (samp-dist pos (ix samples-nodist p1)))
-        (var d2 (samp-dist pos (ix samples-nodist p2)))
-        (var p1-travel (first (ix samples p1)))
-        (var p2-travel (first (ix samples p2)))
-        (var c (samp-dist (ix samples-nodist p1) (ix samples-nodist p2)))
-        (var c1 (/ (- (+ (sq d1) (sq c)) (sq d2)) (* 2 c)))
-        (var ratio (/ c1 c))
-        
-        ; Deviation from path
-;        (def h (sqrt (- (sq d1) (sq c1))))
-        
-        (+ p1-travel (* ratio (- p2-travel p1-travel)))
+        })
+    )
+    
+    (var d1 (take-time-return (samp-dist pos (ix samples-nodist p1))))
+    (+set samp-dist-total-ms (read-stored-time))
+    (var d2 (take-time-return (samp-dist pos (ix samples-nodist p2))))
+    (+set samp-dist-total-ms (read-stored-time))
+    (var p1-travel (first (ix samples p1)))
+    (var p2-travel (first (ix samples p2)))
+    (var c (take-time-return (samp-dist (ix samples-nodist p1) (ix samples-nodist p2))))
+    (+set samp-dist-total-ms (read-stored-time))
+    (var c1 (/ (- (+ (sq d1) (sq c)) (sq d2)) (* 2 c)))
+    (var ratio (/ c1 c))
+    
+    ; Deviation from path
+    ; (def h (sqrt (- (sq d1) (sq c1))))
+
+    ; (print-vars '(samp-dist-total-ms))
+    
+    (+ p1-travel (* ratio (- p2-travel p1-travel)))
 })
 
 (defun is-thr-pressed (thr-input)
@@ -184,7 +198,10 @@
     (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
     (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
         
-    (def travel (thr-interpolate))
+    (atomic
+        (var ms (take-time (def travel (thr-interpolate))))
+        (print (to-str "thr-interpolate took" ms "ms"))
+    )
     (def thr-input (* (map-range-01 travel 2.0 11.0)))
     
     (state-set 'thr-input thr-input)
@@ -267,6 +284,19 @@
         (def btn-left (if new-left (+ btn-left 1) 0))
         (def btn-right (if new-right (+ btn-right 1) 0))
         (def btn-up (if new-up (+ btn-up 1) 0))
+        
+        (if (!= btn-down 0) {
+            (print-vars '(btn-down))
+        })
+        (if (!= btn-up 0) {
+            (print-vars '(btn-up))
+        })
+        (if (!= btn-left 0) {
+            (print-vars '(btn-left))
+        })
+        (if (!= btn-right 0) {
+            (print-vars '(btn-right))
+        })
 
         (state-set 'down-pressed (!= btn-down 0))
         (state-set 'up-pressed (!= btn-up 0))
