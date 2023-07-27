@@ -9,7 +9,7 @@
     (var icon (img-buffer-from-bin icon-large-battery))
     (sbuf-blit view-icon-buf icon 0 0 ())
     
-    ; (def view-bar-y 0)
+    (def view-bar-y 0)
     
     (var col-secondary 0xdff3bd) ; TODO: Make proper palette entry for this color.
     (def view-gradient (img-color 'gradient_y_pre col-accent col-secondary 115 0 'mirrored))
@@ -28,8 +28,8 @@
         (sbuf-exec img-rectangle view-icon-buf 11 20 (62 115 0 '(filled)))
         
         (var height (to-i (* soc-remote 115.0)))
-        (def y (+ 20 (- 115 height)))
-        (draw-rounded-rect view-icon-buf 11 y 62 height 5 2)
+        (def view-bar-y (+ 20 (- 115 height)))
+        (draw-rounded-rect view-icon-buf 11 view-bar-y 62 height 5 2)
 
         (var percent-text (str-merge (str-from-n (to-i (* soc-remote 100.0))) "%"))
         (draw-text-centered view-charging-percent-buf 0 0 56 0 0 4 font-b1 1 0 percent-text)
@@ -52,7 +52,7 @@
     
     (var y-offset (to-i (* 2 115 (- 1.0 ((weighted-smooth-ease ease-in-back ease-out-quint 0.6) anim-t)))))
     
-    (var offset (+ 20 y-offset))
+    (var offset (+ view-bar-y y-offset))
     (img-color-set view-gradient 'offset offset)    
 })
 
