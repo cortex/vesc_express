@@ -220,12 +220,29 @@
 
 (defun subview-draw-gear () {
     ; Gear number text
-    (state-with-changed '(gear) (fn (gear) {
-        (var gear-str (if (and (< gear 10))
-            (str-merge "0" (str-from-n gear))
-            (str-from-n gear)
-        ))
-        (sbuf-exec img-text subview-gear-num-buf 0 0 (1 0 font-h1 gear-str))
+    (state-with-changed '(gear dev-main-gear-justify) (fn (gear dev-main-gear-justify) {
+        (match dev-main-gear-justify
+            (leading-zero {
+                (var gear-str (if (< gear 10)
+                    (str-merge "0" (str-from-n gear))
+                    (str-from-n gear)
+                ))
+                (sbuf-exec img-text subview-gear-num-buf 0 0 (1 0 font-h1 gear-str))                
+            })
+            (justify-right {
+                ; (var gear-str (if (< gear 10)
+                ;     (str-merge " " (str-from-n gear))
+                ;     (str-from-n gear)
+                ; ))
+                ; (sbuf-exec img-text subview-gear-num-buf 0 0 (1 0 font-h1 gear-str))                
+                (var gear-str (str-from-n gear))
+                (draw-text-right-aligned subview-gear-num-buf 110 0 0 0 2 font-h1 1 0 gear-str)
+            })
+            (justify-center {
+                (var gear-str (str-from-n gear))
+                (draw-text-centered subview-gear-num-buf 0 0 110 0 0 2 font-h1 1 0 gear-str)
+            })
+        )
     }))
     
     ; left button
