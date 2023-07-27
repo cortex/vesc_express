@@ -120,6 +120,16 @@
         })
     })
     
+    (if dev-bind-soc-remote-to-thr {
+        (state-set-current 'soc-remote (state-get 'thr-input))
+    })
+    (if dev-bind-soc-bms-to-thr {
+        (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
+    })
+    (if dev-bind-speed-to-thr {
+        (state-set-current 'kmh (* (state-get 'thr-input) 40.0))
+    })
+    
     (if (not-eq dev-soc-remote nil) {
         (state-set-current 'soc-remote dev-soc-remote)
     })
@@ -135,16 +145,19 @@
         )))
     }))
 
-    (if dev-bind-soc-remote-to-thr {
-        (state-set-current 'soc-remote (state-get 'thr-input))
+    (var soc-bms (state-get 'soc-bms))
+    (var soc-bms-last (state-last-get 'soc-bms))
+    (if (and
+        (not-eq soc-bms-last 'reset)
+        (not-eq
+            (>= soc-bms 0.5)
+            (>= soc-bms-last 0.5)
+        )
+        (<= (abs (- soc-bms soc-bms-last)) 0.15)
+    ) {
+        (vib-add-sequence vib-bms-soc-halfway)
     })
-    (if dev-bind-soc-bms-to-thr {
-        (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
-    })
-    (if dev-bind-speed-to-thr {
-        (state-set-current 'kmh (* (state-get 'thr-input) 40.0))
-    })
-
+    
     ; tick views
     (tick-current-view)
     

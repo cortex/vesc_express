@@ -281,6 +281,12 @@
     ; (vib-play-constant 0.7 0.12)
 })
 
+(defun vib-bms-soc-halfway () {
+    (vib-play-constant 1.0 0.12)
+    (sleep 0.1)
+    (vib-play-constant 1.0 0.12)
+})
+
 @const-end
 
 (def vib-queue (create-mutex (list)))
