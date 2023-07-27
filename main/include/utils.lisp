@@ -74,6 +74,30 @@
     (* (secs-since timestamp) 1000.0)
 )
 
+; Run expr and return how many milliseconds it took.
+(def take-time (macro (expr) `{
+    (var start (systime))
+    ,expr
+    (ms-since start)
+}))
+
+ 
+(def take-time-return-stored-time 0.0)
+
+; Time how long expr takes to run and return the result of expr.
+; The measured time can then be read using `read-stored-time`. Calling this
+; again overrides earlier times.
+(def take-time-return (macro (expr) `{
+    (var start (systime))
+    (var result ,expr)
+    (def take-time-return-stored-time (ms-since start))
+    result
+}))
+
+(defun read-stored-time ()
+    take-time-return-stored-time
+)
+
 ; Convert positive integer to string in a binary format.
 ; This probably won't work with negative integers, unsure though.
 ; It will pad the binary number with zeros until it reaches `bits` in length.

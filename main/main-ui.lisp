@@ -218,6 +218,14 @@
 
 (def start-tick (systime))
 
+; These are placed here so they don't use up binding slots. 
+(def thread-connection-start (systime))
+(def thread-input-start (systime))
+(def thread-vibration-start (systime))
+(def thread-slow-updates-start (systime))
+(def thread-main-start (systime))
+
+
 ;;; State variables. Some of these are calculated here and some are updated
 ;;; using esp-now from the battery. We use code streaming to make updating
 ;;; them convenient.
@@ -378,12 +386,11 @@
 
 (read-eval-program code-ui-tick)
 
-(def connection-start (systime))
 ; Communication
 (spawn 200 (fn ()
     (loopwhile t {
-        (def m-connection-tick-ms (ms-since connection-start))
-        (def connection-start (systime))
+        (def m-connection-tick-ms (ms-since thread-connection-start))
+        (def thread-connection-start (systime))
         
         (connection-tick)
         ; this tick function handles its own sleep time            
@@ -396,25 +403,32 @@
 ; Throttle and button read and filter
 (spawn 200 (fn ()
     (loopwhile t {
+        (def m-input-tick-ms (ms-since thread-input-start))
+        (def thread-input-start (systime))
+        
         (input-tick)
         
         (def input-has-ran true)
         
         (sleep (if any-ping-has-failed
-            0.01 ; 0.1
-            0.01
+            0.1 ; 0.1
+            0.01 ; 10 ms
         ))
     })
 ))
 
+
 ; Vibration play
 (spawn 120 (fn ()
     (loopwhile t {
+        (def m-vibration-tick-ms (ms-since thread-vibration-start))
+        (def thread-vibration-start (systime))
+        
         (vib-flush-sequences)
         
         (sleep (if any-ping-has-failed
             0.1
-            0.03 ; 30 ms
+            0.08 ; 80 ms
         ))
     })
 ))
@@ -422,6 +436,9 @@
 ; Slow updates
 (spawn 120 (fn ()
     (loopwhile t {
+        (def m-slow-updates-tick-ms (ms-since thread-slow-updates-start))
+        (def thread-slow-updates-start (systime))
+        
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
         (state-set 'soc-bms soc-bms)
@@ -432,6 +449,9 @@
 ; Tick UI
 (spawn 200 (fn ()
     (loopwhile t {
+        (def m-main-tick-ms (ms-since thread-main-start))
+        (def thread-main-start (systime))
+        
         (var start (systime))
         (block-until input-has-ran)
         (tick)

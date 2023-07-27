@@ -90,27 +90,42 @@
         (sq (- (ix s2 5) (ix s1 5)))
     ))
 )
+(defun samp-dist-sq (s1 s2)
+    (+
+        (sq (- (ix s2 0) (ix s1 0)))
+        (sq (- (ix s2 1) (ix s1 1)))
+        (sq (- (ix s2 2) (ix s1 2)))
+        (sq (- (ix s2 3) (ix s1 3)))
+        (sq (- (ix s2 4) (ix s1 4)))
+        (sq (- (ix s2 5) (ix s1 5)))
+    )
+)
+
+; List where each index is the distance of that sample to the next sample.
+; Is one element shorter than `samples`
+(def sample-distances (map (fn (i) {
+    (samp-dist (ix samples-nodist i) (ix samples-nodist (+ i 1)))
+}) (range (- (length samples-nodist) 1))))
 
 (defun thr-interpolate () {
-    (var samp-dist-total-ms 0.0)
-    
     (var pos (point6))
-    ; (print-vars '((point6)))
-    (var dist-last (take-time-return (samp-dist pos (first samples-nodist))))
-    (+set samp-dist-total-ms (read-stored-time))
+    
+    (var sample-pos-distances (map (fn (i)
+        (samp-dist-sq pos (ix samples-nodist i))
+    ) (range (length samples-nodist))))
+    
+    (var dist-last (ix sample-pos-distances 0))
     (var ind-closest 0)
     
     (var cnt 0)
     
-    (loopforeach i samples-nodist {
-        (var dist (take-time-return (samp-dist pos i)))
-        (+set samp-dist-total-ms (read-stored-time))
+    (map (fn (i) {
+        (var dist (ix sample-pos-distances i))
         (if (< dist dist-last) {
             (setq dist-last dist)
-            (setq ind-closest cnt)
+            (setq index-closest i)
         })
-        (setq cnt (+ cnt 1))
-    })
+    }) (range (length samples-nodist)))
     
     (var p1 ind-closest)
     (var p2 (+ ind-closest 1))
@@ -127,11 +142,8 @@
         
         ; Somewhere in-between
         (true {
-            (var dist-prev (take-time-return (samp-dist pos (ix samples-nodist (- ind-closest 1)))))
-            (+set samp-dist-total-ms (read-stored-time))
-            (var dist-next (take-time-return (samp-dist pos (ix samples-nodist (+ ind-closest 1)))))
-            (+set samp-dist-total-ms (read-stored-time))
-            
+            (var dist-prev (ix sample-pos-distances (- index-closest 1)))
+            (var dist-next (ix sample-pos-distances (+ index-closest 1)))
             
             (if (< dist-prev dist-next) {
                 (setq p1 (- ind-closest 1))
@@ -140,22 +152,17 @@
         })
     )
     
-    (var d1 (take-time-return (samp-dist pos (ix samples-nodist p1))))
-    (+set samp-dist-total-ms (read-stored-time))
-    (var d2 (take-time-return (samp-dist pos (ix samples-nodist p2))))
-    (+set samp-dist-total-ms (read-stored-time))
+    (var d1 (ix sample-pos-distances p1))
+    (var d2 (ix sample-pos-distances p2))
     (var p1-travel (first (ix samples p1)))
     (var p2-travel (first (ix samples p2)))
-    (var c (take-time-return (samp-dist (ix samples-nodist p1) (ix samples-nodist p2))))
-    (+set samp-dist-total-ms (read-stored-time))
-    (var c1 (/ (- (+ (sq d1) (sq c)) (sq d2)) (* 2 c)))
+    (var c (ix sample-distances p1))
+    (var c1 (/ (- (+ d1 (sq c)) d2) (* 2 c)))
     (var ratio (/ c1 c))
     
     ; Deviation from path
     ; (def h (sqrt (- (sq d1) (sq c1))))
 
-    ; (print-vars '(samp-dist-total-ms))
-    
     (+ p1-travel (* ratio (- p2-travel p1-travel)))
 })
 
@@ -177,18 +184,6 @@
 
 ;;; Input
 
-(defun input-read-tick () {
-        ; Throttle
-        ; (print (str-merge (to-str (mag-get-x 0)) " " (to-str (mag-get-y 0)) " " (to-str (mag-get-z 0)))) ; always prints the same "15.000000f32 -5.000000f32 -54.000000f32"
-        (def magn0x-f (lpf magn0x-f (mag-get-x 0)))
-        (def magn0y-f (lpf magn0y-f (mag-get-y 0)))
-        (def magn0z-f (lpf magn0z-f (mag-get-z 0)))
-        
-        (def magn1x-f (lpf magn1x-f (mag-get-x 1)))
-        (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
-        (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
-})
-
 (defun input-tick () {
     (def magn0x-f (lpf magn0x-f (mag-get-x 0)))
     (def magn0y-f (lpf magn0y-f (mag-get-y 0)))
@@ -198,10 +193,7 @@
     (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
     (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
         
-    (atomic
-        (var ms (take-time (def travel (thr-interpolate))))
-        (print (to-str "thr-interpolate took" ms "ms"))
-    )
+    (def travel (thr-interpolate))
     (def thr-input (* (map-range-01 travel 2.0 11.0)))
     
     (state-set 'thr-input thr-input)
