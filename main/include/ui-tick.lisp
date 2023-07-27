@@ -59,7 +59,6 @@
             (not-eq thr-activation-state 'countdown)
         ) {
             (activate-thr-countdown)
-            (state-set-current 'thr-activation-state 'countdown)
         })
         
         (if (is-thr-pressed thr-input) {
@@ -83,7 +82,8 @@
     (if (and
         (eq (state-get 'thr-activation-state) 'countdown)
         (>= secs thr-countdown-len-secs)
-    ) {
+    ) { ; thr is now enabled
+        (vib-add-sequence vib-thr-enable)
         (set-thr-is-active-current true)
         (state-set-current 'thr-activation-shown false)
         (state-set-current 'thr-requested false)
@@ -94,6 +94,12 @@
 (defun view-tick-conn-lost () {
     (if (state-get 'is-connected) {
         (request-view-change)
+    })
+    
+    (if (not (state-get 'conn-lost-has-alerted)) {
+        (state-set-current 'conn-lost-has-alerted true)
+        
+        (vib-add-sequence vib-bms-disconnect)
     })
 })
 

@@ -102,22 +102,25 @@
 (import "include/vib-reg.lisp" 'code-vib-reg)
 (read-eval-program code-vib-reg)
 
-@const-start
-
-; {
-;     (def cal-result (vib-cal))
-;     (print (to-str "calibration result:" cal-result))
+{
+    ; (def cal-result (vib-cal))
+    ; (print (to-str "calibration result:" cal-result))
     
-;     ; intersting bits are 6-4 and 3-2 (brake factor and loop gain)
-;     (var reg-feedback-control (bitwise-or
-;         (bitwise-and
-;             (ix cal-result 0)
-;             (parse-bin (str-merge "0" "111" "11" "00"))
-;         )
-;         (parse-bin (str-merge "0" "000" "11" "00"))
-;     ))
-;     (vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
-; }
+    ; intersting bits are 6-4 and 3-2 (brake factor and loop gain)
+    (var reg-feedback-control (bitwise-or
+        (bitwise-and
+            169
+            ; (ix cal-result 0)
+            (parse-bin (str-merge "1" "000" "00" "11"))
+        )
+        (parse-bin (str-merge "0" "000" "11" "00"))
+        ; (parse-bin (str-merge "0" "010" "10" "00"))
+    ))
+    ; (vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
+    (vib-cal-set reg-feedback-control 13 100)
+}
+
+@const-start
 
 
 ; these don't seem to make any noticeable difference...
@@ -400,6 +403,18 @@
         (sleep (if any-ping-has-failed
             0.01 ; 0.1
             0.01
+        ))
+    })
+))
+
+; Vibration play
+(spawn 120 (fn ()
+    (loopwhile t {
+        (vib-flush-sequences)
+        
+        (sleep (if any-ping-has-failed
+            0.1
+            0.03 ; 30 ms
         ))
     })
 ))

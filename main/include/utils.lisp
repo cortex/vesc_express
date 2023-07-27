@@ -7,6 +7,37 @@
 
 ;;; Generic utility functions.
 
+; Add value to variable and assign the result to the variable.
+; Works like `+=` in conventional languages.
+; Ex:
+; ```
+; (def a 5)
+; (+set a 1)
+; (print a)
+; > 6
+; ```
+(def +set (macro (variable value)
+    `(setq ,variable (+ ,variable ,value))
+))
+
+; Subtract value from variable and assign the result to the variable.
+; Works like `-=` in conventional languages.
+(def -set (macro (variable value)
+    `(setq ,variable (- ,variable ,value))
+))
+
+; Multiply variable and value and assign the result to the variable.
+; Works like `*=` in conventional languages.
+(def *set (macro (variable value)
+    `(setq ,variable (* ,variable ,value))
+))
+
+; Divide variable by value and assign the result to the variable.
+; Works like `/=` in conventional languages.
+(def /set (macro (variable value)
+    `(setq ,variable (* ,variable ,value))
+))
+
 ; Print values on the same line with spaces between them. For debugging.
 ; Converts all values to strings using `to-string`.
 (define println (macro (values)
@@ -418,5 +449,60 @@
         (+ (* (ease-out (/ (- x mid-x) (- 1 mid-x))) (- 1 mid-y)) mid-y)
     )
 ))
+
+;;; Mutex
+;;; A mutex consists of a cons pair where the car cell holds the lock, while the
+;;; car cell holds the mutex value.
+;;; It is thread safe to access or write to a mutex.
+
+(defun mutex-locked (mutex)
+    (car mutex)
+)
+
+; Create a mutex from a value. This should then be assigned to some global value.
+(defun create-mutex (value)
+    (cons false value)
+)
+
+; Get value of mutex directly.
+; This is unsafe if the value of the mutex is a reference (such as a cons cell).
+; It is safe if you know no-one else could be changing the referenced value.
+(defun mutex-get-unsafe (mutex)
+    (cdr mutex)
+)
+
+; Set mutex value. The old value is returned.
+(defun mutex-set (mutex value) {
+    (block-until (not (mutex-locked mutex)))
+    (setcar mutex true)
+    
+    (var old-value (mutex-get-unsafe mutex))
+    (setcdr mutex value)
+    
+    (setcar mutex false)
+    
+    old-value
+})
+
+(defun mutex-access (mutex with-fn) {
+    (block-until (not (mutex-locked mutex)))
+    ; TODO: what if someone else has already re-locked the mutex in between
+    ; here?
+    (setcar mutex true)
+    (with-fn (cdr mutex))
+    (setcar mutex false)
+})
+
+; Update a mutex's value using the given function.
+; The value is passed to `with-fn`. The mutex is then set to the value returned
+; by `with-fn`. A lock is created on the mutex during the entire process.
+; `with-fn` should be a function taking one argument.
+(defun mutex-update (mutex with-fn) {
+    (block-until (not (mutex-locked mutex)))
+    
+    (setcar mutex true)
+    (setcdr mutex (with-fn (cdr mutex)))
+    (setcar mutex false)
+})
 
 @const-end

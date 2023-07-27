@@ -43,6 +43,12 @@
     ; Currently only used for debugging
     (cons 'is-connected false)
     
+    ; If the warning vibration once the remote loses connection has been played
+    ; yet.
+    ; When true, no more vibrations are played.
+    ; Is reset once thrust is reactivated.
+    (cons 'conn-lost-has-alerted false)
+    
     (cons 'kmh 0.0)
 
     ; 1 to 15, default is 1
@@ -143,6 +149,9 @@
 ; Should be called outside render thread, may be called inside, with a frame of
 ; delay.
 (defun try-activate-thr () {
+    (if (not-eq (state-get-live 'view) 'thr-activation) {
+        (state-set 'thr-activation-state 'reminder)
+    })
     (state-set 'thr-activation-shown true)
     (state-set 'thr-requested true)
     (request-view-change)
@@ -166,6 +175,9 @@
         is-active
     ))
     (state-set 'thr-active is-active)
+    (if is-active
+        (state-set 'conn-lost-has-alerted false)
+    )
 })
 
 ; Should only be called in render thread
@@ -175,6 +187,9 @@
         is-active
     ))
     (state-set-current 'thr-active is-active)
+    (if is-active
+        (state-set-current 'conn-lost-has-alerted false)
+    )
 })
 
 ; Should only be called in render thread
@@ -227,7 +242,7 @@
 ; Run vibration motor at value strength for duration seconds.
 ; value should be in the range 0.0 to 1.0.
 ; This function blocks for the entire duration.
-(defun vib-constant (value duration) {
+(defun vib-play-constant (value duration) {
     (vib-rtp-write (to-i (* value 255.0)))
     (vib-rtp-enable)
     (sleep duration)
@@ -235,20 +250,81 @@
     (vib-rtp-disable)
 })
 
-(defun vib-play-bms-connect () {
-    (vib-constant 0.7 0.12)
-    (sleep 0.1)
-    (vib-constant 0.7 0.12)
-    (sleep 0.1)
-    (vib-constant 1.0 0.3)
+(defun vib-thr-enable () {
+    (vib-play-constant 0.8 0.4)
 })
 
-(defun vib-play-bms-disconnect () {
-    (vib-constant 1.0 0.3)
+(defun vib-bms-connect () {
+    (vib-play-constant 1.0 0.8)
+    ; (vib-play-constant 0.7 0.12)
+    ; (sleep 0.1)
+    ; (vib-play-constant 0.7 0.12)
+    ; (sleep 0.1)
+    ; (vib-play-constant 1.0 0.3)
+})
+
+(defun vib-bms-disconnect () {
+    (vib-play-constant 1.0 0.12)
     (sleep 0.1)
-    (vib-constant 0.7 0.12)
+    (vib-play-constant 1.0 0.12)
+    
+    (sleep 0.15)
+    
+    (vib-play-constant 1.0 0.12)
     (sleep 0.1)
-    (vib-constant 0.7 0.12)
+    (vib-play-constant 1.0 0.12)
+    
+    ; (vib-play-constant 1.0 0.3)
+    ; (sleep 0.1)
+    ; (vib-play-constant 0.7 0.12)
+    ; (sleep 0.1)
+    ; (vib-play-constant 0.7 0.12)
+})
+
+@const-end
+
+(def vib-queue (create-mutex (list)))
+(def vib-last-play-timestamp (systime)) ; Timestamp of last time a vibration animation finished playing
+(def vib-gap-duration-secs 1.5) ; How long to wait in between sequential vibration sequences.
+
+@const-start
+
+; Add a vibration sequence to the global vibration queue.
+; `vib-sequence` should be a function that plays a sequence of vibrations.
+(def vib-add-sequence (macro (vib-sequence) `{
+    ; (print (to-str "queued sequence" ',vib-sequence))
+    (mutex-update vib-queue (fn (vib-queue) 
+        (cons (cons ',vib-sequence ,vib-sequence) vib-queue)
+    ))
+}))
+
+(defun vib-play-next-in-queue () {
+    (if (!= (length (mutex-get-unsafe vib-queue)) 0) {
+        (block-until (> (secs-since vib-last-play-timestamp) vib-gap-duration-secs))
+        
+        (var sequence nil)
+        (mutex-update vib-queue (fn (vib-queue) {
+            (var last-index (- (length vib-queue) 1))
+            
+            (setq sequence (ix vib-queue last-index))
+            
+            (take vib-queue last-index)
+        }))
+        
+        (print (to-str "playing sequence" (car sequence)))
+        ((cdr sequence))
+        
+        (def vib-last-play-timestamp (systime))
+    })
+})
+
+; Clear and play the global vibration queue.
+; This should be called regularly by a single thread.
+; This is currently the render thread.
+(defun vib-flush-sequences () {
+    (loopwhile (!= (length (mutex-get-unsafe vib-queue)) 0) {
+        (vib-play-next-in-queue)
+    })
 })
 
 @const-end

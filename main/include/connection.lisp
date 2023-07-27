@@ -78,7 +78,7 @@
 (def dbg-failed-pings 0)
 (def dbg-ping-fail-count 0)
 
-(def measuer-ping-total-count 0)
+(def measure-ping-total-count 0)
 (def measure-ping-failed-total-count 0)
 (def measure-connections-lost-count 0)
 (def measure-last-fail-count 0)
@@ -98,8 +98,8 @@
     (var new-failed-pings measure-ping-failed-total-count)
     (def measure-ping-failed-total-count 0)
     
-    (var new-total-pings measuer-ping-total-count)
-    (def measuer-ping-total-count 0)
+    (var new-total-pings measure-ping-total-count)
+    (def measure-ping-total-count 0)
     
     (def m-total-pings new-total-pings)
     (def m-failed-pings new-failed-pings)
@@ -112,6 +112,9 @@
 
 @const-start
 
+; These `dbg-fail-ping-*` functions can be called even when the
+; `dev-simulate-connection` flag isn't set
+
 (defun dbg-fail-ping-short () {
     (def dbg-ping-should-fail true)
     (def dbg-failed-pings 0)
@@ -122,6 +125,12 @@
     (def dbg-ping-should-fail true)
     (def dbg-failed-pings 0)
     (def dbg-ping-fail-count 25)
+})
+
+(defun dbg-fail-ping-medium () {
+    (def dbg-ping-should-fail true)
+    (def dbg-failed-pings 0)
+    (def dbg-ping-fail-count 100)
 })
 
 (defun dbg-fail-ping-long () {
@@ -148,9 +157,19 @@
 ; Essentially checks if there is a connection.
 (defun ping-battery ()
     (if batt-addr-rx {
-        (def measuer-ping-total-count (+ measuer-ping-total-count 1))
+        (+set measure-ping-total-count 1)
         
-        (esp-now-send batt-addr "")
+        (if dbg-ping-should-fail {
+            (sleep 0.002) ; 2 ms
+            (if (>= dbg-failed-pings dbg-ping-fail-count)
+                (def dbg-ping-should-fail false)
+                (+set dbg-failed-pings 1)
+            )
+            
+            (not dbg-ping-should-fail)
+        } {    
+            (esp-now-send batt-addr "")
+        })
     }
         false
     )
@@ -177,7 +196,6 @@
     
     (if (and new-success (not ping-success) (not is-connected)) { ; connection established
         ; (print "connection restored")
-        (vib-play-bms-connect)
     })
     
     (if (and
@@ -210,7 +228,7 @@
             
             ; (print (str-merge "connection has been lost (took " (to-str failed-pings) " pings)"))
             (def measure-connections-lost-count (+ measure-connections-lost-count 1))
-            (def measure-last-fail-count failed-pings)
+            (def measure-last-fail-count failed-pings)            
         })
     })
     

@@ -338,7 +338,7 @@
         (var last-failed-pings m-last-fail-count)
         ; (var max-ping-fails m-max-ping-fails)
         (var total-pings m-total-pings)
-        (var connections-lost-count connections-lost-count)
+        (var connections-lost-count measure-connections-lost-count)
         
         (sbuf-clear subview-text-buf)
         
