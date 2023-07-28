@@ -145,6 +145,16 @@
 })
 
 ; Should only be called outside render thread
+(defun cycle-gear-justify () {
+    (var next (match (state-get-live 'dev-main-gear-justify)
+        (leading-zero 'justify-right)
+        (justify-right 'justify-center)
+        (justify-center 'leading-zero)
+    ))
+    (state-set 'dev-main-gear-justify next)
+})
+
+; Should only be called outside render thread
 (defun increase-gear () {
     (var gear (state-get-live 'gear))
     (state-set 'gear (if (= gear gear-max)
@@ -163,14 +173,16 @@
 
 ; Should be called outside render thread, may be called inside, with a frame of
 ; delay.
-(defun try-activate-thr () {
-    (if (not-eq (state-get-live 'view) 'thr-activation) {
-        (state-set 'thr-activation-state 'reminder)
+(defun try-activate-thr () 
+    (if (not (state-get-live 'thr-active)) {
+        (if (not-eq (state-get-live 'view) 'thr-activation) {
+            (state-set 'thr-activation-state 'reminder)
+        })
+        (state-set 'thr-activation-shown true)
+        (state-set 'thr-requested true)
+        (request-view-change)        
     })
-    (state-set 'thr-activation-shown true)
-    (state-set 'thr-requested true)
-    (request-view-change)
-})
+)
 
 ; TODO: fix this
 (defun enter-sleep () {

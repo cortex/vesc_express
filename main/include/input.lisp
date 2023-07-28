@@ -405,6 +405,13 @@
                 (cycle-main-timer-menu)
             )
         )
+        
+        (if (or
+            (and (= btn-left 1) (>= btn-down 1))
+            (and (>= btn-left 1) (= btn-down 1))
+        )
+            (cycle-gear-justify)
+        )
     })
 })
 
