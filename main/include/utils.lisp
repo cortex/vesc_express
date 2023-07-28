@@ -215,6 +215,43 @@
     (foldl (fn (all x) (and all x)) true lst)
 )
 
+(defun str-repeat (str n)
+    (foldl
+        (fn (merged i) (str-merge merged str))
+        ""
+        (range n)
+    )
+)
+
+; Pad string to `width` using `pad`.
+; `width` specifies the total resulting width of the string and should be a
+; positive integer.
+; Ex:
+; ```
+; (str-left-pad ("0" 4 "ab"))
+; > "bab0"
+; ```
+(defun str-left-pad (str width pad) {
+    (var len (str-len str))
+    (if (>= len width)
+        str
+        (str-merge
+            {
+                (var rest-len (mod (- width len) (str-len pad)))
+                (if (= rest-len 0)
+                    ""
+                    (str-part pad (- (str-len pad) rest-len))
+                )
+            }
+            {
+                (var cnt (/ (- width len) (str-len pad)))
+                (str-repeat pad cnt)
+            }
+            str
+        )        
+    )
+})
+
 ; Quote all items in a list.
 ; Given a list (label 5), this is will give the list ('label 5).
 (defun quote-items (lst)

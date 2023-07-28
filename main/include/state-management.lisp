@@ -71,6 +71,9 @@
     (cons 'main-left-fadeout-t nil)
     (cons 'main-right-fadeout-t nil)
     
+    ; How many seconds the throttle has been held down (while throttle is enabled).
+    (cons 'thr-timer-secs 0.0)
+    
     ;;; board-info specific state
 
     ; The currently displayed message and icon
@@ -131,7 +134,14 @@
 (defun cycle-main-dbg-menu () {
     (var next (if (eq (state-get-live 'view-main-subview) 'dbg) 'gear 'dbg))
     (main-subview-change next)
-    (print (to-str "cycle-main-dbg-menu" next))
+    ; (print (to-str "cycle-main-dbg-menu" next))
+})
+
+; Should only be called outside render thread
+(defun cycle-main-timer-menu () {
+    (var next (if (eq (state-get-live 'view-main-subview) 'timer) 'gear 'timer))
+    (main-subview-change next)
+    ; (print (to-str "cycle-main-timer-menu" next))
 })
 
 ; Should only be called outside render thread

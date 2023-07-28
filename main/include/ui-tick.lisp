@@ -158,6 +158,38 @@
         (vib-add-sequence vib-bms-soc-halfway)
     })
     
+    (state-with-changed '(thr-input thr-active) (fn (thr-input thr-active) {
+        (var next-enabled (and 
+            (is-thr-pressed thr-input)
+            thr-active
+        ))
+        
+        (if (and
+            next-enabled
+            (not timer-is-active)
+        ) {
+            (def timer-is-active true)
+            (def timer-start-last (systime))
+            (def timer-total-last timer-total-secs)
+        })
+        
+        (if (and
+            (not next-enabled)
+            timer-is-active
+        ) {
+            (def timer-is-active false)
+            (def timer-start-last nil)
+        })
+    }))
+    
+    (if timer-is-active {
+        (def timer-total-secs (+
+            timer-total-last
+            (secs-since timer-start-last)
+        ))
+        (state-set-current 'thr-timer-secs timer-total-secs)
+    })
+    
     ; tick views
     (tick-current-view)
     

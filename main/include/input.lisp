@@ -396,12 +396,14 @@
         (if (= btn-left 0) (def btn-left-long-fired false))
         (if (= btn-right 0) (def btn-right-long-fired false))
         
-        (if (and
-            (!= btn-left 0)
-            (!= btn-right 0)
-            dev-enable-connection-dbg-menu
+        (if (or
+            (and (= btn-left 1) (>= btn-right 1))
+            (and (>= btn-left 1) (= btn-right 1))
         )
-            (cycle-main-dbg-menu)
+            (if dev-enable-connection-dbg-menu
+                (cycle-main-dbg-menu)
+                (cycle-main-timer-menu)
+            )
         )
     })
 })

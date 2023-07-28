@@ -47,6 +47,7 @@
     (match (state-get 'view-main-subview)
         (gear (subview-draw-gear))
         (speed (subview-draw-speed))
+        (timer (subview-draw-timer))
         (dbg (subview-draw-dbg))
     )
 
@@ -118,6 +119,10 @@
         (speed 
             (sbuf-render-changes subview-speed-num-buf (list col-menu col-fg))
         )
+        (timer {
+            (sbuf-render-changes subview-title-buf (list col-menu col-fg))
+            (sbuf-render-changes subview-timer-buf (list col-menu col-fg))
+        })
         (dbg {
             (sbuf-render-changes subview-text-buf (list col-menu col-fg))
             (var color (if (state-get 'is-connected) col-accent col-error))
@@ -156,6 +161,7 @@
 
     (subview-cleanup-gear)
     (subview-cleanup-speed)
+    (subview-cleanup-timer)
     (subview-cleanup-dbg)
 })
 
@@ -171,6 +177,7 @@
     (var cleanup (match old-view
         (gear subview-cleanup-gear)
         (speed subview-cleanup-speed)
+        (timer subview-cleanup-timer)
         (dbg subview-cleanup-dbg)
         (_ (fn () ()))
     ))
@@ -178,6 +185,7 @@
     (var init (match new-view
         (gear subview-init-gear)
         (speed subview-init-speed)
+        (timer subview-init-timer)
         (dbg subview-init-dbg)
         (_ (fn () ()))
     ))
@@ -329,6 +337,45 @@
     (def subview-speed-num-buf nil)
     (def subview-speed-text-buf nil)
     ; (undefine 'subview-speed-num-buf)
+})
+
+(defun subview-init-timer () {
+    (var x (center-pos 160 (* 14 8) 0))
+    (def subview-timer-buf (create-sbuf 'indexed2 (+ 15 x) 75 (* 14 8) 26))
+    
+    (var text (img-buffer-from-bin text-timer))
+    (def subview-title-buf (create-sbuf 'indexed2 119 108 50 17))
+    (sbuf-blit subview-title-buf text 0 0 ())
+    
+    ; Reset dependencies
+    (state-reset-keys-last '(thr-timer-secs))
+})
+
+(defun subview-draw-timer () {
+    (state-with-changed '(thr-timer-secs) (fn (thr-timer-secs) {
+        (var hours (to-i (/ thr-timer-secs (* 60 60))))
+        (-set thr-timer-secs (* hours 60 60))
+        
+        (var minutes (to-i (/ thr-timer-secs 60)))
+        (-set thr-timer-secs (* minutes 60))
+        
+        (var seconds (to-i thr-timer-secs))
+        
+        (var timer-str (str-merge
+            (str-left-pad (str-from-n hours) 2 "0")
+            ":"
+            (str-left-pad (str-from-n minutes) 2 "0")
+            ":"
+            (str-left-pad (str-from-n seconds) 2 "0")
+        ))
+        
+        (sbuf-exec img-text subview-timer-buf 0 0 (1 0 font-b1 timer-str))
+    }))
+})
+
+(defun subview-cleanup-timer () {
+    (def subview-timer-buf nil)
+    (def subview-title-buf nil)
 })
 
 (defun subview-init-dbg () {

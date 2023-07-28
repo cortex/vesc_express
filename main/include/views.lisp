@@ -5,7 +5,7 @@
 (defun get-view-handlers () (list
     (cons 'main (list
         (cons 'up cycle-main-top-menu)
-        (cons 'up-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu nil))
+        (cons 'up-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu cycle-main-timer-menu))
         (cons 'down try-activate-thr)
         (cons 'down-long enter-sleep)
         (cons 'left decrease-gear)

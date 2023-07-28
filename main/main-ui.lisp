@@ -191,6 +191,7 @@
 (import "../assets/texts/bin/throttle-now-active.bin" 'text-throttle-now-active)
 (import "../assets/texts/bin/warning-msg.bin" 'text-warning-msg)
 (import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
+(import "../assets/texts/bin/timer.bin" 'text-timer)
 ; remote-battery-low.bin was moved to top
 
 ;;; Fonts
@@ -258,6 +259,11 @@
 ; The connection is considered broken when a certain number of pings have
 ; failed.
 (def is-connected false)
+
+(def timer-total-secs 0.0)
+(def timer-total-last 0.0)
+(def timer-start-last (systime))
+(def timer-is-active false) ; If the timer is currently counting up
 
 (def gear-min 1)
 (def gear-max 15)
