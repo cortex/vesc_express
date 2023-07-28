@@ -357,6 +357,16 @@
     (- val (* 0.2 (- val sample)))
 )
 
+; Apply a smoothing filter to value samples.
+; Lower values for `responsiveness` results in more smoothing.
+; `responsiveness` should be from 0.0 to 1.0.
+(defun smooth-filter (sample old-value responsiveness)
+    (+
+        (* sample responsiveness)
+        (* old-value (- 1.0 responsiveness))
+    )
+)
+
 ; Clamp value to range 0-1
 ; Copied from full_ui_v2.lisp
 (defun clamp01 (v)

@@ -393,10 +393,18 @@
 
 (read-eval-program code-ui-tick)
 
+(def m-connection-tick-ms 0.0)
 ; Communication
 (spawn 200 (fn ()
     (loopwhile t {
-        (def m-connection-tick-ms (ms-since thread-connection-start))
+        (def m-connection-tick-ms (if dev-smooth-tick-ms
+            (smooth-filter
+                (ms-since thread-connection-start)
+                m-connection-tick-ms
+                dev-smoothing-factor
+            )
+            (ms-since thread-connection-start)
+        ))
         (def thread-connection-start (systime))
         
         (connection-tick)
@@ -407,9 +415,17 @@
 ; True when input tick has ran to completion at least once.
 (def input-has-ran false)
 
-; Throttle read and filter
+(def m-thr-tick-ms 0.0)
+; Throttle handling
 (spawn 200 (fn () (loopwhile t {
-    (def m-thr-tick-ms (ms-since thread-thr-start))
+    (def m-thr-tick-ms (if dev-smooth-tick-ms
+            (smooth-filter
+                (ms-since thread-thr-start)
+                m-thr-tick-ms
+                dev-smoothing-factor
+            )
+            (ms-since thread-thr-start)
+        ))
     (def thread-thr-start (systime))
     
     (thr-tick)
@@ -420,10 +436,18 @@
     )
 })))
 
-; Button read and filter
+(def m-input-tick-ms 0.0)
+; Input read and filter
 (spawn 200 (fn ()
     (loopwhile t {
-        (def m-input-tick-ms (ms-since thread-input-start))
+        (def m-input-tick-ms (if dev-smooth-tick-ms
+            (smooth-filter
+                (ms-since thread-input-start)
+                m-input-tick-ms
+                dev-smoothing-factor
+            )
+            (ms-since thread-input-start)
+        ))
         (def thread-input-start (systime))
         
         (input-tick)
@@ -437,10 +461,18 @@
 ))
 
 
+(def m-vibration-tick-ms 0.0)
 ; Vibration play
 (spawn 120 (fn ()
     (loopwhile t {
-        (def m-vibration-tick-ms (ms-since thread-vibration-start))
+        (def m-vibration-tick-ms (if dev-smooth-tick-ms
+            (smooth-filter
+                (ms-since thread-vibration-start)
+                m-vibration-tick-ms
+                dev-smoothing-factor
+            )
+            (ms-since thread-vibration-start)
+        ))
         (def thread-vibration-start (systime))
         
         (vib-flush-sequences)
@@ -450,10 +482,18 @@
     })
 ))
 
+(def m-slow-updates-tick-ms 0.0)
 ; Slow updates
 (spawn 120 (fn ()
     (loopwhile t {
-        (def m-slow-updates-tick-ms (ms-since thread-slow-updates-start))
+        (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
+            (smooth-filter
+                (ms-since thread-slow-updates-start)
+                m-slow-updates-tick-ms
+                dev-smoothing-factor
+            )
+            (ms-since thread-slow-updates-start)
+        ))
         (def thread-slow-updates-start (systime))
         
         (def soc-remote (get-remote-soc))
@@ -463,10 +503,18 @@
     })
 ))
 
+(def m-main-tick-ms 0.0)
 ; Tick UI
 (spawn 200 (fn ()
     (loopwhile t {
-        (def m-main-tick-ms (ms-since thread-main-start))
+        (def m-main-tick-ms (if dev-smooth-tick-ms
+            (smooth-filter
+                (ms-since thread-main-start)
+                m-main-tick-ms
+                dev-smoothing-factor
+            )
+            (ms-since thread-main-start)
+        ))
         (def thread-main-start (systime))
         
         (var start (systime))
