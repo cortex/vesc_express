@@ -161,9 +161,28 @@
 ; Block thread until expression `expr` is true.
 ; This funcion sleeps for 10 ms between checks. If `expr` is true immediately,
 ; it does not sleep at all.
-(def block-until (macro (expr) `(loopwhile (not ,expr)
-    (sleep 0.01)
+(def sleep-until (macro (expr) `(loopwhile (not ,expr)
+    (sleep 0.01) ; 10 ms
 )))
+
+; Block thread until expression `expr` is true, or the specified milliseconds
+; have passed.
+; This funcion sleeps for 10 ms between checks. If `expr` is true immediately,
+; it does not sleep at all.
+(def sleep-ms-or-until (macro (ms expr) `{
+    (var start (systime))
+    (loopwhile (and
+        (not ,expr)
+        (<= (ms-since start) ,ms)
+    )
+        
+        (sleep 0.01) ; 10 ms
+            
+        
+    )
+    ; (print "sleep-ms-or-until-finish")
+    
+}))
 
 ; Returns a copy of lst, to use with setix (or similar) without side effects.
 ; Note: this is non-tail-recursive, don't use this on large lists!
@@ -497,7 +516,7 @@
 
 ; Set mutex value. The old value is returned.
 (defun mutex-set (mutex value) {
-    (block-until (not (mutex-locked mutex)))
+    (sleep-until (not (mutex-locked mutex)))
     (setcar mutex true)
     
     (var old-value (mutex-get-unsafe mutex))
@@ -509,7 +528,7 @@
 })
 
 (defun mutex-access (mutex with-fn) {
-    (block-until (not (mutex-locked mutex)))
+    (sleep-until (not (mutex-locked mutex)))
     ; TODO: what if someone else has already re-locked the mutex in between
     ; here?
     (setcar mutex true)
@@ -522,7 +541,7 @@
 ; by `with-fn`. A lock is created on the mutex during the entire process.
 ; `with-fn` should be a function taking one argument.
 (defun mutex-update (mutex with-fn) {
-    (block-until (not (mutex-locked mutex)))
+    (sleep-until (not (mutex-locked mutex)))
     
     (setcar mutex true)
     (setcdr mutex (with-fn (cdr mutex)))

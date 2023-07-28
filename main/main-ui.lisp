@@ -220,6 +220,7 @@
 
 ; These are placed here so they don't use up binding slots. 
 (def thread-connection-start (systime))
+(def thread-thr-start (systime))
 (def thread-input-start (systime))
 (def thread-vibration-start (systime))
 (def thread-slow-updates-start (systime))
@@ -270,7 +271,7 @@
 (def main-button-fadeout-secs 0.8)
 
 ; How many seconds the thrust activation countdown lasts.
-(def thr-countdown-len-secs (if dev-short-thr-activation 1.0 3.0))
+(def thr-countdown-len-secs (if dev-short-thr-activation 1.0 2.0))
 
 ; The timestamp when the throttle activation countdown animation last started.
 (def thr-countdown-start (systime))
@@ -400,7 +401,20 @@
 ; True when input tick has ran to completion at least once.
 (def input-has-ran false)
 
-; Throttle and button read and filter
+; Throttle read and filter
+(spawn 200 (fn () (loopwhile t {
+    (def m-thr-tick-ms (ms-since thread-thr-start))
+    (def thread-thr-start (systime))
+    
+    (thr-tick)
+    
+    (if any-ping-has-failed
+        (sleep-ms-or-until 80 (not any-ping-has-failed))
+        (sleep 0.01) ; 10 ms
+    )
+})))
+
+; Button read and filter
 (spawn 200 (fn ()
     (loopwhile t {
         (def m-input-tick-ms (ms-since thread-input-start))
@@ -409,11 +423,10 @@
         (input-tick)
         
         (def input-has-ran true)
-        
-        (sleep (if any-ping-has-failed
-            0.1 ; 0.1
-            0.01 ; 10 ms
-        ))
+        (if any-ping-has-failed
+            (sleep-ms-or-until 80 (not any-ping-has-failed))
+            (sleep 0.01) ; 10 ms
+        )
     })
 ))
 
@@ -426,10 +439,8 @@
         
         (vib-flush-sequences)
         
-        (sleep (if any-ping-has-failed
-            0.1
-            0.08 ; 80 ms
-        ))
+
+        (sleep 0.08) ; 80 ms
     })
 ))
 
@@ -453,18 +464,15 @@
         (def thread-main-start (systime))
         
         (var start (systime))
-        (block-until input-has-ran)
+        (sleep-until input-has-ran)
         (tick)
         ; (gc)
         ; (sleep 0.05)
         (var elapsed (secs-since start))
-        (sleep (-
-            (if any-ping-has-failed
-                0.05 ; 0.1
-                0.05
-            )
-            elapsed
-        ))
+        (if any-ping-has-failed
+            (sleep-ms-or-until 80 (not any-ping-has-failed))
+            (sleep (- 0.05 elapsed)) ; 50 ms
+        )
     })
 ))
 

@@ -212,24 +212,29 @@
     
     (def ping-success new-success)
     
-    (if ping-success {
+    (if (not dev-disable-connection-check) {
+        (if ping-success {
+            (def is-connected true)
+            (def any-ping-has-failed false)
+        } {
+            (def failed-pings (+ failed-pings 1))
+            (if (and
+                is-connected
+                (> failed-pings 4)
+                ; (> (secs-since ping-fail-time) 0.2) ; 200 ms
+                (> (secs-since ping-fail-time) 0.08) ; 80 ms
+            ) { ; connection with battery has been lost
+                (def is-connected false)
+                (def any-ping-has-failed false)
+                
+                ; (print (str-merge "connection has been lost (took " (to-str failed-pings) " pings)"))
+                (def measure-connections-lost-count (+ measure-connections-lost-count 1))
+                (def measure-last-fail-count failed-pings)            
+            })
+        })
+    } {
         (def is-connected true)
         (def any-ping-has-failed false)
-    } {
-        (def failed-pings (+ failed-pings 1))
-        (if (and
-            is-connected
-            (> failed-pings 4)
-            ; (> (secs-since ping-fail-time) 0.2) ; 200 ms
-            (> (secs-since ping-fail-time) 0.08) ; 80 ms
-        ) { ; connection with battery has been lost
-            (def is-connected false)
-            (def any-ping-has-failed false)
-            
-            ; (print (str-merge "connection has been lost (took " (to-str failed-pings) " pings)"))
-            (def measure-connections-lost-count (+ measure-connections-lost-count 1))
-            (def measure-last-fail-count failed-pings)            
-        })
     })
     
     (var tick-secs (if any-ping-has-failed
@@ -251,9 +256,6 @@
             (set-thr-is-active false)
         )
         
-        (if dev-disable-connection-check
-            (def is-connected true)
-        )
         (if dev-force-thr-enable {
             (set-thr-is-active true)
         })

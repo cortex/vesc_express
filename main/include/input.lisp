@@ -79,6 +79,7 @@
 
 (def samples-nodist (map (fn (x) (second x)) samples))
 (defun sq (a) (* a a))
+; (defun point6 () (list 51.748104f32 -9.530254f32 -102.557419f32 103.646301f32 0.047037f32 -5.856508f32))
 (defun point6 () (list magn0x-f magn0y-f magn0z-f magn1x-f magn1y-f magn1z-f))
 (defun samp-dist (s1 s2)
     (sqrt (+
@@ -107,6 +108,67 @@
     (samp-dist (ix samples-nodist i) (ix samples-nodist (+ i 1)))
 }) (range (- (length samples-nodist) 1))))
 
+; (defun thr-interpolate () {
+;     (var pos (point6))
+;     ; (print-vars '((point6)))
+;     (var dist-last (samp-dist pos (first samples-nodist)))
+;     (var index-closest 0)
+    
+;     (var cnt 0)
+    
+;     (loopforeach i samples-nodist {
+;         (var dist (samp-dist pos i))
+;         (if (< dist dist-last) {
+;             (setq dist-last dist)
+;             (setq index-closest cnt)
+;         })
+;         (setq cnt (+ cnt 1))
+;     })
+    
+;     (var p1 index-closest)
+;     (var p2 (+ index-closest 1))
+    
+;     (cond
+;         ; First point
+;         ((= p1 0) nil)
+        
+;         ; Last point
+;         ((= p1 (- (length samples) 1)) {
+;             (setq p1 (- index-closest 1))
+;             (setq p2 index-closest)
+;         })
+        
+;         ; Somewhere in-between
+;         (true {
+;             (var dist-prev (samp-dist pos (ix samples-nodist (- index-closest 1))))
+;             ; (+set samp-dist-total-ms (read-stored-time))
+;             (var dist-next (samp-dist pos (ix samples-nodist (+ index-closest 1))))
+;             ; (+set samp-dist-total-ms (read-stored-time))
+            
+            
+;             (if (< dist-prev dist-next) {
+;                 (setq p1 (- index-closest 1))
+;                 (setq p2 index-closest)
+;             })
+;         })
+;     )
+    
+;     (var d1 (samp-dist pos (ix samples-nodist p1)))
+;     (var d2 (samp-dist pos (ix samples-nodist p2)))
+;     (var p1-travel (first (ix samples p1)))
+;     (var p2-travel (first (ix samples p2)))
+;     (var c (samp-dist (ix samples-nodist p1) (ix samples-nodist p2)))
+;     (var c1 (/ (- (+ (sq d1) (sq c)) (sq d2)) (* 2 c)))
+;     (var ratio (/ c1 c))
+    
+;     ; Deviation from path
+; ;    (def h (sqrt (- (sq d1) (sq c1))))
+
+;     ; (print-vars '(samp-dist-total-ms))
+    
+;     (+ p1-travel (* ratio (- p2-travel p1-travel)))
+; })
+
 (defun thr-interpolate () {
     (var pos (point6))
     
@@ -115,9 +177,9 @@
     ) (range (length samples-nodist))))
     
     (var dist-last (ix sample-pos-distances 0))
-    (var ind-closest 0)
+    (var index-closest 0)
     
-    (var cnt 0)
+    ; (var cnt 0)
     
     (map (fn (i) {
         (var dist (ix sample-pos-distances i))
@@ -127,8 +189,8 @@
         })
     }) (range (length samples-nodist)))
     
-    (var p1 ind-closest)
-    (var p2 (+ ind-closest 1))
+    (var p1 index-closest)
+    (var p2 (+ index-closest 1))
     
     (cond
         ; First point
@@ -136,8 +198,8 @@
         
         ; Last point
         ((= p1 (- (length samples) 1)) {
-            (setq p1 (- ind-closest 1))
-            (setq p2 ind-closest)
+            (setq p1 (- index-closest 1))
+            (setq p2 index-closest)
         })
         
         ; Somewhere in-between
@@ -146,8 +208,8 @@
             (var dist-next (ix sample-pos-distances (+ index-closest 1)))
             
             (if (< dist-prev dist-next) {
-                (setq p1 (- ind-closest 1))
-                (setq p2 ind-closest)
+                (setq p1 (- index-closest 1))
+                (setq p2 index-closest)
             })
         })
     )
@@ -184,6 +246,19 @@
 
 ;;; Input
 
+(def input-debounce-count 2) ; How many ticks buttons need to be pressed to register.
+
+(defun thr-tick () {
+    (def travel (thr-interpolate))
+    (def thr-input (* (map-range-01 travel 2.0 11.0)))
+
+    (state-set 'thr-input thr-input)
+    (state-set 'kmh kmh)
+    (state-set 'is-connected is-connected)
+    
+    (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
+})
+
 (defun input-tick () {
     (def magn0x-f (lpf magn0x-f (mag-get-x 0)))
     (def magn0y-f (lpf magn0y-f (mag-get-y 0)))
@@ -192,18 +267,8 @@
     (def magn1x-f (lpf magn1x-f (mag-get-x 1)))
     (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
     (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
-        
-    (def travel (thr-interpolate))
-    (def thr-input (* (map-range-01 travel 2.0 11.0)))
-    
-    (state-set 'thr-input thr-input)
-    (state-set 'kmh kmh)
-    (state-set 'is-connected is-connected)
-    
-    (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
-    
+            
     ; Buttons with counters for debouncing
-
     (def btn-adc (get-adc 0))
     ; (print btn-adc)
     (if (< btn-adc 4.0) {
@@ -258,16 +323,16 @@
         })
 
         ; buttons are pressed on release
-        (if (and (>= btn-down 2) (not new-down) (not btn-down-long-fired))
+        (if (and (>= btn-down input-debounce-count) (not new-down) (not btn-down-long-fired))
             (maybe-call (on-down-pressed))
         )
-        (if (and (>= btn-up 2) (not new-up) (not btn-up-long-fired))
+        (if (and (>= btn-up input-debounce-count) (not new-up) (not btn-up-long-fired))
             (maybe-call (on-up-pressed))
         )
-        (if (and (>= btn-left 2) (not new-left) (not btn-left-long-fired))
+        (if (and (>= btn-left input-debounce-count) (not new-left) (not btn-left-long-fired))
             (maybe-call (on-left-pressed))
         )
-        (if (and (>= btn-right 2) (not new-right) (not btn-right-long-fired))
+        (if (and (>= btn-right input-debounce-count) (not new-right) (not btn-right-long-fired))
             (maybe-call (on-right-pressed))
         )
 
@@ -277,18 +342,18 @@
         (def btn-right (if new-right (+ btn-right 1) 0))
         (def btn-up (if new-up (+ btn-up 1) 0))
         
-        (if (!= btn-down 0) {
-            (print-vars '(btn-down))
-        })
-        (if (!= btn-up 0) {
-            (print-vars '(btn-up))
-        })
-        (if (!= btn-left 0) {
-            (print-vars '(btn-left))
-        })
-        (if (!= btn-right 0) {
-            (print-vars '(btn-right))
-        })
+        ; (if (!= btn-down 0) {
+        ;     (print-vars '(btn-down))
+        ; })
+        ; (if (!= btn-up 0) {
+        ;     (print-vars '(btn-up))
+        ; })
+        ; (if (!= btn-left 0) {
+        ;     (print-vars '(btn-left))
+        ; })
+        ; (if (!= btn-right 0) {
+        ;     (print-vars '(btn-right))
+        ; })
 
         (state-set 'down-pressed (!= btn-down 0))
         (state-set 'up-pressed (!= btn-up 0))
@@ -309,19 +374,19 @@
         )
         
         ; long presses fire as soon as possible and not on release
-        (if (and (>= btn-up 2) (>= (secs-since btn-up-start) 1.0) (not btn-up-long-fired)) {
+        (if (and (>= btn-up input-debounce-count) (>= (secs-since btn-up-start) 1.0) (not btn-up-long-fired)) {
             (def btn-up-long-fired true)
             (maybe-call (on-up-long-pressed))
         })
-        (if (and (>= btn-down 2) (>= (secs-since btn-down-start) 1.0) (not btn-down-long-fired)) {
+        (if (and (>= btn-down input-debounce-count) (>= (secs-since btn-down-start) 1.0) (not btn-down-long-fired)) {
             (def btn-down-long-fired true)
             (maybe-call (on-down-long-pressed))
         })
-        (if (and (>= btn-left 2) (>= (secs-since btn-left-start) 1.0) (not btn-left-long-fired)) {
+        (if (and (>= btn-left input-debounce-count) (>= (secs-since btn-left-start) 1.0) (not btn-left-long-fired)) {
             (def btn-left-long-fired true)
             (maybe-call (on-left-long-pressed))
         })
-        (if (and (>= btn-right 2) (>= (secs-since btn-right-start) 1.0) (not btn-right-long-fired)) {
+        (if (and (>= btn-right input-debounce-count) (>= (secs-since btn-right-start) 1.0) (not btn-right-long-fired)) {
             (def btn-right-long-fired true)
             (maybe-call (on-right-long-pressed))
         })

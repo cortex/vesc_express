@@ -311,7 +311,7 @@
 
 (defun vib-play-next-in-queue () {
     (if (!= (length (mutex-get-unsafe vib-queue)) 0) {
-        (block-until (> (secs-since vib-last-play-timestamp) vib-gap-duration-secs))
+        (sleep-until (> (secs-since vib-last-play-timestamp) vib-gap-duration-secs))
         
         (var sequence nil)
         (mutex-update vib-queue (fn (vib-queue) {
