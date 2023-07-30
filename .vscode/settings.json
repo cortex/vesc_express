@@ -20,5 +20,6 @@
         "setix",
         "setq",
         "vmon"
-    ]
+    ],
+    "editor.formatOnType": false
 }
