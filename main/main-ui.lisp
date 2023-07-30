@@ -265,9 +265,6 @@
 (def timer-start-last (systime))
 (def timer-is-active false) ; If the timer is currently counting up
 
-(def gear-min 1)
-(def gear-max 15)
-
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)
 

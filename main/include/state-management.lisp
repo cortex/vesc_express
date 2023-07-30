@@ -16,7 +16,7 @@
     ; Experiment to switch between different ways of displaying the gear number.
     ; 'leading-zero is the default
     ; Valid values: 'justify-right, 'justify-center, 'leading-zero  
-    (cons 'dev-main-gear-justify 'leading-zero)
+    (cons 'dev-main-gear-justify 'justify-center)
     
     ; Whether or not the small soc battery is displayed at the top of the screen.
     (cons 'soc-bar-visible true)

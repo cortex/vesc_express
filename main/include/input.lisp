@@ -1,9 +1,9 @@
 @const-start
 
-; (def gear-ratios (list 0.0 0.5 0.625 0.75 0.875 1.0))
-; (def gear-ratios (list 0.0 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0))
-; (def gear-ratios (list 0.0 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0))
-(def gear-ratios (append '(0) (evenly-place-points 0.2 1.0 15)))
+(def gear-ratios (append '(0) (evenly-place-points 0.3 1.0 10)))
+
+(def gear-min 1)
+(def gear-max 10)
 
 @const-end
 
@@ -125,7 +125,7 @@
     (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 })
 
-(def input-debounce-count 2) ; How many ticks buttons need to be pressed to register.
+(def input-debounce-count 1) ; How many ticks buttons need to be pressed to register.
 
 (defun input-tick () {
     ; Buttons with counters for debouncing
@@ -215,10 +215,10 @@
         ;     (print-vars '(btn-right))
         ; })
 
-        (state-set 'down-pressed (!= btn-down 0))
-        (state-set 'up-pressed (!= btn-up 0))
-        (state-set 'left-pressed (!= btn-left 0))
-        (state-set 'right-pressed (!= btn-right 0))
+        (state-set 'down-pressed (>= btn-down input-debounce-count))
+        (state-set 'up-pressed (>= btn-up input-debounce-count))
+        (state-set 'left-pressed (>= btn-left input-debounce-count))
+        (state-set 'right-pressed (>= btn-right input-debounce-count))
 
         (if (= btn-up 1)
             (def btn-up-start (systime))
