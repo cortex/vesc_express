@@ -432,7 +432,7 @@
     
     (if any-ping-has-failed
         (sleep-ms-or-until 80 (not any-ping-has-failed))
-        (sleep 0.03) ; 10 ms
+        (sleep 0.05) ; 30 ms
     )
 })))
 

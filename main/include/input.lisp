@@ -107,6 +107,14 @@
 ;;; Input
 
 (defun thr-tick () {
+    (def magn0x-f (mag-get-x 0))
+    (def magn0y-f (mag-get-y 0))
+    (def magn0z-f (mag-get-z 0))
+    
+    (def magn1x-f (mag-get-x 1))
+    (def magn1y-f (mag-get-y 1))
+    (def magn1z-f (mag-get-z 1))
+    
     (def travel (thr-interpolate))
     (def thr-input (* (map-range-01 travel 2.0 11.0)))
 
@@ -120,14 +128,6 @@
 (def input-debounce-count 2) ; How many ticks buttons need to be pressed to register.
 
 (defun input-tick () {
-    (def magn0x-f (lpf magn0x-f (mag-get-x 0)))
-    (def magn0y-f (lpf magn0y-f (mag-get-y 0)))
-    (def magn0z-f (lpf magn0z-f (mag-get-z 0)))
-    
-    (def magn1x-f (lpf magn1x-f (mag-get-x 1)))
-    (def magn1y-f (lpf magn1y-f (mag-get-y 1)))
-    (def magn1z-f (lpf magn1z-f (mag-get-z 1)))
-            
     ; Buttons with counters for debouncing
     (def btn-adc (get-adc 0))
     ; (print btn-adc)
