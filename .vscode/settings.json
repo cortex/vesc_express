@@ -13,5 +13,9 @@
         "*.ini-development": "ini",
         "st_types.h": "c",
         "vesc_c_if.h": "c"
-    }
+    },
+    "cSpell.words": [
+        "uart"
+    ],
+    "C_Cpp.loggingLevel": "Debug"
 }

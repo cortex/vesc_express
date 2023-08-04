@@ -1,10 +1,10 @@
-#include "st_types.h"
-#include "vesc_c_if.h"
-
 #include <ctype.h>
 #include <rb.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "st_types.h"
+#include "vesc_c_if.h"
 
 HEADER;
 
@@ -147,7 +147,7 @@ static bool strneql(char *str1, char *str2, unsigned int n) {
     return r;
 }
 
-bool one_of(const char *delims, char c) {
+bool oneof(const char *delims, char c) {
     bool eq = false;
     char curr = delims[0];
     int i = 0;
@@ -167,12 +167,8 @@ bool one_of(const char *delims, char c) {
 
 // Read from uart until one of the characters in delim is found
 // or the length len has been obtained.
-// len must be <= the size of the buffer minus one (to account for the
-// terminating null byte).
-// Doesn't start writing until leading whitspace is passed.
-// If buffer is null, then the characters are only read but not written to
-// buffer.
-static int uart_read_until_trim(char *buffer, const char *delim, int len) {
+// len must be <= the size of the buffer.
+static int uart_read_until(char *buffer, const char *delim, int len) {
     int sleep_count = 0;
     int n = 0;
     bool leading_whitespace = true;
@@ -191,67 +187,15 @@ static int uart_read_until_trim(char *buffer, const char *delim, int len) {
         }
         leading_whitespace = false;
 
-        if (one_of(delim, res)) {
-            if (buffer) {
-                buffer[n] = 0;
-            }
+        if (oneof(delim, res) || n == len - 1) {
+            buffer[n] = 0;
             break;
         }
-        if (buffer) {
-            buffer[n] = (char)res;
-        }
-        if (n == len - 1) {
-            if (buffer) {
-                buffer[n + 1] = 0;
-            }
-            break;
-        }
+        buffer[n] = (char)res;
         n++;
         sleep_count = 0;
     }
-    if (sleep_count == 2000 && buffer) {
-        buffer[n] = 0;
-    }
-    return n;
-}
-
-// Read from uart until one of the characters in delim is found
-// or the length len has been obtained.
-// len must be <= the size of the buffer minus one (to account for the
-// terminating null byte).
-// If buffer is null, then the characters are only read but not stored anywhere.
-static int uart_read_until(char *buffer, const char *delim, int len) {
-    int sleep_count = 0;
-    int n = 0;
-
-    while (n < len && sleep_count < 2000) {
-        if (VESC_IF->should_terminate()) return 0;
-        int res = VESC_IF->uart_read();
-        if (res < 0) {
-            sleep_count++;
-            VESC_IF->sleep_ms(1);
-            continue;
-        }
-
-        if (one_of(delim, res)) {
-            if (buffer) {
-                buffer[n] = 0;
-            }
-            break;
-        }
-        if (buffer) {
-            buffer[n] = (char)res;
-        }
-        if (n == len - 1) {
-            if (buffer) {
-                buffer[n + 1] = 0;
-            }
-            break;
-        }
-        n++;
-        sleep_count = 0;
-    }
-    if (sleep_count == 2000 && buffer) {
+    if (sleep_count == 2000) {
         buffer[n] = 0;
     }
     return n;
@@ -285,7 +229,7 @@ static bool restore_at_if(void) {
     while (VESC_IF->uart_read() >= 0)
         ;  // purge
     uart_write_string("AT\r\n");
-    br = uart_read_until_trim(linebuffer, "\n", 20);
+    br = uart_read_until(linebuffer, "\n", 20);
     if (br > 0 && strneql("OK", linebuffer, 2)) {
         return true;
     }
@@ -298,7 +242,7 @@ static bool restore_at_if(void) {
         while (VESC_IF->uart_read() >= 0)
             ;  // purge
         uart_write_string("AT\r\n");
-        br = uart_read_until_trim(linebuffer, "\n", 20);
+        br = uart_read_until(linebuffer, "\n", 20);
         if (br > 0 && strneql("OK", linebuffer, 2)) {
             return true;
         }
@@ -399,7 +343,7 @@ static void data_recv_fun(char *linebuffer, int size) {
             return;
     }
 
-    int br = uart_read_until_trim(linebuffer, delim, size);
+    int br = uart_read_until(linebuffer, delim, size);
     if (br > 0) {
         if (strneql(response, linebuffer, strlen(response))) {
             int n_bytes = atoi(&linebuffer[data_size_pos]);
@@ -415,7 +359,7 @@ static void data_recv_fun(char *linebuffer, int size) {
                     }
                 }
             }
-            br = uart_read_until_trim(linebuffer, "\n", size);
+            br = uart_read_until(linebuffer, "\n", size);
             if (!strneql("OK", linebuffer, 2)) {
                 d->recv_fails++;
                 restore_at_if();
@@ -473,7 +417,7 @@ static void data_send_fun(char *linebuffer, int size, send_unit_t *su) {
         VESC_IF->uart_write(su->data, su->size);
     }
 
-    int br = uart_read_until_trim(linebuffer, "\n", size);
+    int br = uart_read_until(linebuffer, "\n", size);
     if (br > 0) {
         if (strneql(ok_string, linebuffer, strlen(ok_string))) {
         } else {
@@ -556,12 +500,6 @@ static void thd(void *arg) {
     }
 }
 
-/*
- * HTTP requests
- */
-
-// static
-
 /* **************************************************
  * Extensions
  */
@@ -629,87 +567,21 @@ static lbm_value ext_set_connected(lbm_value *args, lbm_uint argn) {
     return VESC_IF->lbm_enc_sym_true;
 }
 
-// Read line or at most `number` characters.
-// Includes newline character.
-/* signature: (ext-uart-readline dest len) */
+/* signature: (ext-uart-readline string number) */
 static lbm_value ext_uart_readline(lbm_value *args, lbm_uint argn) {
     // VESC_IF->printf("uart_read");
     data *d = (data *)ARG;
     if (!d->paused) {
         return VESC_IF->lbm_enc_sym_nil;
     }
-    if (argn != 2
-        || !(
-            VESC_IF->lbm_is_byte_array(args[0])
-            || VESC_IF->lbm_is_symbol_nil(args[0])
-        )
+    if (argn != 2 || !VESC_IF->lbm_is_byte_array(args[0])
         || !VESC_IF->lbm_is_number(args[1])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    char *response = NULL;
-    if (VESC_IF->lbm_is_byte_array(args[0])) {
-        response = VESC_IF->lbm_dec_str(args[0]);
-    }
+    char *response = VESC_IF->lbm_dec_str(args[0]);
     uint32_t len = VESC_IF->lbm_dec_as_u32(args[1]);
 
     int r = uart_read_until(response, "\n", len);
-    return VESC_IF->lbm_enc_i(r);
-}
-
-// Read line or at most `number` characters, automatically trimming leading
-// whitspace. Includes newline character.
-/* signature: (ext-uart-readline dest len) */
-static lbm_value ext_uart_readline_trim(lbm_value *args, lbm_uint argn) {
-    // VESC_IF->printf("uart_read");
-    data *d = (data *)ARG;
-    if (!d->paused) {
-        return VESC_IF->lbm_enc_sym_nil;
-    }
-    if (argn != 2
-        || !(
-            VESC_IF->lbm_is_byte_array(args[0])
-            || VESC_IF->lbm_is_symbol_nil(args[0])
-        )
-        || !VESC_IF->lbm_is_number(args[1])) {
-        return VESC_IF->lbm_enc_sym_terror;
-    }
-    char *response = NULL;
-    if (VESC_IF->lbm_is_byte_array(args[0])) {
-        response = VESC_IF->lbm_dec_str(args[0]);
-    }
-    uint32_t len = VESC_IF->lbm_dec_as_u32(args[1]);
-
-    int r = uart_read_until_trim(response, "\n", len);
-    return VESC_IF->lbm_enc_i(r);
-}
-
-// Read until encountering any charcater from `delim` or at most `delim`
-// characters.
-// Includes the found delim character.
-/* signature: (ext-uart-read-until dest delim len) */
-static lbm_value ext_uart_read_until(lbm_value *args, lbm_uint argn) {
-    // VESC_IF->printf("uart_read");
-    data *d = (data *)ARG;
-    if (!d->paused) {
-        return VESC_IF->lbm_enc_sym_nil;
-    }
-    if (argn != 3
-        || !(
-            VESC_IF->lbm_is_byte_array(args[0])
-            || VESC_IF->lbm_is_symbol_nil(args[0])
-        )
-        || !VESC_IF->lbm_is_byte_array(args[1])
-        || !VESC_IF->lbm_is_number(args[2])) {
-        return VESC_IF->lbm_enc_sym_terror;
-    }
-    char *response = NULL;
-    if (VESC_IF->lbm_is_byte_array(args[0])) {
-        response = VESC_IF->lbm_dec_str(args[0]);
-    }
-    char *delim = VESC_IF->lbm_dec_str(args[1]);
-    uint32_t len = VESC_IF->lbm_dec_as_u32(args[2]);
-
-    int r = uart_read_until(response, delim, len);
     return VESC_IF->lbm_enc_i(r);
 }
 
@@ -881,10 +753,6 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("ext-unpause", ext_unpause);
     VESC_IF->lbm_add_extension("ext-uart-write", ext_uart_write);
     VESC_IF->lbm_add_extension("ext-uart-readline", ext_uart_readline);
-    VESC_IF->lbm_add_extension(
-        "ext-uart-readline-trim", ext_uart_readline_trim
-    );
-    VESC_IF->lbm_add_extension("ext-uart-read-until", ext_uart_read_until);
     VESC_IF->lbm_add_extension("ext-uart-purge", ext_uart_purge);
     VESC_IF->lbm_add_extension("ext-set-connected", ext_set_connected);
     VESC_IF->lbm_add_extension("ext-get-uuid", ext_get_uuid);
