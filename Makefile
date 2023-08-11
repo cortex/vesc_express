@@ -80,6 +80,8 @@ $(TARGET): $(OBJECTS)
 	$(OBJDUMP) -D $(BUILDDIR)$@.elf > $(BUILDDIR)$@.list
 	$(OBJCOPY) -O binary $(BUILDDIR)$@.elf $(TARGETDIR)$@.bin --gap-fill 0x00
 	$(PYTHON) $(VESC_C_LIB_PATH)/conv.py -f $(TARGETDIR)$@.bin -n $@ > $(TARGETDIR)$@.lisp
+# remove if annoying
+	printf "\a"
 # rm -rf $(BUILDDIR)
 # rm -f $(OBJECTS)
 	

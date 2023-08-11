@@ -12,10 +12,18 @@
     "files.associations": {
         "*.ini-development": "ini",
         "st_types.h": "c",
-        "vesc_c_if.h": "c"
+        "vesc_c_if.h": "c",
+        "types.h": "c",
+        "stddef.h": "c"
     },
     "cSpell.words": [
+        "CAOPEN",
+        "CARECV",
+        "strneq",
         "uart"
     ],
-    "C_Cpp.loggingLevel": "Debug"
+    "C_Cpp.loggingLevel": "Debug",
+    "editor.formatOnType": false,
+    "editor.inlayHints.enabled": "off",
+    "editor.formatOnSave": false
 }

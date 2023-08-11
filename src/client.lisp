@@ -14,6 +14,10 @@
     (= (str-cmp a b n) 0)
 )
 
+(defun ms-since (timestamp) {
+    (* (secs-since timestamp) 1000.0)
+})
+
 ; Returns value or else-value if value is nil
 (defun else (value else-value) 
     (if value value else-value)
@@ -27,7 +31,7 @@
     (print (str-merge "Sent: " command))
     (ext-uart-purge)
     (ext-uart-write command)
-    (sleep 0.1)
+    (sleep 0.01)
     (ext-uart-readline-trim response (- b-size 1))
     (print (str-merge "Response: " response))
     ; (ext-uart-readline response b-size)
@@ -223,7 +227,17 @@
     ;     'ok
     ;     'error
     ; )
-    (if (not (at-command "ATE0\r\n" "OK" 100)) {
+    (ext-uart-purge)
+    (print "Sent: ATE0\r\n")
+    (ext-uart-write "ATE0\r\n")
+    (sleep 0.01)
+    (var response (array-create 100))
+    (ext-uart-readline-trim response 99)
+    (print (str-merge "Response: " response))
+    (if (and
+        (not (str-eq response "ATE0" 4))
+        (not (str-eq response "OK" 2))
+    ) {
         (return false)
     })
     
@@ -368,7 +382,7 @@
 })
 
 (defun print-uart (buf-size) {
-    (print (uart-readline buf-size))
+    (print (uart-readline-trim buf-size))
 })
 
 (defunret tcp-connect (address port) {
@@ -432,6 +446,12 @@
 (defun connect-host () {
     (at-command "AT+CACLOSE=0\r\n" "" 100)
     (at-command "AT+CAOPEN=0,0,\"TCP\",\"lindboard-staging.azurewebsites.net\",80\r\n" "" 100)
+    "AT+CAOPEN=0,0,\"TCP\",\"lindboard-staging.azurewebsites.net\",80\r\n"
+    (status)
+})
+
+(defun disconnect () {
+    (at-command "AT+CACLOSE=0\r\n" "OK" 100)
 })
 
 ; This works!
@@ -455,7 +475,7 @@
     ; (ext-uart-purge)
     (ext-uart-write string)
     (sleep 0.1)
-    (print (uart-readline 100))
+    (print (uart-readline-trim 100))
     ; (uart-write )
 })
 
@@ -517,8 +537,41 @@
     response
 })
 
+; (defunret tcp-recv () {
+;     (var segments (list))
+;     (var result true)
+;     (loopwhile result {
+;         (var segment (tcp-recv-single 100))
+;         (print segment)
+;         (if (> (str-len segment) 0) {
+;             (setq segments (cons segment segments))
+;         } {
+;             (setq result false)
+;         })
+;     })
+    
+;     (apply str-merge (reverse segments))
+; })
+
+(defunret tcp-recv () {
+    (var segments (list))
+    (var result true)
+    (loopwhile result {
+        (var segment (tcp-recv-single 20))
+        ; (print segment)
+        ; (print (type-of segment))
+        (if (> (str-len segment) 0) {
+            (setq segments (cons segment segments))
+        } {
+            (setq result false)
+        })
+    })
+    
+    (apply str-merge (reverse segments))
+})
+
 ; works! :D
-(defunret do-request () {
+(defunret do-request-lisp () {
     (connect-host)
     (send-tcp ping-http-request)
     (if (not (wait-for-recv-tcp 10)) {
@@ -530,6 +583,142 @@
     (print (recv-tcp))
     
     true
+})
+
+(defunret do-request () {
+    (var start (systime))
+    (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
+        (print "tcp-connect-host failed")
+        (return false)
+    })
+    (print (to-str-delim ""
+        "tcp-connect-host: "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
+    (var ms-tcp-connect-host (ms-since start))
+    (var start (systime))
+    
+    (if (not (tcp-is-connected)) {
+        (print "tcp connection wasn't established correctly")
+        (return false)
+    })
+    
+    (print (to-str-delim ""
+        "tcp-is-connected: "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
+    (var ms-tcp-is-connected (ms-since start))
+    (var start (systime))
+
+    
+    (tcp-send-str ping-http-request)
+    
+    (print (to-str-delim ""
+        "tcp-send-str: "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
+    (var ms-tcp-send-str (ms-since start))
+    (var start (systime))
+
+
+    (if (not (tcp-wait-for-recv 10)) {
+        (print "couldn't find recv notification")
+        (return false)
+    })
+    
+    (print (to-str-delim ""
+        "tcp-wait-for-recv: "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
+    (var ms-tcp-wait-for-recv (ms-since start))
+    (var start (systime))
+
+    (gc)
+    (var data (tcp-recv))
+    
+    (print (to-str-delim ""
+        "tcp-recv: "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
+    (var ms-tcp-recv (ms-since start))
+    (var start (systime))
+    
+    ; (print (to-str-delim ""
+    ;     "tcp-connect-host: "
+    ;     (str-from-n ms-tcp-connect-host)
+    ;     "ms"
+    ; ))
+    ; (print (to-str-delim ""
+    ;     "tcp-is-connected: "
+    ;     (str-from-n ms-tcp-is-connected)
+    ;     "ms"
+    ; ))
+    ; (print (to-str-delim ""
+    ;     "tcp-send-str: "
+    ;     (str-from-n ms-tcp-send-str)
+    ;     "ms"
+    ; ))
+    ; (print (to-str-delim ""
+    ;     "tcp-wait-for-recv: "
+    ;     (str-from-n ms-tcp-wait-for-recv)
+    ;     "ms"
+    ; ))
+    ; (print (to-str-delim ""
+    ;     "tcp-recv: "
+    ;     (str-from-n ms-tcp-recv)
+    ;     "ms"
+    ; ))
+
+    (print data)
+
+    true
+})
+
+(defunret do-request-ret () {
+    (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
+        (print "tcp-connect-host failed")
+        (return false)
+    })
+    
+    (if (not (tcp-is-connected)) {
+        (print "tcp connection wasn't established correctly")
+        (return false)
+    })
+    
+    (tcp-send-str ping-http-request)
+
+    (if (not (tcp-wait-for-recv 10)) {
+        (print "couldn't find recv notification")
+        (return false)
+    })
+    
+    ; (print )
+
+    (tcp-recv)
+})
+
+(defunret test-do-request () {    
+    (print "doing 10 requests... ---------------------------")
+    (looprange i 0 10 {
+        (gc)
+        (var result (do-request-ret))
+        (print (str-merge
+            "("
+            (to-str i)
+            "): "
+            (to-str result)
+        ))
+        (if (not result) {
+            (break)
+        })
+    })
+    (print "done")
+    
 })
 
 @const-end
