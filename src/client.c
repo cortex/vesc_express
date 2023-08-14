@@ -29,6 +29,8 @@ HEADER;
 #define AT_READ_TIMEOUT_MS 600
 #define AT_FIND_RESPONSE_TRIES 2
 
+#define TCP_BUFFER_SIZE 256
+
 // INT32_MAX = 2147483647
 #define INT32_MAX_POW_10 1000000000
 
@@ -54,6 +56,10 @@ typedef struct {
     int mode;
     //  void (*data_recv_fun)(char *, int);
     //  void (*data_send_fun)(char *, int, send_unit_t *);
+    
+    size_t recv_size;
+    bool recv_filled;
+    char recv_buffer[TCP_BUFFER_SIZE];
 } data;
 
 // Called when code is stopped
@@ -1109,15 +1115,15 @@ static lbm_value ext_uart_write(lbm_value *args, lbm_uint argn) {
     return VESC_IF->lbm_enc_sym_true;
 }
 
-/* signature: (ext-set-connected) */
-static lbm_value ext_set_connected(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
+// /* signature: (ext-set-connected) */
+// static lbm_value ext_set_connected(lbm_value *args, lbm_uint argn) {
+//     (void)args;
+//     (void)argn;
+//     data *d = (data *)ARG;
 
-    d->tcp_connected = true;
-    return VESC_IF->lbm_enc_sym_true;
-}
+//     d->tcp_connected = true;
+//     return VESC_IF->lbm_enc_sym_true;
+// }
 
 // Read line or at most `number` characters.
 // Includes newline character.
@@ -1248,71 +1254,71 @@ static lbm_value ext_get_uuid(lbm_value *args, lbm_uint argn) {
 //     return VESC_IF->lbm_enc_sym_nil;
 // }
 
-/* signature: (ext-is-connected) */
-static lbm_value ext_is_connected(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
+// /* signature: (ext-is-connected) */
+// static lbm_value ext_is_connected(lbm_value *args, lbm_uint argn) {
+//     (void)args;
+//     (void)argn;
+//     data *d = (data *)ARG;
 
-    if (d->tcp_connected) {
-        return VESC_IF->lbm_enc_sym_true;
-    }
-    return VESC_IF->lbm_enc_sym_nil;
-}
+//     if (d->tcp_connected) {
+//         return VESC_IF->lbm_enc_sym_true;
+//     }
+//     return VESC_IF->lbm_enc_sym_nil;
+// }
 
-/* signature: (ext-is-paused) */
-static lbm_value ext_is_paused(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
+// /* signature: (ext-is-paused) */
+// static lbm_value ext_is_paused(lbm_value *args, lbm_uint argn) {
+//     (void)args;
+//     (void)argn;
+//     data *d = (data *)ARG;
 
-    if (d->paused) {
-        return VESC_IF->lbm_enc_sym_true;
-    }
-    return VESC_IF->lbm_enc_sym_nil;
-}
+//     if (d->paused) {
+//         return VESC_IF->lbm_enc_sym_true;
+//     }
+//     return VESC_IF->lbm_enc_sym_nil;
+// }
 
-/* signature: (ext-send-fails) */
-static lbm_value ext_send_fails(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
+// /* signature: (ext-send-fails) */
+// static lbm_value ext_send_fails(lbm_value *args, lbm_uint argn) {
+//     (void)args;
+//     (void)argn;
+//     data *d = (data *)ARG;
 
-    return VESC_IF->lbm_enc_u(d->send_fails);
-}
+//     return VESC_IF->lbm_enc_u(d->send_fails);
+// }
 
-/* signature: (ext-recv-fails) */
-static lbm_value ext_recv_fails(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
+// /* signature: (ext-recv-fails) */
+// static lbm_value ext_recv_fails(lbm_value *args, lbm_uint argn) {
+//     (void)args;
+//     (void)argn;
+//     data *d = (data *)ARG;
 
-    return VESC_IF->lbm_enc_u(d->recv_fails);
-}
+//     return VESC_IF->lbm_enc_u(d->recv_fails);
+// }
 
-/* signature: (ext-sim7000-mode) */
-static lbm_value ext_sim7000_mode(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
-    d->mode = MODE_SIM7000;
-    // d->data_send_fun = sim7000_data_send_fun;
-    // d->data_recv_fun = sim7000_data_recv_fun;
+// /* signature: (ext-sim7000-mode) */
+// static lbm_value ext_sim7000_mode(lbm_value *args, lbm_uint argn) {
+//     (void)args;
+//     (void)argn;
+//     data *d = (data *)ARG;
+//     d->mode = MODE_SIM7000;
+//     // d->data_send_fun = sim7000_data_send_fun;
+//     // d->data_recv_fun = sim7000_data_recv_fun;
 
-    return VESC_IF->lbm_enc_sym_true;
-}
+//     return VESC_IF->lbm_enc_sym_true;
+// }
 
-/* signature: (ext-sim7070-mode) */
-static lbm_value ext_sim7070_mode(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
-    d->mode = MODE_SIM7070;
-    // d->data_send_fun = sim7070_data_send_fun;
-    // d->data_recv_fun = sim7070_data_recv_fun;
+// /* signature: (ext-sim7070-mode) */
+// static lbm_value ext_sim7070_mode(lbm_value *args, lbm_uint argn) {
+//     (void)args;
+//     (void)argn;
+//     data *d = (data *)ARG;
+//     d->mode = MODE_SIM7070;
+//     // d->data_send_fun = sim7070_data_send_fun;
+//     // d->data_recv_fun = sim7070_data_recv_fun;
 
-    return VESC_IF->lbm_enc_sym_true;
-}
+//     return VESC_IF->lbm_enc_sym_true;
+// }
 
 static lbm_value ext_pwr_key(lbm_value *args, lbm_uint argn) {
     if (argn == 1 && VESC_IF->lbm_is_number(args[0])) {
@@ -1409,10 +1415,33 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
     }
 
     size_t size = VESC_IF->lbm_dec_as_u32(args[0]) + 1;
+    
+    if (size > TCP_BUFFER_SIZE) {
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
+
+    data *d = (data *)ARG;
 
     char str[size];
     str[0] = '\0';
-    ssize_t len = tcp_recv(str, size);
+    ssize_t len;
+
+    // bool used_buffered_result = false; 
+    if (d->recv_size != 0) {
+        d->recv_size = 0;
+        // used_buffered_result = true;
+
+        if (d->recv_size > size) {
+            return VESC_IF->lbm_enc_sym_eerror;
+        }
+
+        memcpy(str, d->recv_buffer, d->recv_size);
+        len = d->recv_size - 1;
+    }
+    else {
+        len = tcp_recv(str, size);
+    }
+
     // VESC_IF->printf("returned len: %d, str: '%s'", len, str);
     if (len == -1) {
         return VESC_IF->lbm_enc_sym_eerror;
@@ -1421,6 +1450,10 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
     lbm_value result_str_lbm;
     if (!VESC_IF->lbm_create_byte_array(&result_str_lbm, len + 1)) {
         VESC_IF->printf("memory error, create_byte_array failed");
+        
+        d->recv_size = len + 1;
+        memcpy(d->recv_buffer, str, len + 1);
+        
         return VESC_IF->lbm_enc_sym_merror;
     }
     // VESC_IF->printf("after lbm_create_byte_array");
@@ -1542,6 +1575,8 @@ INIT_FUN(lib_info *info) {
     d->send_fails = 0;
     d->recv_fails = 0;
     d->mode = MODE_NONE;
+    d->recv_filled = false;
+    d->recv_size = 0;
 
     VESC_IF->uart_start(115200, false);
     VESC_IF->lbm_add_extension("ext-pause", ext_pause);
