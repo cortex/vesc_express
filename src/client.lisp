@@ -409,7 +409,8 @@
 ;     ) "+CASEND: 0")
 ; })
 
-(def ping-http-request "GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: close\r\n\r\n")
+(def ping-http-request "GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: Close\r\n\r\n")
+(def ping-http-request-keep-alive "GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: Keep-Alive\r\nKeep-Alive: max=10\r\n\r\n")
 ; length: 92 chars
 
 (defunret test-connection () {
@@ -557,7 +558,7 @@
     (var segments (list))
     (var result true)
     (loopwhile result {
-        (var segment (tcp-recv-single 20))
+        (var segment (tcp-recv-single 100))
         ; (print segment)
         ; (print (type-of segment))
         (if (> (str-len segment) 0) {
@@ -599,13 +600,13 @@
     (var ms-tcp-connect-host (ms-since start))
     (var start (systime))
     
-    (if (not (tcp-is-connected)) {
+    (if (not (tcp-wait-until-connected 1000)) {
         (print "tcp connection wasn't established correctly")
         (return false)
     })
     
     (print (to-str-delim ""
-        "tcp-is-connected: "
+        "tcp-wait-until-connected: "
         (str-from-n (ms-since start))
         "ms"
     ))
@@ -680,17 +681,17 @@
 })
 
 (defunret do-request-ret () {
-    (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
-        (print "tcp-connect-host failed")
-        (return false)
-    })
+    ; (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
+    ;     (print "tcp-connect-host failed")
+    ;     (return false)
+    ; })
     
-    (if (not (tcp-is-connected)) {
+    (if (not (tcp-wait-until-connected 1000)) {
         (print "tcp connection wasn't established correctly")
         (return false)
     })
     
-    (tcp-send-str ping-http-request)
+    (tcp-send-str ping-http-request-keep-alive)
 
     (if (not (tcp-wait-for-recv 10)) {
         (print "couldn't find recv notification")
@@ -704,6 +705,11 @@
 
 (defunret test-do-request () {    
     (print "doing 10 requests... ---------------------------")
+    (var start (systime))
+    (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
+        (print "tcp-connect-host failed")
+        (return false)
+    })
     (looprange i 0 10 {
         (gc)
         (var result (do-request-ret))
@@ -717,7 +723,11 @@
             (break)
         })
     })
-    (print "done")
+    (print (to-str-delim ""
+        "done (avg time: "
+        (str-from-n (* (/ (secs-since start) 10.0) 1000.0))
+        "ms)"
+    ))
     
 })
 

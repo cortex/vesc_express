@@ -253,6 +253,16 @@ bool one_of(const char *delims, char c) {
     return eq;
 }
 
+static inline uint32_t time_now() { return VESC_IF->timer_time_now(); }
+
+static inline float time_secs_since(const uint32_t timestamp) {
+    return VESC_IF->timer_seconds_elapsed_since(timestamp);
+}
+
+static inline float time_ms_since(const uint32_t timestamp) {
+    return VESC_IF->timer_seconds_elapsed_since(timestamp) * 1000.0;
+}
+
 /* **************************************************
  * LBM UTILS
  */
@@ -846,6 +856,33 @@ static bool tcp_is_connected() {
 }
 
 /**
+ * Wait until a tcp connection has been established, or until the specificed
+ * amount of milliseconds have passed.
+ *
+ * \param timeout_ms How many milliseconds to wait until considering the tcp
+ * connection as not established. This is exact, taking the execution time into
+ * account (in comparison to many other functions with a timeout_ms
+ * argument...).
+ *
+ * \return bool indicating if `tcp_is_connected` returned true at any point in
+ * the specified period.
+ */
+bool tcp_wait_until_connected(const unsigned int timeout_ms) {
+    const float timeout_s = ((float)timeout_ms / 1000.0);
+
+    uint32_t start = VESC_IF->timer_time_now();
+    while (VESC_IF->timer_seconds_elapsed_since(start) < timeout_s) {
+        if (tcp_is_connected()) {
+            return true;
+        }
+
+        VESC_IF->sleep_ms(10);
+    }
+
+    return false;
+}
+
+/**
  * \return bool indicating if operation was successful.
  */
 static bool tcp_disconnect() {
@@ -905,6 +942,7 @@ static bool tcp_connect_host(const char *hostname, const uint16_t port) {
     //     return false;
     // }
     if (!at_find_response("+CAOPEN: 0,", AT_READ_TIMEOUT_MS)) {
+        VESC_IF->printf("failed to find '+CAOPEN: 0,'");
         return false;
     }
     char found = 0;
@@ -935,12 +973,17 @@ static bool tcp_send_str(const char *str) {
     size_t len = strlen(str);
     char len_str[int_base10_str_len(len) + 1];
     int_to_ascii(len, len_str, 10);
-    // VESC_IF->printf("len_str: '%s'\n", len_str);
 
-    // uart_purge();
     uart_write_string("AT+CASEND=0,");
     uart_write_string(len_str);
     uart_write_string("\r\n");
+
+    // this seems like enough time, might need more though...
+    VESC_IF->sleep_ms(10);
+
+    // It seems safe to write send string before the modem has responded with
+    // the prompt message.
+    uart_write_string(str);
 
     // expected response: '> \r'
     char response[4];
@@ -950,13 +993,6 @@ static bool tcp_send_str(const char *str) {
         return false;
     }
 
-    uart_write_string(str);
-
-    // uart_read_until_trim(response, "\n", 3, AT_READ_TIMEOUT_MS);
-    // if (!strneq(response, "OK", 2)) {
-    //     VESC_IF->printf("invalid response: '%s' (expect: 'OK')\n", response);
-    //     return false;
-    // }
     if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
         return false;
     }
@@ -1353,6 +1389,20 @@ static lbm_value ext_tcp_is_connected(lbm_value *args, lbm_uint argn) {
 }
 
 /**
+ * signature: (tcp-wait-until-connected timeout-ms)
+ */
+static lbm_value ext_tcp_wait_until_connected(lbm_value *args, lbm_uint argn) {
+    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    unsigned int timeout_ms = VESC_IF->lbm_dec_as_u32(args[0]);
+    bool result = tcp_wait_until_connected(timeout_ms);
+
+    return lbm_enc_bool(result);
+}
+
+/**
  * signature: (tcp-disconnect hostname port)
  */
 static lbm_value ext_tcp_disconnect(lbm_value *args, lbm_uint argn) {
@@ -1600,6 +1650,9 @@ INIT_FUN(lib_info *info) {
     // VESC_IF->lbm_add_extension("ext-sim7070-mode", ext_sim7070_mode);
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
     VESC_IF->lbm_add_extension("tcp-is-connected", ext_tcp_is_connected);
+    VESC_IF->lbm_add_extension(
+        "tcp-wait-until-connected", ext_tcp_wait_until_connected
+    );
     VESC_IF->lbm_add_extension("tcp-disconnect", ext_tcp_disconnect);
     VESC_IF->lbm_add_extension("tcp-connect-host", ext_tcp_connect_host);
     VESC_IF->lbm_add_extension("tcp-send-str", ext_tcp_send_str);
