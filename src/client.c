@@ -56,7 +56,7 @@ typedef struct {
     int mode;
     //  void (*data_recv_fun)(char *, int);
     //  void (*data_send_fun)(char *, int, send_unit_t *);
-    
+
     size_t recv_size;
     bool recv_filled;
     char recv_buffer[TCP_BUFFER_SIZE];
@@ -512,7 +512,7 @@ static const char *at_find_of_responses(
             first_response, responses[0]
         );
     }
-    
+
     return false;
 }
 
@@ -802,7 +802,8 @@ static void thd(void *arg) {
 
 // TODO: This fails sometimes, because there's sometimes a gap between calling
 // +CAOPEN and +CASTATE reporting the connection as open. It should instead try
-// calling +CASTATE repeatedly a set number of times until it reports it as open.
+// calling +CASTATE repeatedly a set number of times until it reports it as
+// open.
 static bool tcp_is_connected() {
     const char *command = "AT+CASTATE?\r\n";
 
@@ -1022,7 +1023,9 @@ static ssize_t tcp_recv(char *dest, size_t dest_size) {
     uart_read_until(dest, "", receive_len, AT_READ_TIMEOUT_MS);
     // VESC_IF->printf("response (dest): %s", dest);
     if (AT_DEBUG_LOG) {
-        VESC_IF->printf("received len: %u (actual len: %u)", receive_len, strlen(dest));
+        VESC_IF->printf(
+            "received len: %u (actual len: %u)", receive_len, strlen(dest)
+        );
     }
 
     if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
@@ -1415,7 +1418,7 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
     }
 
     size_t size = VESC_IF->lbm_dec_as_u32(args[0]) + 1;
-    
+
     if (size > TCP_BUFFER_SIZE) {
         return VESC_IF->lbm_enc_sym_eerror;
     }
@@ -1426,7 +1429,7 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
     str[0] = '\0';
     ssize_t len;
 
-    // bool used_buffered_result = false; 
+    // bool used_buffered_result = false;
     if (d->recv_size != 0) {
         d->recv_size = 0;
         // used_buffered_result = true;
@@ -1437,8 +1440,7 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
 
         memcpy(str, d->recv_buffer, d->recv_size);
         len = d->recv_size - 1;
-    }
-    else {
+    } else {
         len = tcp_recv(str, size);
     }
 
@@ -1450,10 +1452,10 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
     lbm_value result_str_lbm;
     if (!VESC_IF->lbm_create_byte_array(&result_str_lbm, len + 1)) {
         VESC_IF->printf("memory error, create_byte_array failed");
-        
+
         d->recv_size = len + 1;
         memcpy(d->recv_buffer, str, len + 1);
-        
+
         return VESC_IF->lbm_enc_sym_merror;
     }
     // VESC_IF->printf("after lbm_create_byte_array");
@@ -1465,7 +1467,7 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
     char *result_str = VESC_IF->lbm_dec_str(result_str_lbm);
     memcpy(result_str, str, len + 1);
     result_str[len] = '\0';
-    
+
     // VESC_IF->printf("before return :)");
 
     return result_str_lbm;
@@ -1508,7 +1510,6 @@ static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
     (void)args;
     (void)argn;
-
 
     return VESC_IF->lbm_enc_sym_merror;
 
