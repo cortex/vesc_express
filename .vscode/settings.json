@@ -26,5 +26,6 @@
     "C_Cpp.loggingLevel": "Debug",
     "editor.formatOnType": false,
     "editor.inlayHints.enabled": "off",
-    "editor.formatOnSave": false
+    "editor.formatOnSave": false,
+    "C_Cpp.intelliSenseEngine": "Tag Parser"
 }

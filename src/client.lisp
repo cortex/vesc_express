@@ -573,6 +573,7 @@
 
 ; works! :D
 (defunret do-request-lisp () {
+    (var start (systime))
     (connect-host)
     (send-tcp ping-http-request)
     (if (not (wait-for-recv-tcp 10)) {
@@ -582,11 +583,17 @@
     
     ; (print (recv-single))
     (print (recv-tcp))
+    (print (to-str-delim ""
+        "Took "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
     
     true
 })
 
 (defunret do-request () {
+    (var request-start (systime))
     (var start (systime))
     (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
         (print "tcp-connect-host failed")
@@ -676,6 +683,12 @@
     ; ))
 
     (print data)
+    
+    (print (to-str-delim ""
+        "Took "
+        (str-from-n (ms-since request-start))
+        "ms"
+    ))
 
     true
 })

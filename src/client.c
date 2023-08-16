@@ -26,6 +26,8 @@ HEADER;
 #define PWR_GPIO 8
 #define PWR_PORT GPIOB
 
+// #define AT_DEBUG_LOG
+#define AT_PURGE_TIMEOUT_MS 5
 #define AT_READ_TIMEOUT_MS 600
 #define AT_FIND_RESPONSE_TRIES 2
 
@@ -80,8 +82,8 @@ static void stop(void *arg) {
  * UTILS
  */
 
-#define MIN(a, b) (a) < (b) ? (a) : (b)
-#define MAX(a, b) (a) >= (b) ? (a) : (b)
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) >= (b) ? (a) : (b))
 
 void swap(char *x, char *y) {
     char t = *x;
@@ -391,20 +393,81 @@ static bool uart_read_timeout(char *res, int timeout_ms) {
     return false;
 }
 
-// static void uart_purge() {
-//     VESC_IF->sleep_ms(AT_READ_TIMEOUT_MS);
+/**
+ * Read uart until no response has been found and the specified duration has
+ * passed.
+ *
+ * \param timeout_ms The duration that to search for, in milliseconds. If a
+ * string is being read while this timer runs out, that string will be read,
+ * until no more characters are found.
+ */
+static void uart_purge(const unsigned int timeout_ms) {
+    // while (true) {
+    //     if (VESC_IF->uart_read() < 0) {
+    //         uint32_t start = time_now();
+    //         bool response_found = false;
+    //         while ((unsigned int)time_ms_since(start) < timeout_ms) {
+    //             if (VESC_IF->uart_read() >= 0) {
+    //                 response_found = true;
+    //                 break;
+    //             }
 
-//     while (VESC_IF->uart_read() >= 0) {
-//     }
-// }
+    //             VESC_IF->sleep_ms(1);
+    //         }
+
+    //         if (!response_found) {
+    //             break;
+    //         }
+    //     }
+    // }
+    uint32_t start = time_now();
+
+    int read_char = -1;
+
+    while (read_char >= 0 || (unsigned int)time_ms_since(start) < timeout_ms) {
+        read_char = VESC_IF->uart_read();
+        if (read_char < 0) {
+            VESC_IF->sleep_ms(1);
+        }
+    }
+
+#ifdef AT_DEBUG_LOG
+    VESC_IF->printf(
+        "Purging took %fms", (double)time_ms_since(start)
+    );
+#endif
+}
 
 /* **************************************************
  * AT functions
  */
 
-#define AT_DEBUG_LOG false  // true or false
+static bool at_check_response_immediate(
+    const char *expect, const int timeout_ms
+) {
+    size_t len = strlen(expect);
+    char response[len + 1];
 
-static bool at_find_response(const char *expect, const int timeout_ms) {
+    uart_read_until_trim(response, "\n", len, timeout_ms);
+
+    if (strneq(response, expect, len)) {
+#ifdef AT_DEBUG_LOG
+        VESC_IF->printf("found response: '%s'", response);
+#endif
+        return true;
+    }
+
+#ifdef AT_DEBUG_LOG
+    VESC_IF->printf(
+        "incorrect response found: '%s' (expect: '%s')\n", response, expect
+    );
+#endif
+    return false;
+}
+
+static bool at_find_response(
+    const char *expect, const int timeout_ms, bool report_errors
+) {
     static const char error[] = "ERROR";
     size_t error_index = 0;
 
@@ -413,7 +476,8 @@ static bool at_find_response(const char *expect, const int timeout_ms) {
     bool first = true;
     char response[len + 1];
     char first_response[len + 1];
-    for (size_t i = 1; i <= AT_FIND_RESPONSE_TRIES; i++) {
+    size_t i;
+    for (i = 1; i <= AT_FIND_RESPONSE_TRIES; i++) {
         int read_len = uart_read_until_trim(response, "\n", len, timeout_ms);
 
         if (first) {
@@ -422,9 +486,9 @@ static bool at_find_response(const char *expect, const int timeout_ms) {
         }
 
         if (strneq(response, expect, len)) {
-            if (AT_DEBUG_LOG) {
-                VESC_IF->printf("found response: '%s'", response);
-            }
+#ifdef AT_DEBUG_LOG
+            VESC_IF->printf("found response: '%s'", response);
+#endif
             return true;
         }
 
@@ -434,28 +498,33 @@ static bool at_find_response(const char *expect, const int timeout_ms) {
             error_index += error_search_len;
 
             if (error_index >= 5) {
-                VESC_IF->printf(
-                    "found 'ERROR' response (expect: '%s')", expect
-                );
+                if (report_errors) {
+                    VESC_IF->printf(
+                        "found 'ERROR' response (expect: '%s')", expect
+                    );
+                }
                 return false;
             }
         } else {
             error_index = 0;
         }
 
-        // VESC_IF->printf("found wrong response: '%s'", response);
+#ifdef AT_DEBUG_LOG
+        VESC_IF->printf("found wrong response: '%s'", response);
+#endif
 
         if (read_len != 0) {
             i = 0;
         }
     }
 
-    if (AT_DEBUG_LOG) {
-        VESC_IF->printf(
-            "response not found, first was: '%s' (expect: '%s')\n",
-            first_response, expect
-        );
-    }
+#ifdef AT_DEBUG_LOG
+    VESC_IF->printf(
+        "response not found, first was: '%s' (expect: '%s')\n", first_response,
+        expect
+    );
+    VESC_IF->printf("i: %u", i);
+#endif
 
     return false;
 }
@@ -487,9 +556,9 @@ static const char *at_find_of_responses(
 
         for (size_t j = 0; j < count; j++) {
             if (strneq(response, responses[j], strlen(responses[j]))) {
-                if (AT_DEBUG_LOG) {
-                    VESC_IF->printf("found response: '%s'", responses[j]);
-                }
+#ifdef AT_DEBUG_LOG
+                VESC_IF->printf("found response: '%s'", responses[j]);
+#endif
                 return responses[j];
             }
         }
@@ -516,12 +585,12 @@ static const char *at_find_of_responses(
         }
     }
 
-    if (AT_DEBUG_LOG) {
-        VESC_IF->printf(
-            "response not found, first was: '%s' (expect[0]: '%s')\n",
-            first_response, responses[0]
-        );
-    }
+#ifdef AT_DEBUG_LOG
+    VESC_IF->printf(
+        "response not found, first was: '%s' (expect[0]: '%s')\n",
+        first_response, responses[0]
+    );
+#endif
 
     return false;
 }
@@ -810,15 +879,10 @@ static void thd(void *arg) {
  * TCP library
  */
 
-// TODO: This fails sometimes, because there's sometimes a gap between calling
-// +CAOPEN and +CASTATE reporting the connection as open. It should instead try
-// calling +CASTATE repeatedly a set number of times until it reports it as
-// open.
 static bool tcp_is_connected() {
-    const char *command = "AT+CASTATE?\r\n";
+    uart_purge(AT_PURGE_TIMEOUT_MS);
 
-    // uart_purge();
-    uart_write_string(command);
+    uart_write_string("AT+CASTATE?\r\n");
 
     // ex: +CASTATE: 0,1\r
     // char response[15];
@@ -838,7 +902,7 @@ static bool tcp_is_connected() {
     if (response == responses[0]) {
         char result = VESC_IF->uart_read();
         if (result != '1') {
-            if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
+            if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
                 VESC_IF->printf("couldn't find final 'OK' response");
                 return false;
             }
@@ -847,7 +911,7 @@ static bool tcp_is_connected() {
         }
     }
 
-    if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
+    if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
         VESC_IF->printf("couldn't find final 'OK' response");
         return false;
     }
@@ -887,6 +951,8 @@ bool tcp_wait_until_connected(const unsigned int timeout_ms) {
  */
 static bool tcp_disconnect() {
     // uart_purge();
+    uart_purge(AT_PURGE_TIMEOUT_MS);
+
     uart_write_string("AT+CACLOSE=0\r\n");
 
     // char response[16];
@@ -894,7 +960,7 @@ static bool tcp_disconnect() {
     // if (!strneq(response, "OK", 2)) {
     //     return false;
     // }
-    if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
+    if (!at_find_response("OK", AT_READ_TIMEOUT_MS, false)) {
         return false;
     }
 
@@ -924,6 +990,12 @@ static bool tcp_connect_host(const char *hostname, const uint16_t port) {
     int_to_ascii((int)port, port_str, 10);
     port_str[5] = '\0';
 
+    // uint32_t start = time_now();
+    uart_purge(AT_PURGE_TIMEOUT_MS);
+    // at_find_response("OK", AT_READ_TIMEOUT_MS);
+    // VESC_IF->printf("Searching for extra 'OK' took %fms",
+    // (double)time_ms_since(start));
+
     // uart_purge();
     uart_write_string("AT+CAOPEN=0,0,\"TCP\",\"");
     uart_write_string(hostname);
@@ -941,7 +1013,7 @@ static bool tcp_connect_host(const char *hostname, const uint16_t port) {
     //     );
     //     return false;
     // }
-    if (!at_find_response("+CAOPEN: 0,", AT_READ_TIMEOUT_MS)) {
+    if (!at_find_response("+CAOPEN: 0,", AT_READ_TIMEOUT_MS, true)) {
         VESC_IF->printf("failed to find '+CAOPEN: 0,'");
         return false;
     }
@@ -957,7 +1029,7 @@ static bool tcp_connect_host(const char *hostname, const uint16_t port) {
         return false;
     }
 
-    if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
+    if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
         return false;
     }
 
@@ -974,6 +1046,8 @@ static bool tcp_send_str(const char *str) {
     char len_str[int_base10_str_len(len) + 1];
     int_to_ascii(len, len_str, 10);
 
+    uart_purge(AT_PURGE_TIMEOUT_MS);
+    
     uart_write_string("AT+CASEND=0,");
     uart_write_string(len_str);
     uart_write_string("\r\n");
@@ -986,14 +1060,17 @@ static bool tcp_send_str(const char *str) {
     uart_write_string(str);
 
     // expected response: '> \r'
-    char response[4];
-    uart_read_until_trim(response, "\n", 3, AT_READ_TIMEOUT_MS);
-    if (!strneq(response, "> ", 2)) {
-        VESC_IF->printf("invalid response: '%s' (expect: '> ')\n", response);
+    if (!at_check_response_immediate("> ", AT_READ_TIMEOUT_MS)) {
         return false;
     }
+    // char response[4];
+    // uart_read_until_trim(response, "\n", 3, AT_READ_TIMEOUT_MS);
+    // if (!strneq(response, "> ", 2)) {
+    //     VESC_IF->printf("invalid response: '%s' (expect: '> ')\n", response);
+    //     return false;
+    // }
 
-    if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
+    if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
         return false;
     }
 
@@ -1018,7 +1095,7 @@ static ssize_t tcp_recv(char *dest, size_t dest_size) {
     char capacity_str[capacity_str_len + 1];
     int_to_ascii(capacity, capacity_str, 10);
 
-    // uart_purge();
+    uart_purge(AT_PURGE_TIMEOUT_MS);
     uart_write_string("AT+CARECV=0,");
     uart_write_string(capacity_str);
     uart_write_string("\r\n");
@@ -1034,7 +1111,7 @@ static ssize_t tcp_recv(char *dest, size_t dest_size) {
     //     );
     //     return -1;
     // }
-    if (!at_find_response("+CARECV: ", AT_READ_TIMEOUT_MS)) {
+    if (!at_find_response("+CARECV: ", AT_READ_TIMEOUT_MS, true)) {
         return -1;
     }
     char response[10];
@@ -1058,13 +1135,13 @@ static ssize_t tcp_recv(char *dest, size_t dest_size) {
 
     uart_read_until(dest, "", receive_len, AT_READ_TIMEOUT_MS);
     // VESC_IF->printf("response (dest): %s", dest);
-    if (AT_DEBUG_LOG) {
-        VESC_IF->printf(
-            "received len: %u (actual len: %u)", receive_len, strlen(dest)
-        );
-    }
+#ifdef AT_DEBUG_LOG
+    VESC_IF->printf(
+        "received len: %u (actual len: %u)", receive_len, strlen(dest)
+    );
+#endif
 
-    if (!at_find_response("OK", AT_READ_TIMEOUT_MS)) {
+    if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
         return -1;
     }
 
