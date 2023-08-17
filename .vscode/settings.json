@@ -14,11 +14,13 @@
         "st_types.h": "c",
         "vesc_c_if.h": "c",
         "types.h": "c",
-        "stddef.h": "c"
+        "stddef.h": "c",
+        "type_traits": "c"
     },
     "cSpell.words": [
         "CAOPEN",
         "CARECV",
+        "cids",
         "eerror",
         "strneq",
         "uart"

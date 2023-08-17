@@ -31,16 +31,23 @@ HEADER;
 #define AT_READ_TIMEOUT_MS 600
 #define AT_FIND_RESPONSE_TRIES 2
 
+#define AT_TCP_MAX_CID 12
+
 #define TCP_BUFFER_SIZE 256
 
 // INT32_MAX = 2147483647
 #define INT32_MAX_POW_10 1000000000
+
+typedef int8_t tcp_handle_t;
 
 typedef struct {
     unsigned char *data;
     unsigned int size;
 } send_unit_t;
 
+/**
+ * Global state
+ */
 typedef struct {
     lib_thread thread;
     bool paused;
@@ -62,7 +69,35 @@ typedef struct {
     size_t recv_size;
     bool recv_filled;
     char recv_buffer[TCP_BUFFER_SIZE];
+    tcp_handle_t recv_buffer_handle;
+
+    bool tcp_cids_is_used[AT_TCP_MAX_CID + 1];
+
+    lbm_uint symbol_disconnected;
+    lbm_uint symbol_closed_remote;
+    lbm_uint symbol_connected;
+    lbm_uint symbol_server_mode;
+    lbm_uint symbol_error;
 } data;
+
+/* **************************************************
+ * Symbols
+ */
+
+static bool register_symbols() {
+    data *d = (data *)ARG;
+
+    bool res =
+        VESC_IF->lbm_add_symbol_const("disconnected", &d->symbol_disconnected)
+        && VESC_IF->lbm_add_symbol_const(
+            "closed-remote", &d->symbol_closed_remote
+        )
+        && VESC_IF->lbm_add_symbol_const("connected", &d->symbol_connected)
+        && VESC_IF->lbm_add_symbol_const("server-mode", &d->symbol_server_mode)
+        && VESC_IF->lbm_add_symbol_const("error", &d->symbol_error);
+
+    return res;
+}
 
 // Called when code is stopped
 static void stop(void *arg) {
@@ -324,7 +359,7 @@ static int uart_read_until_trim(
         n++;
         sleep_count = 0;
     }
-    if (sleep_count == timeout_ms && buffer) {
+    if ((sleep_count == timeout_ms || len == 0) && buffer) {
         buffer[n] = 0;
     }
     return n;
@@ -368,7 +403,7 @@ static int uart_read_until(
         n++;
         sleep_count = 0;
     }
-    if ((sleep_count == 2000 && buffer) || (len == 0)) {
+    if ((sleep_count == timeout_ms || (len == 0)) && buffer) {
         buffer[n] = 0;
     }
     return n;
@@ -402,24 +437,6 @@ static bool uart_read_timeout(char *res, int timeout_ms) {
  * until no more characters are found.
  */
 static void uart_purge(const unsigned int timeout_ms) {
-    // while (true) {
-    //     if (VESC_IF->uart_read() < 0) {
-    //         uint32_t start = time_now();
-    //         bool response_found = false;
-    //         while ((unsigned int)time_ms_since(start) < timeout_ms) {
-    //             if (VESC_IF->uart_read() >= 0) {
-    //                 response_found = true;
-    //                 break;
-    //             }
-
-    //             VESC_IF->sleep_ms(1);
-    //         }
-
-    //         if (!response_found) {
-    //             break;
-    //         }
-    //     }
-    // }
     uint32_t start = time_now();
 
     int read_char = -1;
@@ -432,9 +449,7 @@ static void uart_purge(const unsigned int timeout_ms) {
     }
 
 #ifdef AT_DEBUG_LOG
-    VESC_IF->printf(
-        "Purging took %fms", (double)time_ms_since(start)
-    );
+    VESC_IF->printf("Purging took %fms", (double)time_ms_since(start));
 #endif
 }
 
@@ -572,7 +587,7 @@ static const char *at_find_of_responses(
                 VESC_IF->printf(
                     "found 'ERROR' response (expect[0]: '%s)", responses[0]
                 );
-                return false;
+                return NULL;
             }
         } else {
             error_index = 0;
@@ -592,7 +607,7 @@ static const char *at_find_of_responses(
     );
 #endif
 
-    return false;
+    return NULL;
 }
 
 /* **************************************************
@@ -879,44 +894,190 @@ static void thd(void *arg) {
  * TCP library
  */
 
-static bool tcp_is_connected() {
+typedef enum {
+    /** No local connection, closed or open, is present at all. */
+    TCP_DISCONNECTED,
+    /**
+     * Connection has been closed by remote server or an internal error
+     * (probably internal to the modem...).
+     * */
+    TCP_CLOSED_REMOTE,
+    /** There is an open connection currently. */
+    TCP_CONNECTED,
+    /** Currently listening in server mode. */
+    TCP_SERVER_MODE,
+    /** An internal at or uart error occurred. */
+    TCP_ERROR,
+} tcp_status_t;
+
+typedef enum {
+    CONNECT_NO_FREE_CID = -2,
+    CONNECT_ERROR = -1,
+} tcp_connect_error_t;
+
+typedef union {
+    tcp_handle_t handle;
+    tcp_connect_error_t error;
+} tcp_connect_result_t;
+
+static inline const char *stringify_tcp_status(const tcp_status_t status) {
+    switch (status) {
+        case TCP_DISCONNECTED: {
+            return "TCP_DISCONNECTED";
+        }
+        case TCP_CLOSED_REMOTE: {
+            return "TCP_CLOSED_REMOTE";
+        }
+        case TCP_CONNECTED: {
+            return "TCP_CONNECTED";
+        }
+        case TCP_SERVER_MODE: {
+            return "TCP_SERVER_MODE";
+        }
+        case TCP_ERROR: {
+            return "TCP_ERROR";
+        }
+        default: {
+            return "invalid status";
+        }
+    }
+}
+
+/**
+ * Get the lowest cid that isn't currently used by any handle.
+ *
+ * \return lowest free cid or -1 if none are free.
+ */
+static ssize_t tcp_next_free_cid() {
+    data *d = (data *)ARG;
+
+    for (size_t i = 0; i < AT_TCP_MAX_CID; i++) {
+        if (!d->tcp_cids_is_used[i]) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+// static tcp_handle_t tcp_reserve_next_free() {
+//     data *d = (data *)ARG;
+// }
+
+/**
+ * Mark cid as used and return it as a handle.
+ * This does not check that the given cid is not already in use.
+ *
+ * \param cid the cid to mark. Must not be larger than AT_TCP_MAX_CID (which
+ * is is 12).
+ */
+static tcp_handle_t tcp_reserve_cid(size_t cid) {
+    data *d = (data *)ARG;
+    d->tcp_cids_is_used[cid] = true;
+
+    return (tcp_handle_t)cid;
+}
+
+static tcp_status_t tcp_status(tcp_handle_t handle) {
     uart_purge(AT_PURGE_TIMEOUT_MS);
 
     uart_write_string("AT+CASTATE?\r\n");
 
-    // ex: +CASTATE: 0,1\r
-    // char response[15];
-    // uart_read_until_trim(response, "\n", 14, AT_READ_TIMEOUT_MS);
-    // if (!strneq(response, "+CASTATE: 0,1", 13)) {
-    //     return false;
-    // }
-    const char *responses[] = {"+CASTATE: 0,", "OK"};
-    const char *response =
-        at_find_of_responses(2, responses, AT_READ_TIMEOUT_MS);
-    if (!response || response == responses[1]) {
-        if (response == responses[1]) {
-            VESC_IF->printf("failed due to 'OK' response");
-        }
-        return false;
-    }
-    if (response == responses[0]) {
-        char result = VESC_IF->uart_read();
-        if (result != '1') {
-            if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
-                VESC_IF->printf("couldn't find final 'OK' response");
-                return false;
+    // ex: +CASTATE: <cid>,1\r
+    const char *response_ok = "OK";
+    const char *response_state = "+CASTATE: ";
+    const char *responses[] = {response_state, response_ok};
+    const char *response = NULL;
+
+    tcp_status_t found_status = TCP_ERROR;
+
+    // should in theory go 13 times at a maximum (there are 12 cids + 1 'OK')
+    // 20 is just to be safe
+    for (size_t i = 0; i < 20; i++) {
+        // uint32_t start = time_now();
+        response = at_find_of_responses(2, responses, AT_READ_TIMEOUT_MS);
+
+        if (response == response_ok) {
+            if (found_status == TCP_ERROR) {
+                found_status = TCP_DISCONNECTED;
             }
+            break;
+        }
 
-            return false;
+        if (response == response_state) {
+            // ex response: 12
+            char response[3];
+            int read_length =
+                uart_read_until(response, ",", 2, AT_READ_TIMEOUT_MS);
+            // VESC_IF->printf("cid response: '%s'", response);
+            for (size_t j = 0; j < strlen(response); j++) {
+                if (!is_char_digit(response[j])) {
+                    VESC_IF->printf(
+                        "found non digit character '%c' in <cid> (ascii %hhd)",
+                        response[j], response[j]
+                    );
+                    return TCP_ERROR;
+                }
+            }
+            tcp_handle_t found_cid = (tcp_handle_t)ascii_to_int(response);
+
+            if (found_cid == handle) {
+                bool has_read_comma = read_length == 1;
+                if (!has_read_comma) {
+                    char comma = -1;
+                    if (!uart_read_timeout(&comma, 20) || comma != ',') {
+                        VESC_IF->printf(
+                            "found '%c' character (ascii %hhd), expect: ',' "
+                            "after '+CASTATE: <cid>'",
+                            comma, comma
+                        );
+                        return TCP_ERROR;
+                    }
+                }
+
+                char status_char = -1;
+                if (!uart_read_timeout(&status_char, 20)
+                    || !is_char_digit(status_char)) {
+                    VESC_IF->printf(
+                        "found non digit character '%c' searching for status "
+                        "(ascii %hhd)",
+                        status_char, status_char
+                    );
+                    return TCP_ERROR;
+                }
+
+                switch (status_char) {
+                    case '0': {
+                        found_status = TCP_CLOSED_REMOTE;
+                        break;
+                    }
+                    case '1': {
+                        found_status = TCP_CONNECTED;
+                        break;
+                    }
+                    case '2': {
+                        found_status = TCP_SERVER_MODE;
+                        break;
+                    }
+                    default: {
+                        VESC_IF->printf(
+                            "found invalid status '%c' (ascii %hhd)",
+                            status_char, status_char
+                        );
+                        return TCP_ERROR;
+                    }
+                }
+            } else {
+                // Clear unwanted (potential) comma and status.
+                uart_read_until(NULL, "\r", 2, AT_READ_TIMEOUT_MS);
+            }
         }
     }
 
-    if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
-        VESC_IF->printf("couldn't find final 'OK' response");
-        return false;
-    }
+    return found_status;
+}
 
-    return true;
+static bool tcp_is_connected(const tcp_handle_t handle) {
+    return tcp_status(handle) == TCP_CONNECTED;
 }
 
 /**
@@ -931,12 +1092,14 @@ static bool tcp_is_connected() {
  * \return bool indicating if `tcp_is_connected` returned true at any point in
  * the specified period.
  */
-bool tcp_wait_until_connected(const unsigned int timeout_ms) {
+bool tcp_wait_until_connected(
+    const tcp_handle_t handle, const unsigned int timeout_ms
+) {
     const float timeout_s = ((float)timeout_ms / 1000.0);
 
     uint32_t start = VESC_IF->timer_time_now();
     while (VESC_IF->timer_seconds_elapsed_since(start) < timeout_s) {
-        if (tcp_is_connected()) {
+        if (tcp_is_connected(handle)) {
             return true;
         }
 
@@ -947,13 +1110,21 @@ bool tcp_wait_until_connected(const unsigned int timeout_ms) {
 }
 
 /**
+ * Disconnect a tcp connection.
+ * This should not be called directly as it doesn't free the handle!
+ *
  * \return bool indicating if operation was successful.
  */
-static bool tcp_disconnect() {
+static bool tcp_disconnect(const tcp_handle_t handle) {
     // uart_purge();
     uart_purge(AT_PURGE_TIMEOUT_MS);
 
-    uart_write_string("AT+CACLOSE=0\r\n");
+    char cid_str[int_base10_str_len(handle) + 1];
+    int_to_ascii(handle, cid_str, 10);
+
+    uart_write_string("AT+CACLOSE=");
+    uart_write_string(cid_str);
+    uart_write_string("\r\n");
 
     // char response[16];
     // uart_read_until_trim(response, "\n", 15, AT_READ_TIMEOUT_MS);
@@ -968,14 +1139,36 @@ static bool tcp_disconnect() {
 }
 
 /**
- * Connect to the given host and port.
+ * Close connection, releasing the handle in the process.
+ *
+ * \return false if handle was not valid or if disconnecting the tcp connection
+ * failed.
+ */
+static bool tcp_free_handle(const tcp_handle_t handle) {
+    data *d = (data *)ARG;
+    if (!d->tcp_cids_is_used[handle]) {
+        return false;
+    }
+    d->tcp_cids_is_used[handle] = false;
+
+    if (!tcp_disconnect(handle)) {
+        return false;
+    }
+
+    return true;
+}
+
+#define TCP_CONNECT_RESULT
+
+/**
+ * Connect to the given host and port, opening a new handle in the process.
  * Any currently open connection is automatically closed.
  *
- * \return bool indicating if operation was successful. (Note: a true result
- * does not guarantee a successfull connection, always check with
- * tcp_is_connected!)
+ * \return the opened handle on success or tcp_connect_error_t on failure.
  */
-static bool tcp_connect_host(const char *hostname, const uint16_t port) {
+static tcp_connect_result_t tcp_connect_host(
+    const char *hostname, const uint16_t port
+) {
     // disconnect in case there was already a connection.
     // if (tcp_is_connected()) {
     //     if (!tcp_disconnect()) {
@@ -983,72 +1176,86 @@ static bool tcp_connect_host(const char *hostname, const uint16_t port) {
     //         return false;
     //     }
     // }
-    tcp_disconnect();
+    ssize_t cid = tcp_next_free_cid();
+    if (cid == -1) {
+        return (tcp_connect_result_t){.error = CONNECT_NO_FREE_CID};
+    }
+    tcp_handle_t handle = tcp_reserve_cid(cid);
+
+    // safety measure
+    tcp_disconnect(handle);
+
+    // longest value: 12
+    char cid_str[3];
+    int_to_ascii((int)cid, cid_str, 10);
+    cid_str[2] = '\0';
 
     // longest value: 65536
     char port_str[6];
     int_to_ascii((int)port, port_str, 10);
     port_str[5] = '\0';
 
-    // uint32_t start = time_now();
     uart_purge(AT_PURGE_TIMEOUT_MS);
-    // at_find_response("OK", AT_READ_TIMEOUT_MS);
-    // VESC_IF->printf("Searching for extra 'OK' took %fms",
-    // (double)time_ms_since(start));
 
-    // uart_purge();
-    uart_write_string("AT+CAOPEN=0,0,\"TCP\",\"");
+    uart_write_string("AT+CAOPEN=");
+    uart_write_string(cid_str);
+    uart_write_string(",0,\"TCP\",\"");
     uart_write_string(hostname);
     uart_write_string("\",");
     uart_write_string(port_str);
     uart_write_string("\r\n");
 
     // potential response: +CAOPEN: <0-12>,<0-27>\r
-    // char response[16];
-    // uart_read_until_trim(response, "\n", 15, AT_READ_TIMEOUT_MS);
-    // if (!strneq(response, "+CAOPEN: 0,0", 12)) {
-    //     response[15] = 0;
-    //     VESC_IF->printf(
-    //         "invalid response: '%s' (expect: '+CAOPEN: 0,0')\n", response
-    //     );
-    //     return false;
-    // }
-    if (!at_find_response("+CAOPEN: 0,", AT_READ_TIMEOUT_MS, true)) {
+    if (!at_find_response("+CAOPEN: ", AT_READ_TIMEOUT_MS, true)) {
         VESC_IF->printf("failed to find '+CAOPEN: 0,'");
-        return false;
+        return (tcp_connect_result_t){.error = CONNECT_ERROR};
     }
+    if (!at_find_response(cid_str, AT_READ_TIMEOUT_MS, true)) {
+        VESC_IF->printf("failed to find cid '%s'", cid_str);
+        return (tcp_connect_result_t){.error = CONNECT_ERROR};
+    }
+    if (!at_find_response(",", AT_READ_TIMEOUT_MS, true)) {
+        VESC_IF->printf("failed to find ','");
+        return (tcp_connect_result_t){.error = CONNECT_ERROR};
+    }
+
     char found = 0;
     uart_read_timeout(
         &found, 10
     );  // this 10 just *feels* like the right number ;)
     if (found != '0') {
         VESC_IF->printf(
-            "invalid result '+CAOPEN: 0,%c', (char: %d)", found, found
+            "invalid result '+CAOPEN: %s,%c', (char: %d)", cid_str, found, found
         );
         VESC_IF->printf("next result: %d", VESC_IF->uart_read());
-        return false;
+        return (tcp_connect_result_t){.error = CONNECT_ERROR};
     }
 
     if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
-        return false;
+        return (tcp_connect_result_t){.error = CONNECT_ERROR};
     }
 
-    return true;
+    return (tcp_connect_result_t){.handle = handle};
 }
 
 /**
- * Send string over the currently active tcp connection.
+ * Send string to the tcp connection referenced by the handle.
  *
  * \return bool indicating if the string was successfully sent.
  */
-static bool tcp_send_str(const char *str) {
+static bool tcp_send_str(const tcp_handle_t handle, const char *str) {
+    char cid_str[4];
+    int_to_ascii(handle, cid_str, 10);
+
     size_t len = strlen(str);
     char len_str[int_base10_str_len(len) + 1];
     int_to_ascii(len, len_str, 10);
 
     uart_purge(AT_PURGE_TIMEOUT_MS);
-    
-    uart_write_string("AT+CASEND=0,");
+
+    uart_write_string("AT+CASEND=");
+    uart_write_string(cid_str);
+    uart_write_string(",");
     uart_write_string(len_str);
     uart_write_string("\r\n");
 
@@ -1063,12 +1270,6 @@ static bool tcp_send_str(const char *str) {
     if (!at_check_response_immediate("> ", AT_READ_TIMEOUT_MS)) {
         return false;
     }
-    // char response[4];
-    // uart_read_until_trim(response, "\n", 3, AT_READ_TIMEOUT_MS);
-    // if (!strneq(response, "> ", 2)) {
-    //     VESC_IF->printf("invalid response: '%s' (expect: '> ')\n", response);
-    //     return false;
-    // }
 
     if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
         return false;
@@ -1089,28 +1290,25 @@ static bool tcp_send_str(const char *str) {
  * \return the amount of read bytes (excluding the terminating zero). -1 on
  * error.
  */
-static ssize_t tcp_recv(char *dest, size_t dest_size) {
+static ssize_t tcp_recv(
+    const tcp_handle_t handle, char *dest, const size_t dest_size
+) {
+    char cid_str[4];
+    int_to_ascii(handle, cid_str, 10);
+
     size_t capacity = dest_size - 1;
     size_t capacity_str_len = int_base10_str_len(capacity);
     char capacity_str[capacity_str_len + 1];
     int_to_ascii(capacity, capacity_str, 10);
 
     uart_purge(AT_PURGE_TIMEOUT_MS);
-    uart_write_string("AT+CARECV=0,");
+    uart_write_string("AT+CARECV=");
+    uart_write_string(cid_str);
+    uart_write_string(",");
     uart_write_string(capacity_str);
     uart_write_string("\r\n");
 
     // ex: +CARECV: 1460,...<data>...
-    // char response[10];
-    // uart_read_until_trim(response, " ", 9, AT_READ_TIMEOUT_MS);
-    // VESC_IF->printf("response (+CARECV): %s", response);
-    // if (!strneq(response, "+CARECV:", 8)) {
-    //     response[9] = '\0';
-    //     VESC_IF->printf(
-    //         "invalid response: '%s' (expect: '+CARECV:')\n", response
-    //     );
-    //     return -1;
-    // }
     if (!at_find_response("+CARECV: ", AT_READ_TIMEOUT_MS, true)) {
         return -1;
     }
@@ -1149,16 +1347,19 @@ static ssize_t tcp_recv(char *dest, size_t dest_size) {
 }
 
 /**
- * Block until there is data to receive on the current tcp connection.
+ * Block until there is data to receive on the specified tcp connection.
  *
  * \returns true if received data was found, meaning you can call tcp_recv,
  * false otherwise.
  */
-static bool tcp_wait_for_recv(size_t tries) {
+static bool tcp_wait_for_recv(const tcp_handle_t handle, size_t tries) {
+    char expect[15] = "+CADATAIND: ";
+    int_to_ascii(handle, expect + 12, 10);
+
     char response[16];
     for (size_t i = 0; i < tries; i++) {
         uart_read_until_trim(response, "\n", 15, AT_READ_TIMEOUT_MS);
-        if (strneq(response, "+CADATAIND: 0", 13)) {
+        if (strneq(response, expect, 13)) {
             return true;
         }
         VESC_IF->printf("found '%s'\n", response);
@@ -1450,53 +1651,126 @@ static lbm_value ext_pwr_key(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-is-connected)
+ * signature: (tcp-is-connected handle)
  */
 static lbm_value ext_tcp_is_connected(lbm_value *args, lbm_uint argn) {
-    (void)args;
-
-    if (argn != 0) {
+    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    if (tcp_is_connected()) {
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+
+    if (tcp_is_connected(handle)) {
         return VESC_IF->lbm_enc_sym_true;
     }
     return VESC_IF->lbm_enc_sym_nil;
 }
 
 /**
- * signature: (tcp-wait-until-connected timeout-ms)
+ * signature: (tcp-status handle)
  */
-static lbm_value ext_tcp_wait_until_connected(lbm_value *args, lbm_uint argn) {
+static lbm_value ext_tcp_status(lbm_value *args, lbm_uint argn) {
     if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    unsigned int timeout_ms = VESC_IF->lbm_dec_as_u32(args[0]);
-    bool result = tcp_wait_until_connected(timeout_ms);
+    data *d = (data *)ARG;
+
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+    tcp_status_t result = tcp_status(handle);
+
+    lbm_uint symbol;
+    switch (result) {
+        case TCP_DISCONNECTED: {
+            symbol = d->symbol_disconnected;
+            break;
+        }
+        case TCP_CLOSED_REMOTE: {
+            symbol = d->symbol_closed_remote;
+            break;
+        }
+        case TCP_CONNECTED: {
+            symbol = d->symbol_connected;
+            break;
+        }
+        case TCP_SERVER_MODE: {
+            symbol = d->symbol_server_mode;
+            break;
+        }
+        default: {
+            symbol = d->symbol_error;
+            break;
+        }
+    }
+
+    // VESC_IF->printf("result: %s", stringify_tcp_status(result));
+    // VESC_IF->printf("symbol: %u", symbol);
+    // VESC_IF->printf("symbol_disconnected: %u", d->symbol_disconnected);
+    // VESC_IF->printf("symbol_closed_remote: %u", d->symbol_closed_remote);
+    // VESC_IF->printf("symbol_connected: %u", d->symbol_connected);
+    // VESC_IF->printf("symbol_server_mode: %u", d->symbol_server_mode);
+    // VESC_IF->printf("symbol_error: %u", d->symbol_error);
+
+    return VESC_IF->lbm_enc_sym(symbol);
+}
+
+/**
+ * signature: (tcp-wait-until-connected handle timeout-ms)
+ */
+static lbm_value ext_tcp_wait_until_connected(lbm_value *args, lbm_uint argn) {
+    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
+        || !VESC_IF->lbm_is_number(args[0])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+    unsigned int timeout_ms = VESC_IF->lbm_dec_as_u32(args[1]);
+
+    bool result = tcp_wait_until_connected(handle, timeout_ms);
 
     return lbm_enc_bool(result);
 }
 
 /**
- * signature: (tcp-disconnect hostname port)
+ * signature: (tcp-disconnect handle)
  */
 static lbm_value ext_tcp_disconnect(lbm_value *args, lbm_uint argn) {
-    (void)args;
-
-    if (argn != 0) {
+    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    if (tcp_disconnect()) {
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+
+    if (tcp_disconnect(handle)) {
         return VESC_IF->lbm_enc_sym_true;
     }
     return VESC_IF->lbm_enc_sym_nil;
 }
 
 /**
+ * signature: (tcp-free-handle handle)
+ *
+ * The handle is guaranted to be marked as free after calling this.
+ *
+ * \return true on success, or false if handle wasn't valid or if disconnecting
+ * the connection failed.
+ */
+static lbm_value ext_tcp_free_handle(lbm_value *args, lbm_uint argn) {
+    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+
+    bool result = tcp_free_handle(handle);
+    return lbm_enc_bool(result);
+}
+
+/**
  * signature: (tcp-connect-host hostname port)
+ *
+ * \return handle on success, nil if no free connections are aviablable, or
+ * 'error on an AT error.
  */
 static lbm_value ext_tcp_connect_host(lbm_value *args, lbm_uint argn) {
     if (argn != 2 || !VESC_IF->lbm_is_byte_array(args[0])
@@ -1504,47 +1778,58 @@ static lbm_value ext_tcp_connect_host(lbm_value *args, lbm_uint argn) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
+    data *d = (data *)ARG;
+
     char *hostname = VESC_IF->lbm_dec_str(args[0]);
     uint16_t port = (uint16_t)VESC_IF->lbm_dec_as_u32(args[1]);
 
-    bool result = tcp_connect_host(hostname, port);
+    tcp_connect_result_t result = tcp_connect_host(hostname, port);
 
-    if (result) {
-        return VESC_IF->lbm_enc_sym_true;
+    if (result.error == CONNECT_NO_FREE_CID) {
+        return VESC_IF->lbm_enc_sym_nil;
+    }
+    if (result.error == CONNECT_ERROR) {
+        return VESC_IF->lbm_enc_sym(d->symbol_error);
     }
 
-    return VESC_IF->lbm_enc_sym_nil;
+    return VESC_IF->lbm_enc_i(result.handle);
 }
 
 /**
- * signature: (tcp-send-str string)
+ * signature: (tcp-send-str handle string)
  *
- * Send string over current tcp connection, returning bool indicating success.
+ * Send string over current tcp connection
+ *
+ * \return bool indicating success.
  */
 static lbm_value ext_tcp_send_str(lbm_value *args, lbm_uint argn) {
-    if (argn != 1 || !VESC_IF->lbm_is_byte_array(args[0])) {
+    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
+        || !VESC_IF->lbm_is_byte_array(args[1])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    char *str = VESC_IF->lbm_dec_str(args[0]);
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+    char *str = VESC_IF->lbm_dec_str(args[1]);
 
-    bool result = tcp_send_str(str);
+    bool result = tcp_send_str(handle, str);
 
     return lbm_enc_bool(result);
 }
 
 /**
- * signature: (tcp-recv-single len)
+ * signature: (tcp-recv-single handle len)
  *
  * Receive single up to `len` bytes long string from the current tcp connection.
  * Does not wait for data to come in.
  */
 static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
-    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
+    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
+        || !VESC_IF->lbm_is_number(args[1])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    size_t size = VESC_IF->lbm_dec_as_u32(args[0]) + 1;
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+    size_t size = VESC_IF->lbm_dec_as_u32(args[1]) + 1;
 
     if (size > TCP_BUFFER_SIZE) {
         return VESC_IF->lbm_enc_sym_eerror;
@@ -1557,8 +1842,9 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
     ssize_t len;
 
     // bool used_buffered_result = false;
-    if (d->recv_size != 0) {
+    if (d->recv_size != 0 && d->recv_buffer_handle == handle) {
         d->recv_size = 0;
+        d->recv_buffer_handle = -1;
         // used_buffered_result = true;
 
         if (d->recv_size > size) {
@@ -1568,7 +1854,7 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
         memcpy(str, d->recv_buffer, d->recv_size);
         len = d->recv_size - 1;
     } else {
-        len = tcp_recv(str, size);
+        len = tcp_recv(handle, str, size);
     }
 
     // VESC_IF->printf("returned len: %d, str: '%s'", len, str);
@@ -1582,6 +1868,8 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
 
         d->recv_size = len + 1;
         memcpy(d->recv_buffer, str, len + 1);
+
+        d->recv_buffer_handle = handle;
 
         return VESC_IF->lbm_enc_sym_merror;
     }
@@ -1601,20 +1889,22 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-wait-for-recv tries)
+ * signature: (tcp-wait-for-recv handle tries)
  *
  * Wait until there is data to receive using tcp-recv-single.
- * Will look for "+CADATAIND: 0" `tries` times.
- * Returns bool indicating if any data was found.
+ * Will look for "+CADATAIND: <cid>" `tries` times.
+ * \return bool indicating if any data was found.
  */
 static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
-    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
+    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
+        || !VESC_IF->lbm_is_number(args[1])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    size_t tries = VESC_IF->lbm_dec_as_u32(args[0]) + 1;
+    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+    size_t tries = VESC_IF->lbm_dec_as_u32(args[1]) + 1;
 
-    return lbm_enc_bool(tcp_wait_for_recv(tries));
+    return lbm_enc_bool(tcp_wait_for_recv(handle, tries));
 }
 
 // /**
@@ -1634,33 +1924,41 @@ static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
 
 #define TEST_ASCII_TO_INT(n) VESC_IF->printf("'%s' -> %d\n", n, ascii_to_int(n))
 
+// static void testing(const char *responses[]) {
+//     VESC_IF->printf("responses: %p", responses);
+//     VESC_IF->printf("responses[0]: (%p)", responses[0]);
+//     VESC_IF->printf("responses[1]: (%p)", responses[1]);
+// }
+
 static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
     (void)args;
     (void)argn;
 
-    return VESC_IF->lbm_enc_sym_merror;
+    // int a;
+    // int b;
+    // char *c_str = "+CASTATE: 0,";
+    // char *d_str = "OK";
 
-    // TEST_ASCII_TO_INT("0");
-    // TEST_ASCII_TO_INT("1");
-    // TEST_ASCII_TO_INT("5");
-    // TEST_ASCII_TO_INT("10");
-    // TEST_ASCII_TO_INT("1526");
-    // TEST_ASCII_TO_INT("5024");
-    // TEST_ASCII_TO_INT("-1");
-    // TEST_ASCII_TO_INT("-10");
-    // TEST_ASCII_TO_INT("-100");
-    // TEST_ASCII_TO_INT("-1000000");
-    // TEST_ASCII_TO_INT("12345678");
+    // VESC_IF->printf("a: %p\nb: %p\nc_str: %p\nd_str: %p\n", &a, &b, c_str,
+    // d_str);
 
-    // TEST_INT_BASE10_STR_LEN(0);
-    // TEST_INT_BASE10_STR_LEN(1);
-    // TEST_INT_BASE10_STR_LEN(10);
-    // TEST_INT_BASE10_STR_LEN(15);
-    // TEST_INT_BASE10_STR_LEN(1568);
-    // TEST_INT_BASE10_STR_LEN(10000);
-    // TEST_INT_BASE10_STR_LEN(999999999);
-    // TEST_INT_BASE10_STR_LEN(1000000000);
-    // TEST_INT_BASE10_STR_LEN(2000000000);
+    // char *responses[] = {"+CASTATE: 0,", "OK"};
+
+    int on_the_stack;
+    char *a = "+CASTATE: 0,";
+    char *b = "OK";
+    const char *const responses[] = {a, b};
+
+    VESC_IF->printf("on_the_stack: %p", &on_the_stack);
+    VESC_IF->printf("a: %p", a);
+    VESC_IF->printf("b: %p", b);
+    VESC_IF->printf("responses: %p", responses);
+    VESC_IF->printf("responses[0]: %p", responses[0]);
+    VESC_IF->printf("responses[1]: %p", responses[1]);
+    VESC_IF->printf("responses[0]: '%s'", responses[0]);
+    VESC_IF->printf("responses[1]: '%s'", responses[1]);
+
+    // testing(responses);
 
     return VESC_IF->lbm_enc_sym_true;
 }
@@ -1674,6 +1972,7 @@ INIT_FUN(lib_info *info) {
 
     data *d = VESC_IF->malloc(sizeof(data));
     if (!d) return false;
+    memset(d, 0, sizeof(data));
 
     info->stop_fun = stop;
     info->arg = d;
@@ -1705,6 +2004,17 @@ INIT_FUN(lib_info *info) {
     d->mode = MODE_NONE;
     d->recv_filled = false;
     d->recv_size = 0;
+    d->recv_buffer_handle = -1;
+
+    d->symbol_disconnected = 0;
+    d->symbol_closed_remote = 0;
+    d->symbol_connected = 0;
+    d->symbol_server_mode = 0;
+    d->symbol_error = 0;
+
+    if (!register_symbols()) {
+        VESC_IF->printf("register_symbols failed");
+    };
 
     VESC_IF->uart_start(115200, false);
     VESC_IF->lbm_add_extension("ext-pause", ext_pause);
@@ -1727,11 +2037,13 @@ INIT_FUN(lib_info *info) {
     // VESC_IF->lbm_add_extension("ext-sim7070-mode", ext_sim7070_mode);
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
     VESC_IF->lbm_add_extension("tcp-is-connected", ext_tcp_is_connected);
+    VESC_IF->lbm_add_extension("tcp-status", ext_tcp_status);
     VESC_IF->lbm_add_extension(
         "tcp-wait-until-connected", ext_tcp_wait_until_connected
     );
     VESC_IF->lbm_add_extension("tcp-disconnect", ext_tcp_disconnect);
     VESC_IF->lbm_add_extension("tcp-connect-host", ext_tcp_connect_host);
+    VESC_IF->lbm_add_extension("tcp-free-handle", ext_tcp_free_handle);
     VESC_IF->lbm_add_extension("tcp-send-str", ext_tcp_send_str);
     VESC_IF->lbm_add_extension("tcp-recv-single", ext_tcp_recv_single);
     VESC_IF->lbm_add_extension("tcp-wait-for-recv", ext_tcp_wait_for_recv);

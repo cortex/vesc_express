@@ -23,6 +23,20 @@
     (if value value else-value)
 )
 
+(def time (macro (expr) `{
+    (var start (systime))
+    (var result ,expr)
+    (print (to-str-delim ""
+        "took "
+        (str-from-n
+            (ms-since start)
+        )
+        "ms"
+    ))
+    (print result)
+    result
+}))
+
 ;; to be removed after update of lbm.
 
 (defun at-command (command expect b-size) {
@@ -444,10 +458,17 @@
 })
 
 ; This also works!
-(defun connect-host () {
-    (at-command "AT+CACLOSE=0\r\n" "" 100)
-    (at-command "AT+CAOPEN=0,0,\"TCP\",\"lindboard-staging.azurewebsites.net\",80\r\n" "" 100)
-    "AT+CAOPEN=0,0,\"TCP\",\"lindboard-staging.azurewebsites.net\",80\r\n"
+(defun connect-host (cid) {
+    (at-command (str-merge
+        "AT+CACLOSE="
+        (str-from-n cid)
+        "\r\n"
+    ) "" 100)
+    (at-command (str-merge
+        "AT+CAOPEN="
+        (str-from-n cid)
+        ",0,\"TCP\",\"lindboard-staging.azurewebsites.net\",80\r\n"
+    ) "" 100)
     (status)
 })
 
@@ -456,12 +477,14 @@
 })
 
 ; This works!
-(defunret send-tcp (string) {
+(defunret send-tcp (cid string) {
     (var len (str-len string))
     
     ; Activate send data of length len.
     (var command (str-merge
-        "AT+CASEND=0,"
+        "AT+CASEND="
+        (str-from-n cid)
+        ","
         (to-str len)
         "\r\n"
     ))
@@ -481,7 +504,10 @@
 })
 
 (defun wait-for-recv-tcp (tries) {
-    (var target "+CADATAIND: 0")
+    (var target (str-merge
+        "+CADATAIND: "
+        (str-from-n cid)
+    ))
     (var buf (array-create 101))
     (looprange i 0 tries {
         (ext-uart-readline buf 100)
@@ -496,8 +522,12 @@
     })
 })
 
-(defunret recv-single () {
-    (var command "AT+CARECV=0,100\r\n")
+(defunret recv-single (cid) {
+    (var command (str-merge
+        "AT+CARECV="
+        (str-from-n cid)
+        ",100\r\n"
+    ))
     ; (print (str-merge "writing: " command))
     (ext-uart-purge)
     (ext-uart-write command)
@@ -554,11 +584,11 @@
 ;     (apply str-merge (reverse segments))
 ; })
 
-(defunret tcp-recv () {
+(defunret tcp-recv (handle) {
     (var segments (list))
     (var result true)
     (loopwhile result {
-        (var segment (tcp-recv-single 100))
+        (var segment (tcp-recv-single handle 100))
         ; (print segment)
         ; (print (type-of segment))
         (if (> (str-len segment) 0) {
@@ -595,10 +625,19 @@
 (defunret do-request () {
     (var request-start (systime))
     (var start (systime))
-    (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
+    (var handle (tcp-connect-host "lindboard-staging.azurewebsites.net" 80))
+    (if (eq handle 'error) {
         (print "tcp-connect-host failed")
+        (tcp-free-handle handle)
         (return false)
     })
+    (if (not handle) {
+        (print "no free connection was available")
+        (tcp-free-handle handle)
+        (return false)
+    })
+    (print (to-str-delim "" "handle " handle))
+    
     (print (to-str-delim ""
         "tcp-connect-host: "
         (str-from-n (ms-since start))
@@ -607,8 +646,9 @@
     (var ms-tcp-connect-host (ms-since start))
     (var start (systime))
     
-    (if (not (tcp-wait-until-connected 1000)) {
+    (if (not (tcp-wait-until-connected handle 1000)) {
         (print "tcp connection wasn't established correctly")
+        (tcp-free-handle handle)
         (return false)
     })
     
@@ -621,7 +661,11 @@
     (var start (systime))
 
     
-    (tcp-send-str ping-http-request)
+    (if (not (tcp-send-str handle ping-http-request)) {
+        (print "tcp-send-str failed")
+        (tcp-free-handle handle)
+        (return false)
+    })
     
     (print (to-str-delim ""
         "tcp-send-str: "
@@ -632,8 +676,9 @@
     (var start (systime))
 
 
-    (if (not (tcp-wait-for-recv 10)) {
+    (if (not (tcp-wait-for-recv handle 10)) {
         (print "couldn't find recv notification")
+        (tcp-free-handle handle)
         (return false)
     })
     
@@ -646,7 +691,7 @@
     (var start (systime))
 
     (gc)
-    (var data (tcp-recv))
+    (var data (tcp-recv handle))
     
     (print (to-str-delim ""
         "tcp-recv: "
@@ -683,49 +728,73 @@
     ; ))
 
     (print data)
+    (var start (systime))
+    
+    (if (not (tcp-free-handle handle)) {
+        (print "freeing handle failed")
+        (return false)
+    })
+    
+    (print (to-str-delim ""
+        "tcp-free-handle: "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
     
     (print (to-str-delim ""
         "Took "
         (str-from-n (ms-since request-start))
         "ms"
     ))
+    
 
     true
 })
 
-(defunret do-request-ret () {
+(defunret do-request-ret (handle) {
     ; (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
     ;     (print "tcp-connect-host failed")
     ;     (return false)
     ; })
     
-    (if (not (tcp-wait-until-connected 1000)) {
+    (if (not (tcp-wait-until-connected handle 1000)) {
         (print "tcp connection wasn't established correctly")
         (return false)
     })
     
-    (tcp-send-str ping-http-request-keep-alive)
+    (if (not (tcp-send-str handle ping-http-request-keep-alive)) {
+        (print "tcp-send-str failed")
+        (return false)
+    })
 
-    (if (not (tcp-wait-for-recv 10)) {
+    (if (not (tcp-wait-for-recv handle 10)) {
         (print "couldn't find recv notification")
         (return false)
     })
     
     ; (print )
 
-    (tcp-recv)
+    (tcp-recv handle)
 })
 
 (defunret test-do-request () {    
     (print "doing 10 requests... ---------------------------")
     (var start (systime))
-    (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
+    
+    (var handle (tcp-connect-host "lindboard-staging.azurewebsites.net" 80))
+    (if (eq handle 'error) {
         (print "tcp-connect-host failed")
         (return false)
     })
+    (if (not handle) {
+        (print "no free connection was available")
+        (return false)
+    })
+    (print (to-str-delim "" "handle " handle))
+    
     (looprange i 0 10 {
         (gc)
-        (var result (do-request-ret))
+        (var result (do-request-ret handle))
         (print (str-merge
             "("
             (to-str i)
@@ -742,6 +811,12 @@
         "ms)"
     ))
     
+    (if (not (tcp-free-handle handle)) {
+        (print "freeing handle failed")
+        (return false)
+    })
+    
+    true
 })
 
 @const-end
