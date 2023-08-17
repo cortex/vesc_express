@@ -959,10 +959,6 @@ static ssize_t tcp_next_free_cid() {
     return -1;
 }
 
-// static tcp_handle_t tcp_reserve_next_free() {
-//     data *d = (data *)ARG;
-// }
-
 /**
  * Mark cid as used and return it as a handle.
  * This does not check that the given cid is not already in use.
@@ -1157,8 +1153,6 @@ static bool tcp_free_handle(const tcp_handle_t handle) {
 
     return true;
 }
-
-#define TCP_CONNECT_RESULT
 
 /**
  * Connect to the given host and port, opening a new handle in the process.
