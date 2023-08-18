@@ -38,6 +38,8 @@ HEADER;
 // INT32_MAX = 2147483647
 #define INT32_MAX_POW_10 1000000000
 
+#define PRINT_VAR(value, format) VESC_IF->printf("%s: " format, #value, value)
+
 typedef int8_t tcp_handle_t;
 
 typedef struct {
@@ -134,7 +136,133 @@ static char *reverse(char *buffer, int i, int j) {
     return buffer;
 }
 
-static inline bool is_char_digit(const char c) { return c >= '0' && c <= '9'; }
+static bool is_char_digit(const char c) { return c >= '0' && c <= '9'; }
+
+static bool is_whitespace(char c) {
+    return (
+        (c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (c == '\r')
+        || (c == '\n')
+    );
+}
+
+static bool one_of(const char *delims, char c) {
+    bool eq = false;
+    char curr = delims[0];
+    int i = 0;
+    while (curr != 0) {
+        if (c == curr) {
+            eq = true;
+            break;
+        }
+        curr = delims[i++];
+    }
+    return eq;
+}
+
+static ssize_t first_not_of(const char *str, const char *delims) {
+    for (size_t i = 0; i < strlen(str); i++) {
+        if (!one_of(delims, str[i])) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static inline bool str_eq(const char *str1, const char *str2) {
+    return strcmp(str1, str2) == 0;
+}
+
+static bool strneq(const char *str1, const char *str2, const unsigned int n) {
+    bool r = true;
+    for (unsigned int i = 0; i < n; i++) {
+        if (str1[i] != str2[i]) {
+            r = false;
+            break;
+        }
+    }
+    return r;
+}
+
+/**
+ * Find the index of the first occurence substring.
+ *
+ * \param str The string to search in.
+ * \param search The substring to search for.
+ * \return The found index or -1 if none were found.
+ */
+static ssize_t str_index_of(const char *str, const char *search) {
+    size_t search_len = strlen(search);
+    if (search_len == 0) {
+        return -1;
+    }
+    for (size_t i = 0; i < strlen(str) - (search_len - 1); i++) {
+        if (strneq(&str[i], search, search_len)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * Extract a substring from a string until one of the specified characters are
+ * found or the specified length is reached.
+ *
+ * \param dest The string to store the extracted substring in. This needs to
+ * have a capacity of n + 1 bytes to account for the null byte. A terminating
+ * null byte is always written
+ * \param n How many characters to extract at a maximum. This is clamped to the
+ * length of str.
+ * \param str The string to extract from.
+ * \param delims A string with the characters which cause the search to end. The
+ * delim character is *not* written to dest.
+ * \param start The index of str where the substring starts.
+ * \return the amount of characters written to dest (excluding the terminating
+ * null byte).
+ */
+static size_t str_extract_n_until(
+    char *dest, size_t n, const char *str, const char *delims,
+    const size_t start
+) {
+    size_t len = strlen(str);
+    if (start >= len || n > len) {
+        dest[0] = '\0';
+        return 0;
+    }
+
+    if (start + n > len) {
+        n = len - start;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        if (one_of(delims, str[start + i])) {
+            dest[i] = '\0';
+
+            return i;
+        }
+        dest[i] = str[start + i];
+    }
+
+    dest[n] = '\0';
+    return n;
+}
+
+static size_t str_extract_n_until_skip(
+    char *dest, const size_t n, const char *str, const char *delims,
+    const char *skip, size_t start
+) {
+    if (start >= n) {
+        dest[0] = '\0';
+        return 0;
+    }
+    ssize_t start_skipped = first_not_of(str + start, skip);
+    if (start_skipped == -1) {
+        dest[0] = '\0';
+        return 0;
+    }
+    start += (size_t)start_skipped;
+
+    return str_extract_n_until(dest, n, str, delims, start);
+}
 
 //
 /**
@@ -258,38 +386,6 @@ static char *uint8_to_hex(uint32_t value, char *buffer) {
     return &buffer[2];
 }
 
-static bool is_whitespace(char c) {
-    return (
-        (c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (c == '\r')
-        || (c == '\n')
-    );
-}
-
-static bool strneq(const char *str1, const char *str2, const unsigned int n) {
-    bool r = true;
-    for (unsigned int i = 0; i < n; i++) {
-        if (str1[i] != str2[i]) {
-            r = false;
-            break;
-        }
-    }
-    return r;
-}
-
-bool one_of(const char *delims, char c) {
-    bool eq = false;
-    char curr = delims[0];
-    int i = 0;
-    while (curr != 0) {
-        if (c == curr) {
-            eq = true;
-            break;
-        }
-        curr = delims[i++];
-    }
-    return eq;
-}
-
 static inline uint32_t time_now() { return VESC_IF->timer_time_now(); }
 
 static inline float time_secs_since(const uint32_t timestamp) {
@@ -306,6 +402,21 @@ static inline float time_ms_since(const uint32_t timestamp) {
 
 static inline lbm_value lbm_enc_bool(bool value) {
     return value ? VESC_IF->lbm_enc_sym_true : VESC_IF->lbm_enc_sym_nil;
+}
+
+static lbm_value lbm_create_str(const char *str) {
+    size_t size = strlen(str) + 1;
+
+    lbm_value result;
+    if (!VESC_IF->lbm_create_byte_array(&result, size)) {
+        return VESC_IF->lbm_enc_sym_merror;
+    }
+
+    char *result_str = VESC_IF->lbm_dec_str(result);
+
+    memcpy(result_str, str, size);
+
+    return result;
 }
 
 /* **************************************************
@@ -608,6 +719,121 @@ static const char *at_find_of_responses(
 #endif
 
     return NULL;
+}
+
+/**
+ * Run a simple at command with a single expected response.
+ */
+static bool at_command(
+    const char *command, const char *expect, bool find_extra_ok
+) {
+    uart_write_string(command);
+
+    if (!at_find_response(expect, AT_READ_TIMEOUT_MS, true)) {
+        VESC_IF->printf("couldn't find find '%s' (for: %s)", expect, command);
+        return false;
+    }
+
+    if (find_extra_ok && !at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
+        VESC_IF->printf("couldn't find find 'OK' (for: %s)", command);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Run a simple at command with a multiple expected response.
+ */
+static bool at_command_responses(
+    const char *command, const size_t count, const char *responses[count]
+) {
+    uart_write_string(command);
+
+    const char *response =
+        at_find_of_responses(count, responses, AT_READ_TIMEOUT_MS);
+    if (response == NULL) {
+        VESC_IF->printf("couldn't find any valid response (for: %s)", command);
+        return false;
+    }
+
+    if (!strneq(response, "OK", 2)) {
+        if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
+            VESC_IF->printf("couldn't find find 'OK' (for: %s)", command);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool at_init() {
+    uart_purge(AT_PURGE_TIMEOUT_MS);
+
+    // Disable echo mode
+    {
+        uart_write_string("ATE0\r\n");
+
+        const char *response_ok = "OK";
+        const char *response_echo = "ATE0";
+        if (!at_command_responses("ATE0\r\n", 2, (const char *[]){response_ok, response_echo})) {
+            // modem might need more time at startup
+            VESC_IF->sleep_ms(3000);
+            if (!at_command_responses("ATE0\r\n", 2, (const char *[]){response_ok, response_echo})) {
+                return false;
+            }
+        }
+    }
+
+    // Check if pin is required
+    if (!at_command("AT+CPIN?\r\n", "+CPIN: READY", true)) {
+        return false;
+    }
+
+    // Select text mode for sms messages
+    if (!at_command("AT+CMGF=1\r\n", "OK", false)) {
+        return false;
+    }
+
+    // Set preferred mode to LTE only
+    if (!at_command("AT+CNMP=38\r\n", "OK", false)) {
+        return false;
+    }
+
+    // Check that GPRS is attached
+    if (!at_command("AT+CGATT?\r\n", "+CGATT: 1", true)) {
+        return false;
+    }
+
+    // ; Print current operator mode
+    // (at-command-parse-result "AT+COPS?\r\n" print 100)
+
+    // ; Get and print network APN
+    // (at-command-parse-result "AT+CGNAPN\r\n" print 100)
+
+    // Configure PDP with Internet Protocol Version 4 and the Access Point Name
+    // "internet.telenor.se"
+    // The result is then printed.
+    if (!at_command("AT+CNCFG=0,1,\"internet.telenor.se\"\r\n", "OK", false)) {
+        return false;
+    }
+
+    // Activate APP Network
+    {
+        uart_write_string("AT+CNACT=0,1\r\n");
+        const char *response_ok = "OK";
+        const char *response_error = "ERROR";
+        const char *response = at_find_of_responses(
+            2, (const char *[]){response_ok, response_error}, AT_READ_TIMEOUT_MS
+        );
+        if (!response) {
+            VESC_IF->printf("failed to find 'OK' or 'ERROR' (for AT+CNACT=0,1)"
+            );
+            return false;
+        }
+    }
+
+    return true;
 }
 
 /* **************************************************
@@ -1373,6 +1599,137 @@ static bool tcp_wait_for_recv(const tcp_handle_t handle, size_t tries) {
  * Extensions
  */
 
+/**
+ * signature: (str-index-of str search [from-index])
+ */
+static lbm_value ext_str_index_of(lbm_value *args, lbm_uint argn) {
+    if ((argn != 2 && argn != 3) || !VESC_IF->lbm_is_byte_array(args[0])
+        || !VESC_IF->lbm_is_byte_array(args[1])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    size_t from_index = 0;
+    if (argn == 3) {
+        if (!VESC_IF->lbm_is_number(args[2])) {
+            return VESC_IF->lbm_enc_sym_terror;
+        }
+
+        from_index = (size_t)VESC_IF->lbm_dec_as_u32(args[2]);
+    }
+
+    const char *str = VESC_IF->lbm_dec_str(args[0]);
+    const char *search = VESC_IF->lbm_dec_str(args[1]);
+
+    if (from_index >= strlen(str)) {
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
+
+    ssize_t index = str_index_of(str + from_index, search);
+
+    return VESC_IF->lbm_enc_i(index);
+}
+
+/**
+ * signature: (str-n-eq str-a str-b n)
+ */
+static lbm_value ext_str_n_eq(lbm_value *args, lbm_uint argn) {
+    if (argn != 3 || !VESC_IF->lbm_is_byte_array(args[0])
+        || !VESC_IF->lbm_is_byte_array(args[1])
+        || !VESC_IF->lbm_is_number(args[2])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    const char *a = VESC_IF->lbm_dec_str(args[0]);
+    const char *b = VESC_IF->lbm_dec_str(args[1]);
+
+    size_t n = (size_t)VESC_IF->lbm_dec_as_u32(args[2]);
+
+    bool result = strneq(a, b, n);
+
+    return lbm_enc_bool(result);
+}
+
+/**
+ * signature: (str-extract-until str delims [skip-chars] start)
+ */
+static lbm_value ext_str_extract_until(lbm_value *args, lbm_uint argn) {
+    if ((argn != 3 && argn != 4) || !VESC_IF->lbm_is_byte_array(args[0])
+        || !VESC_IF->lbm_is_byte_array(args[1])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    lbm_value skip_chars_lbm;
+    lbm_value start_lbm;
+    if (argn == 3) {
+        if (!VESC_IF->lbm_is_number(args[2])) {
+            return VESC_IF->lbm_enc_sym_terror;
+        }
+        start_lbm = args[2];
+    }
+    if (argn == 4) {
+        if (!VESC_IF->lbm_is_byte_array(args[2])
+            || !VESC_IF->lbm_is_number(args[3])) {
+            return VESC_IF->lbm_enc_sym_terror;
+        }
+        start_lbm = args[3];
+    }
+
+    const char *str = VESC_IF->lbm_dec_str(args[0]);
+    const char *delims = VESC_IF->lbm_dec_str(args[1]);
+    const char *skip = "";
+
+    // placed here to make compiler shut up about "may be used uninitialized"
+    if (argn == 4) {
+        skip_chars_lbm = args[2];
+    }
+
+    if (argn == 4) {
+        skip = VESC_IF->lbm_dec_str(skip_chars_lbm);
+    }
+
+    size_t n = strlen(str);
+    size_t start = (size_t)VESC_IF->lbm_dec_as_u32(start_lbm);
+
+    char dest[n + 1];
+
+    str_extract_n_until_skip(dest, n, str, delims, skip, start);
+
+    return lbm_create_str(dest);
+}
+
+/* signature: (puts ...values) */
+static lbm_value ext_puts(lbm_value *args, lbm_uint argn) {
+    if (argn == 0) {
+        return VESC_IF->lbm_enc_sym_true;
+    }
+
+    const char *strings[argn];
+    size_t res_len = 0;
+    for (size_t i = 0; i < argn; i++) {
+        if (!VESC_IF->lbm_is_byte_array(args[i])) {
+            return VESC_IF->lbm_enc_sym_terror;
+        }
+
+        strings[i] = VESC_IF->lbm_dec_str(args[i]);
+        res_len += strlen(strings[i]) + 1;
+    }
+    res_len -= 1;
+
+    size_t offset = 0;
+    char result[res_len + 1];
+    for (size_t i = 0; i < argn; i++) {
+        size_t len = strlen(strings[i]);
+        memcpy(result + offset, strings[i], len);
+        offset += len;
+        result[offset++] = ' ';
+    }
+    result[res_len] = '\0';
+
+    VESC_IF->printf("%s", result);
+
+    return VESC_IF->lbm_enc_sym_true;
+}
+
 /* signature: (ext-pause) */
 static lbm_value ext_pause(lbm_value *args, lbm_uint argn) {
     (void)args;
@@ -1642,6 +1999,16 @@ static lbm_value ext_pwr_key(lbm_value *args, lbm_uint argn) {
         return VESC_IF->lbm_enc_sym_true;
     }
     return VESC_IF->lbm_enc_sym_nil;
+}
+
+static lbm_value ext_at_init(lbm_value *args, lbm_uint argn) {
+    (void)args;
+
+    if (argn != 0) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    return lbm_enc_bool(at_init());
 }
 
 /**
@@ -2011,6 +2378,12 @@ INIT_FUN(lib_info *info) {
     };
 
     VESC_IF->uart_start(115200, false);
+
+    VESC_IF->lbm_add_extension("str-index-of", ext_str_index_of);
+    VESC_IF->lbm_add_extension("str-n-eq", ext_str_n_eq);
+    VESC_IF->lbm_add_extension("str-extract-until", ext_str_extract_until);
+    VESC_IF->lbm_add_extension("puts", ext_puts);
+
     VESC_IF->lbm_add_extension("ext-pause", ext_pause);
     VESC_IF->lbm_add_extension("ext-unpause", ext_unpause);
     VESC_IF->lbm_add_extension("ext-uart-write", ext_uart_write);
@@ -2030,6 +2403,7 @@ INIT_FUN(lib_info *info) {
     // VESC_IF->lbm_add_extension("ext-sim7000-mode", ext_sim7000_mode);
     // VESC_IF->lbm_add_extension("ext-sim7070-mode", ext_sim7070_mode);
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
+    VESC_IF->lbm_add_extension("at-init", ext_at_init);
     VESC_IF->lbm_add_extension("tcp-is-connected", ext_tcp_is_connected);
     VESC_IF->lbm_add_extension("tcp-status", ext_tcp_status);
     VESC_IF->lbm_add_extension(

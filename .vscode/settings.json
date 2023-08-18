@@ -18,10 +18,21 @@
         "type_traits": "c"
     },
     "cSpell.words": [
+        "acons",
         "CAOPEN",
         "CARECV",
+        "CGATT",
+        "CGNAPN",
         "cids",
+        "CIPRXGET",
+        "CMGF",
+        "CNACT",
+        "CNCFG",
+        "CNMP",
+        "cond",
+        "CPIN",
         "eerror",
+        "GPIOD",
         "strneq",
         "uart"
     ],
@@ -29,5 +40,6 @@
     "editor.formatOnType": false,
     "editor.inlayHints.enabled": "off",
     "editor.formatOnSave": false,
-    "C_Cpp.intelliSenseEngine": "Tag Parser"
+    "C_Cpp.intelliSenseEngine": "Tag Parser",
+    "editor.formatOnPaste": false
 }

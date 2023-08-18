@@ -1,5 +1,13 @@
+@const-symbol-strings
+
 (import "../build/vesc4g.bin" 'lib)
 (load-native-lib lib)
+
+(import "lib/utils.lisp" 'code-utils)
+(import "lib/http.lisp" 'code-http)
+
+(read-eval-program code-utils)
+(read-eval-program code-http)
 
 @const-start
 
@@ -552,11 +560,12 @@
     buffer
 })
 
-(defunret recv-tcp () {
+
+(defunret recv-tcp (cid) {
     (var segments (list))
     (var result true)
     (loopwhile result {
-        (var temp (recv-single))
+        (var temp (recv-single cid))
         (setq result temp)
         ; (print result)
         (if result {
@@ -818,10 +827,77 @@
     
     true
 })
+(def ping-http-request "GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: Close\r\n\r\n")
+
+(defun test-request () {
+    (var start (systime))
+    
+    (var request (request-add-headers
+        (create-request 'GET "/api/esp/ping" "lindboard-staging.azurewebsites.net")
+        (list
+            '("Connection" . "Close")
+        )
+    ))
+    
+    (var response (send-request request))
+    (print response)
+    
+    (print (str-merge
+        "request took "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
+})
+
+(defunret test-requests () {
+    (var start (systime))
+    
+    (print "doing 10 http requests...")
+    
+    (looprange i 0 10 {
+        (var request (request-add-headers
+            (create-request 'GET "/api/esp/ping" "lindboard-staging.azurewebsites.net")
+            (list
+                '("Connection" . "Close")
+            )
+        ))
+        
+        (var response (send-request request))
+        (if (not-eq (type-of response) 'type-list) {
+            (puts (to-str-delim ""
+                "("
+                i
+                ") failed with "
+                response
+            ))
+            (return nil)
+        })
+        (puts (to-str-delim ""
+            "("
+            i
+            "): "
+            response
+        ))
+    })
+    
+    
+    (puts (str-merge
+        "done (avg time: "
+        (str-from-n (/ (ms-since start) 10))
+        "ms)"
+    ))
+    
+    true
+})
 
 @const-end
 
 (pwr-on)
+
+(if (at-init)
+    (print "init successfull")
+    (print "init failed")
+)
 
 ; (test-connection)
 
