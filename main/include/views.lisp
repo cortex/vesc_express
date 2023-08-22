@@ -10,6 +10,12 @@
         (cons 'down-long enter-sleep)
         (cons 'left decrease-gear)
         (cons 'right increase-gear)
+        ; (cons 'right cycle-main-top-menu)
+        ; (cons 'right-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu cycle-main-timer-menu))
+        ; (cons 'left try-activate-thr)
+        ; (cons 'left-long enter-sleep)
+        ; (cons 'down decrease-gear)
+        ; (cons 'up increase-gear)
     ))
     
     (cons 'board-info (list
@@ -44,6 +50,9 @@
         (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
+        ; (cons 'left try-activate-thr)
+        ; (cons 'left-long enter-sleep)
+        
         ; (cons 'left (fn () {
         ;     (match (state-get-live 'thr-activation-state)
         ;         (reminder (activate-thr))
@@ -66,6 +75,7 @@
         (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
+        ; (cons 'left-long enter-sleep)
     ))
     
     (cons 'low-battery (list
@@ -74,6 +84,7 @@
         (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
+        ; (cons 'left-long enter-sleep)
     ))
     
     (cons 'warning (list
@@ -82,6 +93,7 @@
         (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
+        ; (cons 'left-long enter-sleep)
     ))
     
     (cons 'firmware (list
@@ -98,6 +110,7 @@
         (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
+        ; (cons 'left-long enter-sleep)
     ))
 ))
 

@@ -116,8 +116,15 @@
         (parse-bin (str-merge "0" "000" "11" "00"))
         ; (parse-bin (str-merge "0" "010" "10" "00"))
     ))
+    (var arg1 reg-feedback-control)
+    ; (var arg2 (ix cal-result 1))
+    ; (var arg3 (ix cal-result 2))
+    (var arg2 13)
+    (var arg3 100)
+    (print arg1 arg2 arg3)
+    ; (vib-cal-set arg1 arg2 arg3)
     ; (vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
-    (vib-cal-set reg-feedback-control 13 100)
+    ; (vib-cal-set reg-feedback-control 13 100)
 }
 
 @const-start
@@ -390,6 +397,34 @@
 
 (read-eval-program code-ui-tick)
 
+; (let ((loop (lambda (res break) (if cond (loop body break) res)))) (call-cc (lambda (brk) (loop nil brk))))
+; (let (
+;     (loop (lambda (res break) (if cond
+;         (loop body break)
+;         res
+;     )))
+; )
+;     (call-cc (lambda (brk) (loop nil brk)))
+; )
+
+; (defun loopwhile-internal (cnd body)
+;     (let (
+;         (loop (lambda (res) (if cnd
+;             (loop body)
+;         )))
+;     ))
+;     (if cnd )
+; )
+
+; (def loopwhile (macro (cnd body) `(let (
+;     (loop (lambda (res) (if ,cnd
+;         (loop ,body)
+;         res
+;     )))
+; )
+;     (loop nil)
+; )))
+
 (def m-connection-tick-ms 0.0)
 ; Communication
 (spawn 200 (fn ()
@@ -522,7 +557,11 @@
         (var elapsed (secs-since start))
         (if any-ping-has-failed
             (sleep-ms-or-until 80 (not any-ping-has-failed))
-            (sleep (- 0.05 elapsed)) ; 50 ms
+            {
+                (var secs (- 0.05 elapsed)) ; 50 ms
+                ; (print (to-str "slept for" (* (if (< secs 0.0) 0 secs) 1000) "ms"))
+                (sleep (if (< secs 0.0) 0 secs))
+            }
         )
     })
 ))

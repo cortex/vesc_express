@@ -113,6 +113,10 @@
 
     ; global tick
     
+    (if dev-force-thr-enable {
+        (set-thr-is-active-current true)
+    })
+    
     (if dev-force-view {
         (request-view-change)
         (if (eq dev-view 'board-info) {

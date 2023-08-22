@@ -70,6 +70,11 @@
     `(print (str-merge ,@pair-strings))
 }))
 
+(defun inspect (value) {
+    (print value)
+    value
+})
+
 (defun ms-since (timestamp)
     (* (secs-since timestamp) 1000.0)
 )

@@ -4,6 +4,7 @@
 
 (def esp-rx-cnt 0)
 (def batt-addr-rx false)
+(def batt-addr '(212 249 141 2 108 45))
 
 (def any-ping-has-failed false) ; If a ping has failed, but not enough to consider connection lost
 
@@ -15,12 +16,14 @@
         ; Ignore broadcast, only handle data sent directly to us
         (if (not-eq des '(255 255 255 255 255 255))
             (progn
+                ; (print data)
                 (def batt-addr src)
                 (if (not batt-addr-rx) (esp-now-add-peer batt-addr))
                 (def batt-addr-rx true)
                 (eval (read data))
                 (def esp-rx-cnt (+ esp-rx-cnt 1))
         ))
+        ; (print data)
         (free data)
 })
 
@@ -192,7 +195,10 @@
     ))
     (var start (systime))
     
-    (var new-success (ping-battery))
+    (var new-success (if dev-disable-connection-check
+        true
+        (ping-battery)
+    ))
     
     (if (and new-success (not ping-success) (not is-connected)) { ; connection established
         ; (print "connection restored")
