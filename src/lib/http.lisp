@@ -138,7 +138,7 @@
                     "connection failed with "
                     result
                     ". Retrying..."
-                ))                
+                ))
             })
             (t {
                 (print (to-str-delim ""
@@ -335,4 +335,4 @@
         
         (cons name value)
     }) header-lines)
-)  
+)
