@@ -109,28 +109,15 @@ typedef enum {
  */
 typedef struct {
     lib_thread thread;
-    bool paused;
-    bool tcp_connected;
 
     lib_mutex lock;
-    rb_t send_buffer;
-    PACKET_STATE_t *p_state;
-    volatile uint8_t cmd;
-    volatile lbm_cid cmd_thread;
 
-    uint32_t send_fails;
-    uint32_t recv_fails;
-
-    int mode;
-    //  void (*data_recv_fun)(char *, int);
-    //  void (*data_send_fun)(char *, int, send_unit_t *);
-
-    size_t recv_size;
-    // If recv_buffer has been read yet.
-    bool recv_used;
-    // If recv_buffer has been filled yet.
-    bool recv_filled;
-    char recv_buffer[TCP_BUFFER_SIZE];
+    // size_t recv_size;
+    // // If recv_buffer has been read yet.
+    // bool recv_used;
+    // // If recv_buffer has been filled yet.
+    // bool recv_filled;
+    // char recv_buffer[TCP_BUFFER_SIZE];
 
     tcp_state_t tcp_state;
 
@@ -144,26 +131,13 @@ typedef struct {
     char *tcp_send_buffer;
     lbm_value tcp_test_str;
 
-    // // The last cmd for which the current result was returned.
-    // // If TCP_CMD_IDLE, there is no result to read.
-    // // Is only updated when the result has become available.
-    // tcp_cmd_t tcp_result_cmd;
-
-    // tcp_state_t result_tcp_status;
-    // // umm is not actually necessarily an error.
-    // // Could also be ok.
-    // // I kinda painted myself into a type corner... ._.
-    // tcp_connect_error_t result_tcp_connect_host;
-    // bool result_tcp_send;
-    // bool result_tcp_close_connection;
-
     lbm_uint symbol_disconnected;
     lbm_uint symbol_closed_remote;
     lbm_uint symbol_connected;
     lbm_uint symbol_server_mode;
     lbm_uint symbol_error;
     lbm_uint symbol_tcp_recv;
-    
+
     lbm_uint symbol_terror;
     lbm_uint symbol_eerror;
     lbm_uint symbol_merror;
@@ -553,9 +527,9 @@ static bool lbm_flatten_str(lbm_flat_value_t *flat_value, const char *str) {
     return true;
 }
 
-
-// static bool lbm_flatten_simple_value(lbm_flat_value_t *flat_value, const lbm_value value) {
-//     if 
+// static bool lbm_flatten_simple_value(lbm_flat_value_t *flat_value, const
+// lbm_value value) {
+//     if
 // }
 
 static bool lbm_flatten_sym(lbm_flat_value_t *flat_value, const lbm_uint sym) {
@@ -886,14 +860,17 @@ static const char *at_find_of_responses(
  * Run a simple at command with a single expected response.
  */
 static bool at_command(
-    const char *command, const char *expect, bool find_extra_ok, const uint_t timeout
+    const char *command, const char *expect, bool find_extra_ok,
+    const uint_t timeout
 ) {
     uart_write_string(command);
 
     if (!at_find_response(expect, timeout, true)) {
         char buffer[strlen(command) + 1];
         str_extract_n_until(buffer, strlen(command), command, "\r\n", 0);
-        VESC_IF->printf("couldn't find response '%s' (for: %s)", expect, buffer);
+        VESC_IF->printf(
+            "couldn't find response '%s' (for: %s)", expect, buffer
+        );
         return false;
     }
 
@@ -911,12 +888,12 @@ static bool at_command(
  * Run a simple at command with a multiple expected response.
  */
 static bool at_command_responses(
-    const char *command, const size_t count, const char *responses[count], const uint_t timeout
+    const char *command, const size_t count, const char *responses[count],
+    const uint_t timeout
 ) {
     uart_write_string(command);
 
-    const char *response =
-        at_find_of_responses(count, responses, timeout);
+    const char *response = at_find_of_responses(count, responses, timeout);
     if (response == NULL) {
         VESC_IF->printf("couldn't find any valid response (for: %s)", command);
         return false;
@@ -942,12 +919,14 @@ static bool at_init() {
         const char *response_ok = "OK";
         const char *response_echo = "ATE0";
         if (!at_command_responses(
-                "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}, AT_READ_TIMEOUT_MS
+                "ATE0\r\n", 2, (const char *[]){response_ok, response_echo},
+                AT_READ_TIMEOUT_MS
             )) {
             // modem might need more time at startup
             VESC_IF->sleep_ms(3000);
             if (!at_command_responses(
-                    "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}, AT_READ_TIMEOUT_MS
+                    "ATE0\r\n", 2, (const char *[]){response_ok, response_echo},
+                    AT_READ_TIMEOUT_MS
                 )) {
                 return false;
             }
@@ -968,7 +947,7 @@ static bool at_init() {
     if (!at_command("AT+CNMP=38\r\n", "OK", false, AT_READ_TIMEOUT_MS)) {
         return false;
     }
-    
+
     // Attach GPRS
     if (!at_command("AT+CGATT=1\r\n", "OK", false, 2000)) {
         return false;
@@ -988,7 +967,10 @@ static bool at_init() {
     // Configure PDP with Internet Protocol Version 4 and the Access Point Name
     // "internet.telenor.se"
     // The result is then printed.
-    if (!at_command("AT+CNCFG=0,1,\"internet.telenor.se\"\r\n", "OK", false, AT_READ_TIMEOUT_MS)) {
+    if (!at_command(
+            "AT+CNCFG=0,1,\"internet.telenor.se\"\r\n", "OK", false,
+            AT_READ_TIMEOUT_MS
+        )) {
         return false;
     }
 
@@ -1013,32 +995,32 @@ static bool at_init() {
 /* **************************************************
  * AT interface restoration
  */
-static bool restore_at_if(void) {
-    char linebuffer[20];
-    int br;
-    while (VESC_IF->uart_read() >= 0)
-        ;  // purge
-    uart_write_string("AT\r\n");
-    br = uart_read_until_trim(linebuffer, "\n", 20, 2000);
-    if (br > 0 && strneq("OK", linebuffer, 2)) {
-        return true;
-    }
+// static bool restore_at_if(void) {
+//     char linebuffer[20];
+//     int br;
+//     while (VESC_IF->uart_read() >= 0)
+//         ;  // purge
+//     uart_write_string("AT\r\n");
+//     br = uart_read_until_trim(linebuffer, "\n", 20, 2000);
+//     if (br > 0 && strneq("OK", linebuffer, 2)) {
+//         return true;
+//     }
 
-    // try writing bytes
-    for (int i = 0; i < 100; i++) {
-        VESC_IF->uart_write((unsigned char *)"AAAAAAAAAA", 10);
-        VESC_IF->uart_write((unsigned char *)"\r\n", 2);
+//     // try writing bytes
+//     for (int i = 0; i < 100; i++) {
+//         VESC_IF->uart_write((unsigned char *)"AAAAAAAAAA", 10);
+//         VESC_IF->uart_write((unsigned char *)"\r\n", 2);
 
-        while (VESC_IF->uart_read() >= 0)
-            ;  // purge
-        uart_write_string("AT\r\n");
-        br = uart_read_until_trim(linebuffer, "\n", 20, 2000);
-        if (br > 0 && strneq("OK", linebuffer, 2)) {
-            return true;
-        }
-    }
-    return false;
-}
+//         while (VESC_IF->uart_read() >= 0)
+//             ;  // purge
+//         uart_write_string("AT\r\n");
+//         br = uart_read_until_trim(linebuffer, "\n", 20, 2000);
+//         if (br > 0 && strneq("OK", linebuffer, 2)) {
+//             return true;
+//         }
+//     }
+//     return false;
+// }
 
 /* **************************************************
  * Modem power on/off
@@ -1054,302 +1036,49 @@ static void modem_pwr_key(bool grounded) {
 
 static void modem_pwr_on() {
     uint32_t start = time_now();
-    
+
     VESC_IF->printf("powering on...");
-    
+
     modem_pwr_key(false);
     // Spec doesn't specify how long too wait here, urgh...
     // Any lower doesn't seem very reliable.
     VESC_IF->sleep_ms(800);
-    
+
     modem_pwr_key(true);
     VESC_IF->sleep_ms(1000);
     modem_pwr_key(false);
-    
+
     // checking takes forever (adds ~1400ms)
     // if (!at_find_response("RDY", AT_READ_TIMEOUT_MS, true)) {
     //     VESC_IF->printf("couldn't find 'RDY' response");
     //     return;
     // }
-    
+
     // // purge remaining lines, including:
     // // +CFUN: 1
     // // +CPIN: READY
     // // SMS Ready
     // uart_purge(AT_PURGE_TIMEOUT_MS);
-    
+
     VESC_IF->printf("ready, took %ums", time_ms_since_i(start));
 }
 
 static bool modem_pwr_off() {
     VESC_IF->printf("powering off...");
- 
+
     uart_purge(AT_PURGE_TIMEOUT_MS);
-    
+
     // should power off normally
     uart_write_string("AT+CPOWD=1\r\n");
-    
+
     if (!at_find_response("NORMAL POWER DOWN", AT_READ_TIMEOUT_MS, true)) {
         return false;
     }
-    
+
     VESC_IF->printf("finished");
-    
+
     return true;
 }
-
-
-/* **************************************************
- * Packet and data processing
- */
-
-static void enqueue_data(unsigned char *payload, unsigned int size) {
-    data *d = (data *)ARG;
-    send_unit_t su;
-    unsigned char *sd = VESC_IF->malloc(size);
-    if (!sd) {
-        return;
-    }
-    memcpy(sd, payload, size);
-    su.data = sd;
-    su.size = size;
-    if (!rb_insert(&d->send_buffer, (void *)&su)) {
-        d->send_fails++;
-        VESC_IF->free(sd);
-    }
-}
-
-static void send_packet(unsigned char *bytes, unsigned int len) {
-    if (VESC_IF->should_terminate()) return;
-    data *d = (data *)ARG;
-    if (d) {
-        VESC_IF->packet_send_packet(bytes, len, d->p_state);
-    }
-}
-
-static void process_data_tcp(unsigned char *data, unsigned int size) {
-    VESC_IF->commands_process_packet(data, size, send_packet);
-}
-
-// rb: ring buffer
-static void rb_clear(void) {
-    data *d = (data *)ARG;
-    send_unit_t su;
-
-    while (rb_pop(&d->send_buffer, (void *)&su)) {
-        VESC_IF->free(su.data);
-    }
-}
-
-static int tcp_read_data(uint8_t *buffer, int buffer_size, int n_bytes) {
-    int sleep_count = 0;
-    int i = 0;
-    while (i < n_bytes && i < buffer_size && sleep_count < 100) {
-        int res = VESC_IF->uart_read();
-        if (res < 0) {
-            sleep_count++;
-            VESC_IF->sleep_ms(1);
-            continue;
-        }
-        buffer[i] = (uint8_t)res;
-        i++;
-    }
-    return i;
-}
-
-static void data_recv_fun(char *linebuffer, int size) {
-    data *d = (data *)ARG;
-
-    char buf[10];
-    int_to_ascii(size, buf, 10);
-
-    char *delim = "";
-    char *response = "";
-    int data_size_pos = 0;
-
-    switch (d->mode) {
-        case MODE_SIM7000: {
-            while (VESC_IF->uart_read() >= 0)
-                ;
-            uart_write_string("AT+CIPRXGET=2,0,");
-            uart_write_string(buf);
-            uart_write_string("\r\n");
-            delim = "\n";
-            response = "+CIPRXGET: 2,";
-            data_size_pos = 15;
-        } break;
-        case MODE_SIM7070: {
-            while (VESC_IF->uart_read() >= 0)
-                ;
-            uart_write_string("AT+CARECV=0,");
-            uart_write_string(buf);
-            uart_write_string("\r\n");
-            delim = ",";
-            response = "+CARECV:";
-            data_size_pos = 9;
-        } break;
-        default:
-            return;
-    }
-
-    int br = uart_read_until_trim(linebuffer, delim, size, 2000);
-    if (br > 0) {
-        if (strneq(response, linebuffer, strlen(response))) {
-            int n_bytes = atoi(&linebuffer[data_size_pos]);
-            if (n_bytes > 0) {
-                memset(linebuffer, 0, 100);
-                int bytes_read =
-                    tcp_read_data((unsigned char *)linebuffer, size, n_bytes);
-                if (bytes_read == n_bytes) {
-                    for (int i = 0; i < bytes_read; i++) {
-                        VESC_IF->packet_process_byte(
-                            (unsigned char)linebuffer[i], d->p_state
-                        );
-                    }
-                }
-            }
-            br = uart_read_until_trim(linebuffer, "\n", size, 200);
-            if (!strneq("OK", linebuffer, 2)) {
-                d->recv_fails++;
-                restore_at_if();
-            }
-        } else if (strneq("ERROR", linebuffer, 5)) {
-            d->tcp_connected = false;
-        } else {
-            restore_at_if();
-        }
-    }
-}
-
-static void data_send_fun(char *linebuffer, int size, send_unit_t *su) {
-    data *d = (data *)ARG;
-
-    char *ok_string = "";
-    char buf[10];
-    int_to_ascii(su->size, buf, 10);
-
-    switch (d->mode) {
-        case MODE_SIM7000: {
-            while (VESC_IF->uart_read() >= 0)
-                ;
-            uart_write_string("AT+CIPSEND=0,");
-            uart_write_string(buf);
-            uart_write_string("\r\n");
-            ok_string = "SEND OK";
-        } break;
-        case MODE_SIM7070: {
-            while (VESC_IF->uart_read() >= 0)
-                ;
-            uart_write_string("AT+CASEND=0,");
-            uart_write_string(buf);
-            uart_write_string("\r\n");
-            ok_string = "OK";
-        } break;
-        default:
-            return;
-    }
-
-    int count = 0;
-    bool data_ok = false;
-    char c;
-    bool b = uart_read_timeout(&c, 100);
-    while (b && count < 100) {
-        if (c == '>') {
-            data_ok = true;
-            break;
-        }
-        count++;
-        b = uart_read_timeout(&c, 100);
-    }
-
-    if (data_ok) {
-        VESC_IF->uart_write(su->data, su->size);
-    }
-
-    int br = uart_read_until_trim(linebuffer, "\n", size, 2000);
-    if (br > 0) {
-        if (strneq(ok_string, linebuffer, strlen(ok_string))) {
-        } else {
-        }
-    }
-}
-
-/* **************************************************
- * Thread
- */
-
-static void thd(void *arg) {
-    data *d = (data *)arg;
-    char linebuffer[100];
-    bool prev_connected = false;
-
-    while (!VESC_IF->should_terminate()) {
-        if (d->cmd) {
-            switch (d->cmd) {
-                case COMMAND_PAUSE:
-                    d->paused = true;
-                    restore_at_if();
-                    VESC_IF->lbm_unblock_ctx_unboxed(
-                        d->cmd_thread, VESC_IF->lbm_enc_sym_true
-                    );
-                    d->cmd_thread = -1;
-                    d->cmd = 0;
-                    break;
-                case COMMAND_UNPAUSE: {
-                    d->paused = false;
-                    restore_at_if();
-                    VESC_IF->lbm_unblock_ctx_unboxed(
-                        d->cmd_thread, VESC_IF->lbm_enc_sym_true
-                    );
-                    d->cmd_thread = -1;
-                    d->cmd = 0;
-                    break;
-                }
-                default:
-                    d->cmd = 0;
-                    break;
-            }
-        }
-
-        if (d->paused) {
-            VESC_IF->sleep_ms(1);
-            continue;
-        }
-
-        if (d->tcp_connected) {
-            if (!prev_connected) {
-                // VESC_IF->printf("TCP Connected");
-            }
-
-            if (!rb_is_empty(&d->send_buffer)) {
-                send_unit_t su;
-                // VESC_IF->printf("SENDING sendbuffer");
-                while (rb_pop(&d->send_buffer, &su)) {
-                    data_send_fun(linebuffer, 100, &su);
-                    VESC_IF->free(su.data);
-                }
-            }
-            data_recv_fun(linebuffer, 100);
-        } else {
-            if (prev_connected) {
-                // VESC_IF->printf("TCP Disconnected");
-            }
-        }
-
-        prev_connected = d->tcp_connected;
-        VESC_IF->sleep_ms(1);
-    }
-
-    VESC_IF->printf("LEAVING THREAD");
-
-    if (d) {
-        rb_clear();
-        // rb_free(&d->send_buffer);
-        VESC_IF->free(d);
-    }
-}
-
-// static void set_cmd_wait()
 
 /* **************************************************
  * TCP library
@@ -1778,11 +1507,10 @@ static bool lbm_call_tcp_cmd(const tcp_cmd_t cmd, const uint_t timeout_ms) {
 static void tcp_thd(void *arg) {
     void return_result_unboxed(lbm_value result) {
         data *d = use_state();
-        
+
         if (!VESC_IF->lbm_unblock_ctx_unboxed(d->tcp_calling_thread, result)) {
             VESC_IF->printf("sending result to calling thread failed");
         }
-
     }
     void return_flat_result(lbm_flat_value_t * flat_value) {
         data *d = use_state();
@@ -1798,7 +1526,7 @@ static void tcp_thd(void *arg) {
                 VESC_IF->printf("failed to flatten symbol");
                 return_result_unboxed(VESC_IF->lbm_enc_sym_eerror);
             }
-            
+
             return_flat_result(&flat_value);
         } else {
             return_result_unboxed(result);
@@ -1939,14 +1667,15 @@ static void tcp_thd(void *arg) {
             }
             case TCP_CMD_TEST: {
                 return_result(VESC_IF->lbm_enc_sym_eerror);
-                // lbm_uint sym = VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_eerror);
-                
+                // lbm_uint sym =
+                // VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_eerror);
+
                 // lbm_flat_value_t result;
                 // if (!lbm_flatten_sym(&result, sym)) {
                 //     return_result(VESC_IF->lbm_enc_sym_nil);
                 //     break;
                 // }
-                
+
                 // return_flat_result(&result);
                 break;
             }
@@ -2187,47 +1916,14 @@ static lbm_value ext_puts(lbm_value *args, lbm_uint argn) {
 //     return value;
 // }
 
-/* signature: (ext-pause) */
-static lbm_value ext_pause(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
-    lbm_value r_val = VESC_IF->lbm_enc_sym_nil;
-
-    if (!d->cmd) {
-        d->cmd = COMMAND_PAUSE;
-        d->cmd_thread = VESC_IF->lbm_get_current_cid();
-        VESC_IF->lbm_block_ctx_from_extension();
-        r_val = VESC_IF->lbm_enc_sym_true;
-    }
-
-    return r_val;
-}
-
-/* signature: (ext-unpause) */
-static lbm_value ext_unpause(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
-    data *d = (data *)ARG;
-    lbm_value r_val = VESC_IF->lbm_enc_sym_nil;
-
-    if (!d->cmd) {
-        d->cmd = COMMAND_UNPAUSE;
-        d->cmd_thread = VESC_IF->lbm_get_current_cid();
-        VESC_IF->lbm_block_ctx_from_extension();
-        r_val = VESC_IF->lbm_enc_sym_true;
-    }
-    return r_val;
-}
-
 /* signature: (ext-uart-write string) */
 static lbm_value ext_uart_write(lbm_value *args, lbm_uint argn) {
     // VESC_IF->printf("uart_write");
 
-    data *d = (data *)ARG;
-    if (!d->paused) {
-        return VESC_IF->lbm_enc_sym_nil;
-    }
+    // data *d = (data *)ARG;
+    // if (!d->paused) {
+    //     return VESC_IF->lbm_enc_sym_nil;
+    // }
 
     if (argn != 1 || !VESC_IF->lbm_is_byte_array(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
@@ -2240,25 +1936,14 @@ static lbm_value ext_uart_write(lbm_value *args, lbm_uint argn) {
     return VESC_IF->lbm_enc_sym_true;
 }
 
-// /* signature: (ext-set-connected) */
-// static lbm_value ext_set_connected(lbm_value *args, lbm_uint argn) {
-//     (void)args;
-//     (void)argn;
-//     data *d = (data *)ARG;
-
-//     d->tcp_connected = true;
-//     return VESC_IF->lbm_enc_sym_true;
-// }
-
 // Read line or at most `number` characters.
 // Includes newline character.
 /* signature: (ext-uart-readline dest len) */
 static lbm_value ext_uart_readline(lbm_value *args, lbm_uint argn) {
-    // VESC_IF->printf("uart_read");
-    data *d = (data *)ARG;
-    if (!d->paused) {
-        return VESC_IF->lbm_enc_sym_nil;
-    }
+    // data *d = (data *)ARG;
+    // if (!d->paused) {
+    //     return VESC_IF->lbm_enc_sym_nil;
+    // }
     if (argn != 2
         || !(
             VESC_IF->lbm_is_byte_array(args[0])
@@ -2281,11 +1966,10 @@ static lbm_value ext_uart_readline(lbm_value *args, lbm_uint argn) {
 // whitspace. Includes newline character.
 /* signature: (ext-uart-readline dest len) */
 static lbm_value ext_uart_readline_trim(lbm_value *args, lbm_uint argn) {
-    // VESC_IF->printf("uart_read");
-    data *d = (data *)ARG;
-    if (!d->paused) {
-        return VESC_IF->lbm_enc_sym_nil;
-    }
+    // data *d = (data *)ARG;
+    // if (!d->paused) {
+    //     return VESC_IF->lbm_enc_sym_nil;
+    // }
     if (argn != 2
         || !(
             VESC_IF->lbm_is_byte_array(args[0])
@@ -2309,11 +1993,10 @@ static lbm_value ext_uart_readline_trim(lbm_value *args, lbm_uint argn) {
 // Includes the found delim character.
 /* signature: (ext-uart-read-until dest delim len) */
 static lbm_value ext_uart_read_until(lbm_value *args, lbm_uint argn) {
-    // VESC_IF->printf("uart_read");
-    data *d = (data *)ARG;
-    if (!d->paused) {
-        return VESC_IF->lbm_enc_sym_nil;
-    }
+    // data *d = (data *)ARG;
+    // if (!d->paused) {
+    //     return VESC_IF->lbm_enc_sym_nil;
+    // }
     if (argn != 3
         || !(
             VESC_IF->lbm_is_byte_array(args[0])
@@ -2365,86 +2048,6 @@ static lbm_value ext_get_uuid(lbm_value *args, lbm_uint argn) {
     return VESC_IF->lbm_enc_sym_terror;
 }
 
-// /* signature: (ext-tcp-send-string string) */
-// static lbm_value ext_tcp_send_string(lbm_value *args, lbm_uint argn) {
-//     if (argn == 1) {
-//         VESC_IF->printf("Enqueueing string");
-//         if (VESC_IF->lbm_is_byte_array(args[0])) {
-//             char *str = VESC_IF->lbm_dec_str(args[0]);
-//             int32_t len = strlen(str);
-//             enqueue_data((unsigned char *)str, len + 1);
-//             return VESC_IF->lbm_enc_sym_true;
-//         }
-//     }
-//     return VESC_IF->lbm_enc_sym_nil;
-// }
-
-// /* signature: (ext-is-connected) */
-// static lbm_value ext_is_connected(lbm_value *args, lbm_uint argn) {
-//     (void)args;
-//     (void)argn;
-//     data *d = (data *)ARG;
-
-//     if (d->tcp_connected) {
-//         return VESC_IF->lbm_enc_sym_true;
-//     }
-//     return VESC_IF->lbm_enc_sym_nil;
-// }
-
-// /* signature: (ext-is-paused) */
-// static lbm_value ext_is_paused(lbm_value *args, lbm_uint argn) {
-//     (void)args;
-//     (void)argn;
-//     data *d = (data *)ARG;
-
-//     if (d->paused) {
-//         return VESC_IF->lbm_enc_sym_true;
-//     }
-//     return VESC_IF->lbm_enc_sym_nil;
-// }
-
-// /* signature: (ext-send-fails) */
-// static lbm_value ext_send_fails(lbm_value *args, lbm_uint argn) {
-//     (void)args;
-//     (void)argn;
-//     data *d = (data *)ARG;
-
-//     return VESC_IF->lbm_enc_u(d->send_fails);
-// }
-
-// /* signature: (ext-recv-fails) */
-// static lbm_value ext_recv_fails(lbm_value *args, lbm_uint argn) {
-//     (void)args;
-//     (void)argn;
-//     data *d = (data *)ARG;
-
-//     return VESC_IF->lbm_enc_u(d->recv_fails);
-// }
-
-// /* signature: (ext-sim7000-mode) */
-// static lbm_value ext_sim7000_mode(lbm_value *args, lbm_uint argn) {
-//     (void)args;
-//     (void)argn;
-//     data *d = (data *)ARG;
-//     d->mode = MODE_SIM7000;
-//     // d->data_send_fun = sim7000_data_send_fun;
-//     // d->data_recv_fun = sim7000_data_recv_fun;
-
-//     return VESC_IF->lbm_enc_sym_true;
-// }
-
-// /* signature: (ext-sim7070-mode) */
-// static lbm_value ext_sim7070_mode(lbm_value *args, lbm_uint argn) {
-//     (void)args;
-//     (void)argn;
-//     data *d = (data *)ARG;
-//     d->mode = MODE_SIM7070;
-//     // d->data_send_fun = sim7070_data_send_fun;
-//     // d->data_recv_fun = sim7070_data_recv_fun;
-
-//     return VESC_IF->lbm_enc_sym_true;
-// }
-
 static lbm_value ext_pwr_key(lbm_value *args, lbm_uint argn) {
     if (argn == 1 && VESC_IF->lbm_is_number(args[0])) {
         lbm_int pwr = VESC_IF->lbm_dec_as_i32(args[0]);
@@ -2463,9 +2066,9 @@ static lbm_value ext_modem_pwr_on(lbm_value *args, lbm_uint argn) {
     if (argn != 0) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    
+
     modem_pwr_on();
-    
+
     return VESC_IF->lbm_enc_sym_true;
 }
 
@@ -2474,9 +2077,9 @@ static lbm_value ext_modem_pwr_off(lbm_value *args, lbm_uint argn) {
     if (argn != 0) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    
+
     bool result = modem_pwr_off();
-    
+
     return lbm_enc_bool(result);
 }
 
@@ -2764,7 +2367,7 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
     lbm_value argument = VESC_IF->lbm_enc_sym_nil;
     if (argn >= 1) {
         argument = args[0];
-    } 
+    }
 
     d->tcp_test_str = argument;
 
@@ -2790,33 +2393,9 @@ INIT_FUN(lib_info *info) {
     info->stop_fun = stop;
     info->arg = d;
 
-    unsigned char *buffer =
-        VESC_IF->malloc(SEND_BUFFER_UNITS * sizeof(send_unit_t));
-    if (!buffer) {
-        VESC_IF->free(d);
-        return false;
-    }
-    rb_init(&d->send_buffer, buffer, sizeof(send_unit_t), SEND_BUFFER_UNITS);
-
-    d->p_state = VESC_IF->malloc(sizeof(PACKET_STATE_t));
-    if (d->p_state == NULL) {
-        VESC_IF->free(buffer);
-        VESC_IF->free(d);
-        return false;
-    }
-
-    VESC_IF->packet_init(enqueue_data, process_data_tcp, d->p_state);
-
-    d->paused = true;
-    d->tcp_connected = false;
-    d->cmd = 0;
-    d->cmd_thread = -1;
     d->lock = VESC_IF->mutex_create();
-    d->send_fails = 0;
-    d->recv_fails = 0;
-    d->mode = MODE_NONE;
-    d->recv_filled = false;
-    d->recv_size = 0;
+    // d->recv_filled = false;
+    // d->recv_size = 0;
     d->tcp_state = TCP_STATE_NOT_CONNECTED;
 
     if (!register_symbols()) {
@@ -2830,8 +2409,6 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("str-extract-until", ext_str_extract_until);
     VESC_IF->lbm_add_extension("puts", ext_puts);
 
-    VESC_IF->lbm_add_extension("ext-pause", ext_pause);
-    VESC_IF->lbm_add_extension("ext-unpause", ext_unpause);
     VESC_IF->lbm_add_extension("ext-uart-write", ext_uart_write);
     VESC_IF->lbm_add_extension("ext-uart-readline", ext_uart_readline);
     VESC_IF->lbm_add_extension(
@@ -2839,15 +2416,7 @@ INIT_FUN(lib_info *info) {
     );
     VESC_IF->lbm_add_extension("ext-uart-read-until", ext_uart_read_until);
     VESC_IF->lbm_add_extension("ext-uart-purge", ext_uart_purge);
-    // VESC_IF->lbm_add_extension("ext-set-connected", ext_set_connected);
     VESC_IF->lbm_add_extension("ext-get-uuid", ext_get_uuid);
-    // VESC_IF->lbm_add_extension("ext-tcp-send-string", ext_tcp_send_string);
-    // VESC_IF->lbm_add_extension("ext-is-connected", ext_is_connected);
-    // VESC_IF->lbm_add_extension("ext-is-paused", ext_is_paused);
-    // VESC_IF->lbm_add_extension("ext-send-fails", ext_send_fails);
-    // VESC_IF->lbm_add_extension("ext-recv-fails", ext_recv_fails);
-    // VESC_IF->lbm_add_extension("ext-sim7000-mode", ext_sim7000_mode);
-    // VESC_IF->lbm_add_extension("ext-sim7070-mode", ext_sim7070_mode);
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
     VESC_IF->lbm_add_extension("modem-pwr-on", ext_modem_pwr_on);
     VESC_IF->lbm_add_extension("modem-pwr-off", ext_modem_pwr_off);

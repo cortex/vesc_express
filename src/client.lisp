@@ -307,66 +307,6 @@
     true
 })
 
-(defun sim7070-connect-tcp-commands (address port) (list
-    `(at-command ,(str-merge "AT+CAOPEN=0,0,\"TCP\",\"" address "\",\"" port "\"\r\n") "+CAOPEN: 0,0" 100)
-    '(sleep 0.5) ;; Takes a while to establish connection
-    '(check-response "OK" 100)
-))
-
-(defun sim7070-connect-tcp ()
-    (let (( uuid (array-create 25))
-          ( uuid (ext-get-uuid uuid 25))
-          ( login-str (str-merge "VESC:" uuid ":test\n"))
-        )
-        (if (command-sequence (sim7070-connect-tcp-commands "lindboard-staging.azurewebsites.net" "80"))
-            {
-                (ext-set-connected)
-                (ext-tcp-send-string login-str)
-            }
-            'error
-        )
-    )
-)
-
-
-(defun sim7070-shut () {
-    (at-command "AT+CACLOSE=0\r\n" "OK" 100) ; close connection 0 
-    (at-command "AT+CNACT=0,0\r\n" "OK" 100) ; disconnect pdp context
-})
-
-
-(defun pause () {
-    (ext-pause)
-    (ext-is-paused)
-})
-
-(defun unpause () { 
-    (ext-unpause)
-    (not (ext-is-paused))
-})
-
-(defun punishment ()
-    (loopfor i 0 (< i 1000) (+ i 1) {
-        (at-command "ATE0\r\n" "OK" 100)
-        (at-command "AT+CPIN?\r\n" "+CPIN: READY" 100)
-        (at-command "AT+CMGF=1\r\n" "OK" 100)
-        (at-command "AT+CNMP=38\r\n" "OK" 100)
-        (at-command "AT+CMNB=1\r\n" "OK" 100)
-        (at-command "AT+CGATT?\r\n" "+CGATT: 1" 100)
-        (at-command-parse-result "AT+COPS?\r\n" print 100)
-        (at-command-parse-result "AT+CGNAPN\r\n" print 100)
-        (at-command-parse-result "AT+CNCFG=0,1,\"internet.telenor.se\"\r\n" print 100)
-        (at-command "AT+CNACT=0,1\r\n" "OK" 100)
-        (check-response "+APP PDP: 0,ACTIVE" 100)
-    })
-)
-
-(defun pause-punishment () 
-    (loopfor i 0 (< i 1000) (+ i 1) {
-        (pause)
-    })
-)
-
 (defun pwr-on () {
     (print "powering on...")
     (ext-pwr-key 0)
@@ -387,7 +327,7 @@
     (print "finished")
 })
 
-(defun set-baud-rate () 
+(defun set-baud-rate ()
     (at-command "AT+IPR=115200\r\n" "OK" 1000)
 )
 
@@ -407,59 +347,9 @@
     (print (uart-readline-trim 100))
 })
 
-(defunret tcp-connect (address port) {
-    ; Open tcp connection
-    (if (not (at-command (str-merge "AT+CAOPEN=0,0,\"TCP\",\"" address "\"," port "\r\n") "+CAOPEN: 0,0" 100)) {
-        (return false)
-    })
-    
-    (sleep 0.5) ;; Takes a while to establish connection
-    (check-response "OK" 100)
-})
-
-; (defun tcp-connect (address port) (command-sequence (list
-;     `(at-command ,(str-merge "AT+CAOPEN=0,0,\"TCP\",\"" address "\",\"" port "\"\r\n") "+CAOPEN: 0,0" 100)
-;     '(sleep 0.5) ;; Takes a while to establish connection
-;     '(check-response "OK" 100)
-; )))
-
-; (defun tcp-write (buf) {
-;     (var command )
-;     (at-command (str-merge
-;         "AT+CASEND=0,"
-        
-;     ) "+CASEND: 0")
-; })
-
 (def ping-http-request "GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: Close\r\n\r\n")
 (def ping-http-request-keep-alive "GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: Keep-Alive\r\nKeep-Alive: max=10\r\n\r\n")
 ; length: 92 chars
-
-(defunret test-connection () {
-    (if (not (sim7070-init)) {
-        (print "sim7070-init failed")
-        (return false)
-    })
-    (print "init successfull")
-    
-    (if (not
-        (tcp-connect "lindboard-staging.azurewebsites.net" "80")
-    ) {
-        (print "connection to lindboard-staging.azurewebsites.net failed")
-        (return false)
-    })
-    
-    (print "tcp connection established")
-    
-    (if (not
-        (ext-tcp-send-string ping-http-request)
-    ) {
-        (print (str-merge "Request failed: " ping-http-request))
-        (return false)
-    })
-    
-    true
-})
 
 (defun status () {
     (at-command "AT+CASTATE?\r\n" "" 100)
@@ -759,11 +649,6 @@
 })
 
 (defunret do-request-ret () {
-    ; (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
-    ;     (print "tcp-connect-host failed")
-    ;     (return false)
-    ; })
-    
     (if (not (tcp-wait-until-connected 1000)) {
         (print "tcp connection wasn't established correctly")
         (return false)
@@ -897,16 +782,8 @@
     (print "init failed")
 )
 
-; (test-connection)
-
-; (defun uart-write )
-
-; (spawn connection-handler)
-
 ;; 1F004D0014504B4D31383120
 ;; 
 
-
 ;; TODO: 
-;; * If pwrkey is off sim7070-init just gets stuck. figure out how to not get stuck.
 ;; * Write some stuff to flash
