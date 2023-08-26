@@ -33,19 +33,76 @@ HEADER;
 
 #define AT_TCP_MAX_CID 12
 
+#define TCP_MAX_HOSTNAME_LEN 100
+
 #define TCP_BUFFER_SIZE 256
+
+#define TCP_CMD_TIMEOUT_MS 3000
 
 // INT32_MAX = 2147483647
 #define INT32_MAX_POW_10 1000000000
 
+// Utilities
+
 #define PRINT_VAR(value, format) VESC_IF->printf("%s: " format, #value, value)
 
+// Creates a warning containing the size of x. (Works with gcc and the current
+// make setup)
+#define ALERT_SIZEOF(x)                \
+    char(*__kaboom)[sizeof(data)] = 1; \
+    void temp() { printf("%d", __kaboom); }
+
+typedef unsigned int uint_t;
+typedef signed int int_t;
+
 typedef int8_t tcp_handle_t;
+
+typedef uint16_t port_t;
 
 typedef struct {
     unsigned char *data;
     unsigned int size;
 } send_unit_t;
+
+typedef enum {
+    TCP_CMD_IDLE = 0,
+    TCP_CMD_CHECK_STATUS,
+    TCP_CMD_IS_OPEN,
+    TCP_CMD_CONNECT_HOST,
+    TCP_CMD_WAIT_CONNECTED,
+    TCP_CMD_SEND,
+    TCP_CMD_WAIT_RECV,
+    TCP_CMD_RECV,
+    TCP_CMD_CLOSE_CONNECTION,
+    TCP_CMD_TEST,
+} tcp_cmd_t;
+
+typedef enum {
+    TCP_STATE_NOT_CONNECTED = 0,
+    TCP_STATE_CONNECTED,
+    // TCP_STATE_RECEIVED,
+} tcp_state_t;
+
+typedef enum {
+    // /** No local connection, closed or open, is present at all. */
+    TCP_DISCONNECTED,
+    // /**
+    //  * Connection has been closed by remote server or an internal error
+    //  * (probably internal to the modem...).
+    //  * */
+    TCP_CLOSED_REMOTE,
+    // /** There is an open connection currently. */
+    TCP_CONNECTED,
+    // /** Currently listening in server mode. */
+    TCP_SERVER_MODE,
+    // /** An internal at or uart error occurred. */
+    TCP_ERROR,
+} tcp_status_t;
+
+typedef enum {
+    CONNECT_OK = 0,
+    CONNECT_ERROR,
+} tcp_connect_result_t;
 
 /**
  * Global state
@@ -69,17 +126,43 @@ typedef struct {
     //  void (*data_send_fun)(char *, int, send_unit_t *);
 
     size_t recv_size;
+    // If recv_buffer has been read yet.
+    bool recv_used;
+    // If recv_buffer has been filled yet.
     bool recv_filled;
     char recv_buffer[TCP_BUFFER_SIZE];
-    tcp_handle_t recv_buffer_handle;
 
-    bool tcp_cids_is_used[AT_TCP_MAX_CID + 1];
+    tcp_state_t tcp_state;
+
+    tcp_cmd_t tcp_cmd;
+    lbm_cid tcp_calling_thread;
+
+    // tcp_cmd arguments
+    char tcp_hostname[TCP_MAX_HOSTNAME_LEN + 1];
+    port_t tcp_port;
+    uint_t tcp_timeout_ms;
+    char *tcp_send_buffer;
+    lbm_value tcp_test_str;
+
+    // // The last cmd for which the current result was returned.
+    // // If TCP_CMD_IDLE, there is no result to read.
+    // // Is only updated when the result has become available.
+    // tcp_cmd_t tcp_result_cmd;
+
+    // tcp_state_t result_tcp_status;
+    // // umm is not actually necessarily an error.
+    // // Could also be ok.
+    // // I kinda painted myself into a type corner... ._.
+    // tcp_connect_error_t result_tcp_connect_host;
+    // bool result_tcp_send;
+    // bool result_tcp_close_connection;
 
     lbm_uint symbol_disconnected;
     lbm_uint symbol_closed_remote;
     lbm_uint symbol_connected;
     lbm_uint symbol_server_mode;
     lbm_uint symbol_error;
+    lbm_uint symbol_tcp_recv;
 } data;
 
 /* **************************************************
@@ -96,7 +179,8 @@ static bool register_symbols() {
         )
         && VESC_IF->lbm_add_symbol_const("connected", &d->symbol_connected)
         && VESC_IF->lbm_add_symbol_const("server-mode", &d->symbol_server_mode)
-        && VESC_IF->lbm_add_symbol_const("error", &d->symbol_error);
+        && VESC_IF->lbm_add_symbol_const("error", &d->symbol_error)
+        && VESC_IF->lbm_add_symbol_const("tcp-recv", &d->symbol_tcp_recv);
 
     return res;
 }
@@ -172,9 +256,9 @@ static inline bool str_eq(const char *str1, const char *str2) {
     return strcmp(str1, str2) == 0;
 }
 
-static bool strneq(const char *str1, const char *str2, const unsigned int n) {
+static bool strneq(const char *str1, const char *str2, const uint_t n) {
     bool r = true;
-    for (unsigned int i = 0; i < n; i++) {
+    for (uint_t i = 0; i < n; i++) {
         if (str1[i] != str2[i]) {
             r = false;
             break;
@@ -396,6 +480,17 @@ static inline float time_ms_since(const uint32_t timestamp) {
     return VESC_IF->timer_seconds_elapsed_since(timestamp) * 1000.0;
 }
 
+/**
+ * Access the global state struct.
+ */
+static inline data *use_state() { return (data *)ARG; }
+
+/* **************************************************
+ * Copied LBM UTILS
+ */
+
+// ...
+
 /* **************************************************
  * LBM UTILS
  */
@@ -417,6 +512,33 @@ static lbm_value lbm_create_str(const char *str) {
     memcpy(result_str, str, size);
 
     return result;
+}
+
+static void lbm_free_flat_value(lbm_flat_value_t *flat_value) {
+    VESC_IF->free(flat_value->buf);
+}
+
+static bool lbm_flatten_str(lbm_flat_value_t *flat_value, const char *str) {
+    size_t data_size = strlen(str) + 1;
+
+    size_t buff_size = data_size + 1  // type header
+                       + 4;           // num_byte header
+    
+    if (!VESC_IF->lbm_start_flatten(flat_value, buff_size)) {
+        return false;
+    }
+    
+    if (!VESC_IF->f_lbm_array(flat_value, data_size, (uint8_t *)str)) {
+        lbm_free_flat_value(flat_value);
+        return false;
+    }
+    
+    if (!VESC_IF->lbm_finish_flatten(flat_value)) {
+        lbm_free_flat_value(flat_value);
+        return false;
+    }
+    
+    return true;
 }
 
 /* **************************************************
@@ -547,12 +669,12 @@ static bool uart_read_timeout(char *res, int timeout_ms) {
  * string is being read while this timer runs out, that string will be read,
  * until no more characters are found.
  */
-static void uart_purge(const unsigned int timeout_ms) {
+static void uart_purge(const uint_t timeout_ms) {
     uint32_t start = time_now();
 
     int read_char = -1;
 
-    while (read_char >= 0 || (unsigned int)time_ms_since(start) < timeout_ms) {
+    while (read_char >= 0 || (uint_t)time_ms_since(start) < timeout_ms) {
         read_char = VESC_IF->uart_read();
         if (read_char < 0) {
             VESC_IF->sleep_ms(1);
@@ -776,10 +898,14 @@ static bool at_init() {
 
         const char *response_ok = "OK";
         const char *response_echo = "ATE0";
-        if (!at_command_responses("ATE0\r\n", 2, (const char *[]){response_ok, response_echo})) {
+        if (!at_command_responses(
+                "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}
+            )) {
             // modem might need more time at startup
             VESC_IF->sleep_ms(3000);
-            if (!at_command_responses("ATE0\r\n", 2, (const char *[]){response_ok, response_echo})) {
+            if (!at_command_responses(
+                    "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}
+                )) {
                 return false;
             }
         }
@@ -1116,35 +1242,11 @@ static void thd(void *arg) {
     }
 }
 
+// static void set_cmd_wait()
+
 /* **************************************************
  * TCP library
  */
-
-typedef enum {
-    /** No local connection, closed or open, is present at all. */
-    TCP_DISCONNECTED,
-    /**
-     * Connection has been closed by remote server or an internal error
-     * (probably internal to the modem...).
-     * */
-    TCP_CLOSED_REMOTE,
-    /** There is an open connection currently. */
-    TCP_CONNECTED,
-    /** Currently listening in server mode. */
-    TCP_SERVER_MODE,
-    /** An internal at or uart error occurred. */
-    TCP_ERROR,
-} tcp_status_t;
-
-typedef enum {
-    CONNECT_NO_FREE_CID = -2,
-    CONNECT_ERROR = -1,
-} tcp_connect_error_t;
-
-typedef union {
-    tcp_handle_t handle;
-    tcp_connect_error_t error;
-} tcp_connect_result_t;
 
 static inline const char *stringify_tcp_status(const tcp_status_t status) {
     switch (status) {
@@ -1169,37 +1271,7 @@ static inline const char *stringify_tcp_status(const tcp_status_t status) {
     }
 }
 
-/**
- * Get the lowest cid that isn't currently used by any handle.
- *
- * \return lowest free cid or -1 if none are free.
- */
-static ssize_t tcp_next_free_cid() {
-    data *d = (data *)ARG;
-
-    for (size_t i = 0; i < AT_TCP_MAX_CID; i++) {
-        if (!d->tcp_cids_is_used[i]) {
-            return (int)i;
-        }
-    }
-    return -1;
-}
-
-/**
- * Mark cid as used and return it as a handle.
- * This does not check that the given cid is not already in use.
- *
- * \param cid the cid to mark. Must not be larger than AT_TCP_MAX_CID (which
- * is is 12).
- */
-static tcp_handle_t tcp_reserve_cid(size_t cid) {
-    data *d = (data *)ARG;
-    d->tcp_cids_is_used[cid] = true;
-
-    return (tcp_handle_t)cid;
-}
-
-static tcp_status_t tcp_status(tcp_handle_t handle) {
+static tcp_status_t tcp_status(tcp_handle_t cid) {
     uart_purge(AT_PURGE_TIMEOUT_MS);
 
     uart_write_string("AT+CASTATE?\r\n");
@@ -1242,7 +1314,7 @@ static tcp_status_t tcp_status(tcp_handle_t handle) {
             }
             tcp_handle_t found_cid = (tcp_handle_t)ascii_to_int(response);
 
-            if (found_cid == handle) {
+            if (found_cid == cid) {
                 bool has_read_comma = read_length == 1;
                 if (!has_read_comma) {
                     char comma = -1;
@@ -1298,8 +1370,8 @@ static tcp_status_t tcp_status(tcp_handle_t handle) {
     return found_status;
 }
 
-static bool tcp_is_connected(const tcp_handle_t handle) {
-    return tcp_status(handle) == TCP_CONNECTED;
+static bool tcp_is_connected(const tcp_handle_t cid) {
+    return tcp_status(cid) == TCP_CONNECTED;
 }
 
 /**
@@ -1314,14 +1386,12 @@ static bool tcp_is_connected(const tcp_handle_t handle) {
  * \return bool indicating if `tcp_is_connected` returned true at any point in
  * the specified period.
  */
-bool tcp_wait_until_connected(
-    const tcp_handle_t handle, const unsigned int timeout_ms
-) {
+bool tcp_wait_until_connected(const tcp_handle_t cid, const uint_t timeout_ms) {
     const float timeout_s = ((float)timeout_ms / 1000.0);
 
     uint32_t start = VESC_IF->timer_time_now();
     while (VESC_IF->timer_seconds_elapsed_since(start) < timeout_s) {
-        if (tcp_is_connected(handle)) {
+        if (tcp_is_connected(cid)) {
             return true;
         }
 
@@ -1333,16 +1403,15 @@ bool tcp_wait_until_connected(
 
 /**
  * Disconnect a tcp connection.
- * This should not be called directly as it doesn't free the handle!
  *
  * \return bool indicating if operation was successful.
  */
-static bool tcp_disconnect(const tcp_handle_t handle) {
+static bool tcp_disconnect(const tcp_handle_t cid) {
     // uart_purge();
     uart_purge(AT_PURGE_TIMEOUT_MS);
 
-    char cid_str[int_base10_str_len(handle) + 1];
-    int_to_ascii(handle, cid_str, 10);
+    char cid_str[int_base10_str_len(cid) + 1];
+    int_to_ascii(cid, cid_str, 10);
 
     uart_write_string("AT+CACLOSE=");
     uart_write_string(cid_str);
@@ -1361,49 +1430,16 @@ static bool tcp_disconnect(const tcp_handle_t handle) {
 }
 
 /**
- * Close connection, releasing the handle in the process.
- *
- * \return false if handle was not valid or if disconnecting the tcp connection
- * failed.
- */
-static bool tcp_free_handle(const tcp_handle_t handle) {
-    data *d = (data *)ARG;
-    if (!d->tcp_cids_is_used[handle]) {
-        return false;
-    }
-    d->tcp_cids_is_used[handle] = false;
-
-    if (!tcp_disconnect(handle)) {
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * Connect to the given host and port, opening a new handle in the process.
- * Any currently open connection is automatically closed.
+ * Connect to the given host and port, using the specified connection id on the
+ * modem. Any currently open connection is automatically closed.
  *
  * \return the opened handle on success or tcp_connect_error_t on failure.
  */
 static tcp_connect_result_t tcp_connect_host(
-    const char *hostname, const uint16_t port
+    tcp_handle_t cid, const char *hostname, const port_t port
 ) {
-    // disconnect in case there was already a connection.
-    // if (tcp_is_connected()) {
-    //     if (!tcp_disconnect()) {
-    //         VESC_IF->printf("tcp_disconnect failed");
-    //         return false;
-    //     }
-    // }
-    ssize_t cid = tcp_next_free_cid();
-    if (cid == -1) {
-        return (tcp_connect_result_t){.error = CONNECT_NO_FREE_CID};
-    }
-    tcp_handle_t handle = tcp_reserve_cid(cid);
-
     // safety measure
-    tcp_disconnect(handle);
+    tcp_disconnect(cid);
 
     // longest value: 12
     char cid_str[3];
@@ -1428,15 +1464,15 @@ static tcp_connect_result_t tcp_connect_host(
     // potential response: +CAOPEN: <0-12>,<0-27>\r
     if (!at_find_response("+CAOPEN: ", AT_READ_TIMEOUT_MS, true)) {
         VESC_IF->printf("failed to find '+CAOPEN: 0,'");
-        return (tcp_connect_result_t){.error = CONNECT_ERROR};
+        return CONNECT_ERROR;
     }
     if (!at_find_response(cid_str, AT_READ_TIMEOUT_MS, true)) {
         VESC_IF->printf("failed to find cid '%s'", cid_str);
-        return (tcp_connect_result_t){.error = CONNECT_ERROR};
+        return CONNECT_ERROR;
     }
     if (!at_find_response(",", AT_READ_TIMEOUT_MS, true)) {
         VESC_IF->printf("failed to find ','");
-        return (tcp_connect_result_t){.error = CONNECT_ERROR};
+        return CONNECT_ERROR;
     }
 
     char found = 0;
@@ -1448,14 +1484,14 @@ static tcp_connect_result_t tcp_connect_host(
             "invalid result '+CAOPEN: %s,%c', (char: %d)", cid_str, found, found
         );
         VESC_IF->printf("next result: %d", VESC_IF->uart_read());
-        return (tcp_connect_result_t){.error = CONNECT_ERROR};
+        return CONNECT_ERROR;
     }
 
     if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
-        return (tcp_connect_result_t){.error = CONNECT_ERROR};
+        return CONNECT_ERROR;
     }
 
-    return (tcp_connect_result_t){.handle = handle};
+    return CONNECT_OK;
 }
 
 /**
@@ -1572,12 +1608,15 @@ static ssize_t tcp_recv(
  * \returns true if received data was found, meaning you can call tcp_recv,
  * false otherwise.
  */
-static bool tcp_wait_for_recv(const tcp_handle_t handle, size_t tries) {
+static bool tcp_wait_for_recv(
+    const tcp_handle_t handle, const uint_t timeout_ms
+) {
     char expect[15] = "+CADATAIND: ";
     int_to_ascii(handle, expect + 12, 10);
 
+    uint32_t start = time_now();
     char response[16];
-    for (size_t i = 0; i < tries; i++) {
+    while ((uint_t)time_ms_since(start) < timeout_ms) {
         uart_read_until_trim(response, "\n", 15, AT_READ_TIMEOUT_MS);
         if (strneq(response, expect, 13)) {
             return true;
@@ -1594,6 +1633,270 @@ static bool tcp_wait_for_recv(const tcp_handle_t handle, size_t tries) {
 // static ssize_t tcp_recv_allocate(char **dest) {
 
 // }
+
+/* **************************************************
+ * TCP Thread
+ */
+
+/**
+ * Call a tcp command, blocking until the current command is TCP_CMD_IDLE.
+ *
+ * \return false if calling failed due to the timeout beeing reached while
+ * waiting for current command to finish, true otherwise.
+ */
+static bool lbm_call_tcp_cmd(const tcp_cmd_t cmd, const uint_t timeout_ms) {
+    data *d = use_state();
+
+    uint32_t start = time_now();
+    while ((uint_t)time_ms_since(start) < timeout_ms) {
+        VESC_IF->mutex_lock(d->lock);
+        tcp_cmd_t current_cmd = d->tcp_cmd;
+        VESC_IF->mutex_unlock(d->lock);
+
+        if (current_cmd == TCP_CMD_IDLE) {
+            VESC_IF->mutex_lock(d->lock);
+            d->tcp_cmd = cmd;
+            d->tcp_calling_thread = VESC_IF->lbm_get_current_cid();
+            VESC_IF->mutex_unlock(d->lock);
+
+            VESC_IF->lbm_block_ctx_from_extension();
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void tcp_thd(void *arg) {
+    void return_result(lbm_value result) {
+        data *d = use_state();
+
+        if (!VESC_IF->lbm_unblock_ctx_unboxed(d->tcp_calling_thread, result)) {
+            VESC_IF->printf("sending result to calling thread failed");
+        }
+    }
+
+    void return_flat_result(lbm_flat_value_t *flat_value) {
+        data *d = use_state();
+
+        if (!VESC_IF->lbm_unblock_ctx(d->tcp_calling_thread, flat_value)) {
+            VESC_IF->printf("sending flat result to calling thread failed");
+        }
+    }
+
+    data *d = (data *)arg;
+
+    while (!VESC_IF->should_terminate()) {
+        VESC_IF->mutex_lock(d->lock);
+        tcp_cmd_t cmd = d->tcp_cmd;
+        tcp_state_t state = d->tcp_state;
+        VESC_IF->mutex_unlock(d->lock);
+
+        switch (cmd) {
+            case TCP_CMD_CHECK_STATUS: {
+                // if (state == TCP_STATE_RECEIVING) {
+                //     return_result(VESC_IF->lbm_enc_sym_eerror);
+                //     break;
+                // }
+
+                lbm_uint symbol;
+                switch (tcp_status(0)) {
+                    case TCP_DISCONNECTED: {
+                        symbol = d->symbol_disconnected;
+                        break;
+                    }
+                    case TCP_CLOSED_REMOTE: {
+                        symbol = d->symbol_closed_remote;
+                        break;
+                    }
+                    case TCP_CONNECTED: {
+                        symbol = d->symbol_connected;
+                        break;
+                    }
+                    case TCP_SERVER_MODE: {
+                        symbol = d->symbol_server_mode;
+                        break;
+                    }
+                    default: {
+                        symbol = d->symbol_error;
+                        break;
+                    }
+                }
+                return_result(VESC_IF->lbm_enc_sym(symbol));
+                break;
+            }
+            case TCP_CMD_IS_OPEN: {
+                bool result = d->tcp_state != TCP_STATE_NOT_CONNECTED;
+
+                return_result(lbm_enc_bool(result));
+                break;
+            }
+            case TCP_CMD_CONNECT_HOST: {
+                if (state != TCP_STATE_NOT_CONNECTED) {
+                    return_result(VESC_IF->lbm_enc_sym_eerror);
+                    break;
+                }
+
+                const char *hostname = d->tcp_hostname;
+                port_t port = d->tcp_port;
+
+                tcp_connect_result_t result =
+                    tcp_connect_host(0, hostname, port);
+
+                if (result == CONNECT_OK) {
+                    d->tcp_state = TCP_STATE_CONNECTED;
+                }
+
+                return_result(lbm_enc_bool(result == CONNECT_OK));
+                break;
+            }
+            case TCP_CMD_WAIT_CONNECTED: {
+                if (state == TCP_STATE_NOT_CONNECTED) {
+                    return_result(VESC_IF->lbm_enc_sym_nil);
+                    break;
+                }
+
+                bool result = tcp_wait_until_connected(0, d->tcp_timeout_ms);
+
+                return_result(lbm_enc_bool(result));
+                break;
+            }
+            case TCP_CMD_SEND: {
+                char *buffer = d->tcp_send_buffer;
+
+                if (state != TCP_STATE_CONNECTED) {
+                    VESC_IF->free(buffer);
+                    return_result(VESC_IF->lbm_enc_sym_eerror);
+                    break;
+                }
+
+                bool result = tcp_send_str(0, buffer);
+
+                VESC_IF->free(buffer);
+
+                return_result(lbm_enc_bool(result));
+                break;
+            }
+            case TCP_CMD_WAIT_RECV: {
+                if (state == TCP_STATE_NOT_CONNECTED) {
+                    return_result(VESC_IF->lbm_enc_sym_eerror);
+                    break;
+                }
+
+                bool result = tcp_wait_for_recv(0, d->tcp_timeout_ms);
+
+                return_result(lbm_enc_bool(result));
+                break;
+            }
+            case TCP_CMD_RECV: {
+                if (state == TCP_STATE_NOT_CONNECTED) {
+                    return_result(VESC_IF->lbm_enc_sym_eerror);
+                    break;
+                }
+
+                char buffer[TCP_BUFFER_SIZE];
+
+                ssize_t len = tcp_recv(0, buffer, TCP_BUFFER_SIZE);
+                if (len == -1) {
+                    return_result(VESC_IF->lbm_enc_sym(d->symbol_error));
+                    break;
+                }
+
+                if (len == 0) {
+                    return_result(VESC_IF->lbm_enc_sym_nil);
+                    break;
+                }
+
+                lbm_flat_value_t result;
+                if (!lbm_flatten_str(&result, buffer)) {
+                    return_result(VESC_IF->lbm_enc_sym(d->symbol_error));
+                    break;
+                }
+                
+                return_flat_result(&result);
+                break;
+            }
+            case TCP_CMD_TEST: {
+                return_result(d->tcp_test_str);
+                break;
+            }
+            case TCP_CMD_CLOSE_CONNECTION: {
+                if (state == TCP_STATE_NOT_CONNECTED) {
+                    return_result(VESC_IF->lbm_enc_sym_nil);
+                    break;
+                }
+                bool result = tcp_disconnect(0);
+                d->tcp_state = TCP_STATE_NOT_CONNECTED;
+
+                if (!result) {
+                    return_result(VESC_IF->lbm_enc_sym(d->symbol_error));
+                    break;
+                }
+
+                return_result(VESC_IF->lbm_enc_sym_true);
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+
+        VESC_IF->mutex_lock(d->lock);
+        d->tcp_cmd = TCP_CMD_IDLE;
+        VESC_IF->mutex_unlock(d->lock);
+
+        switch (d->tcp_state) {
+            case TCP_STATE_NOT_CONNECTED: {
+                break;
+            }
+            case TCP_STATE_CONNECTED: {
+                break;
+            }
+            // case TCP_STATE_RECEIVED: {
+            //     VESC_IF->mutex_lock(d->lock);
+            //     bool recv_used = d->recv_used;
+            //     bool recv_filled = d->recv_filled;
+            //     VESC_IF->mutex_unlock(d->lock);
+
+            //     if (!recv_used && recv_filled) {
+            //         break;
+            //     }
+
+            //     char buffer[TCP_BUFFER_SIZE];
+            //     ssize_t result = tcp_recv(0, buffer, TCP_BUFFER_SIZE);
+
+            //     if (result == -1) {
+            //         VESC_IF->printf("tcp_recv error");
+            //         break;
+            //     }
+
+            //     VESC_IF->mutex_lock(d->lock);
+            //     memcpy(d->recv_buffer, buffer, sizeof(d->recv_buffer));
+            //     d->recv_size = (size_t)result;
+            //     d->recv_filled = true;
+            //     d->recv_used = false;
+            //     VESC_IF->mutex_unlock(d->lock);
+
+            //     if (result == 0) {
+            //         d->tcp_state = TCP_STATE_CONNECTED;
+            //     }
+
+            //     break;
+            // }
+            default: {
+                break;
+            }
+        }
+
+        VESC_IF->sleep_ms(1);
+    }
+    VESC_IF->printf("LEAVING THREAD");
+
+    if (d) {
+        VESC_IF->free(d);
+    }
+}
 
 /* **************************************************
  * Extensions
@@ -1728,6 +2031,31 @@ static lbm_value ext_puts(lbm_value *args, lbm_uint argn) {
     VESC_IF->printf("%s", result);
 
     return VESC_IF->lbm_enc_sym_true;
+}
+
+/**
+ * signature: (rethrow value)
+ *
+ * Pass value throw, throwing an error if the value was one of the error
+ * symbols:
+ * - 'type_error
+ * - 'eval_error
+ * - 'out_of_memory
+ * - 'fatal_error
+ * - 'out_of_stack
+ * - 'division_by_zero
+ * - 'variable_not_bound
+ *
+ * \param value The value to pass through.
+ * \return the value if it wasn't one of the error symbols.
+ */
+static lbm_value ext_rethrow(lbm_value *args, lbm_uint argn) {
+    if (argn != 1) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    lbm_value value = args[0];
+    return value;
 }
 
 /* signature: (ext-pause) */
@@ -2011,127 +2339,124 @@ static lbm_value ext_at_init(lbm_value *args, lbm_uint argn) {
     return lbm_enc_bool(at_init());
 }
 
-/**
- * signature: (tcp-is-connected handle)
+/* **************************************************
+ * TCP Extensions
+ * These must only be called by a single lbm thread.
  */
-static lbm_value ext_tcp_is_connected(lbm_value *args, lbm_uint argn) {
-    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
-        return VESC_IF->lbm_enc_sym_terror;
-    }
-
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
-
-    if (tcp_is_connected(handle)) {
-        return VESC_IF->lbm_enc_sym_true;
-    }
-    return VESC_IF->lbm_enc_sym_nil;
-}
 
 /**
- * signature: (tcp-status handle)
+ * signature: (tcp-status)
+ *
+ * \return one of the following symbols corresponding to the different statuses:
+ * - 'disconnected
+ * - 'closed-remote
+ * - 'connected
+ * - 'server-mode
+ * Or 'error in the case of an internal AT or UART error.
  */
 static lbm_value ext_tcp_status(lbm_value *args, lbm_uint argn) {
-    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
+    (void)args;
+    if (argn != 0) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    data *d = (data *)ARG;
-
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
-    tcp_status_t result = tcp_status(handle);
-
-    lbm_uint symbol;
-    switch (result) {
-        case TCP_DISCONNECTED: {
-            symbol = d->symbol_disconnected;
-            break;
-        }
-        case TCP_CLOSED_REMOTE: {
-            symbol = d->symbol_closed_remote;
-            break;
-        }
-        case TCP_CONNECTED: {
-            symbol = d->symbol_connected;
-            break;
-        }
-        case TCP_SERVER_MODE: {
-            symbol = d->symbol_server_mode;
-            break;
-        }
-        default: {
-            symbol = d->symbol_error;
-            break;
-        }
+    if (!lbm_call_tcp_cmd(TCP_CMD_CHECK_STATUS, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
     }
 
-    // VESC_IF->printf("result: %s", stringify_tcp_status(result));
-    // VESC_IF->printf("symbol: %u", symbol);
-    // VESC_IF->printf("symbol_disconnected: %u", d->symbol_disconnected);
-    // VESC_IF->printf("symbol_closed_remote: %u", d->symbol_closed_remote);
-    // VESC_IF->printf("symbol_connected: %u", d->symbol_connected);
-    // VESC_IF->printf("symbol_server_mode: %u", d->symbol_server_mode);
-    // VESC_IF->printf("symbol_error: %u", d->symbol_error);
-
-    return VESC_IF->lbm_enc_sym(symbol);
-}
-
-/**
- * signature: (tcp-wait-until-connected handle timeout-ms)
- */
-static lbm_value ext_tcp_wait_until_connected(lbm_value *args, lbm_uint argn) {
-    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
-        || !VESC_IF->lbm_is_number(args[0])) {
-        return VESC_IF->lbm_enc_sym_terror;
-    }
-
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
-    unsigned int timeout_ms = VESC_IF->lbm_dec_as_u32(args[1]);
-
-    bool result = tcp_wait_until_connected(handle, timeout_ms);
-
-    return lbm_enc_bool(result);
-}
-
-/**
- * signature: (tcp-disconnect handle)
- */
-static lbm_value ext_tcp_disconnect(lbm_value *args, lbm_uint argn) {
-    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
-        return VESC_IF->lbm_enc_sym_terror;
-    }
-
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
-
-    if (tcp_disconnect(handle)) {
-        return VESC_IF->lbm_enc_sym_true;
-    }
     return VESC_IF->lbm_enc_sym_nil;
 }
 
 /**
- * signature: (tcp-free-handle handle)
+ * signature: (tcp-is-open)
  *
- * The handle is guaranted to be marked as free after calling this.
+ * Check if there is a connection opened by `tcp-connect-host` that hasn't been
+ * closed by `tcp-close-connection`.
  *
- * \return true on success, or false if handle wasn't valid or if disconnecting
- * the connection failed.
+ * \return bool indicating if a connection is open.
  */
-static lbm_value ext_tcp_free_handle(lbm_value *args, lbm_uint argn) {
+static lbm_value ext_tcp_is_open(lbm_value *args, lbm_uint argn) {
+    (void)args;
+    if (argn != 0) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    if (!lbm_call_tcp_cmd(TCP_CMD_IS_OPEN, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
+
+    return VESC_IF->lbm_enc_sym_nil;
+}
+
+/**
+ * signature: (tcp-wait-until-connected timeout-ms)
+ *
+ * Wait until a connection is confirmed to be established. If no connection has
+ * been opened before calling this through `tcp-connect-host`, this function
+ * returns nil immediately.
+ *
+ * \return a bool specifying if a connection was confirmed within the timeout.
+ */
+static lbm_value ext_tcp_wait_until_connected(lbm_value *args, lbm_uint argn) {
     if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
+    data *d = use_state();
 
-    bool result = tcp_free_handle(handle);
-    return lbm_enc_bool(result);
+    uint_t timeout_ms = VESC_IF->lbm_dec_as_u32(args[0]);
+
+    // TODO: This assignment isn't really thread safe. This logic should be
+    // placed inside lbm_call_tcp_cmd, with proper locks around it, but that
+    // isn't possible as this logic is unique to this place, urgh..
+    d->tcp_timeout_ms = timeout_ms;
+
+    if (!lbm_call_tcp_cmd(TCP_CMD_WAIT_CONNECTED, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
+
+    return VESC_IF->lbm_enc_sym_nil;
+}
+
+/**
+ * signature: (tcp-close-connection)
+ *
+ * Close a connection opened by `tcp-connect-host`.
+ *
+ * Note: You always need to call this at least once for each call to
+ * tcp-connect-host no matter what, as a connection is still considered open
+ * even if the remote has disconnected.
+ *
+ * \return a bool specifying if a connection was open. 'error is returned when
+ * an internal AT or UART error occurs.
+ */
+static lbm_value ext_tcp_close_connection(lbm_value *args, lbm_uint argn) {
+    (void)args;
+    if (argn != 0) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    if (!lbm_call_tcp_cmd(TCP_CMD_CLOSE_CONNECTION, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
+    return VESC_IF->lbm_enc_sym_nil;
 }
 
 /**
  * signature: (tcp-connect-host hostname port)
  *
- * \return handle on success, nil if no free connections are aviablable, or
- * 'error on an AT error.
+ *
+ *
+ * \param hostname The hostname to connect to. Must not be longer than 100
+ * characters (excluding terminating null byte).
+ * \param port The tcp port of the host to connect to.
+ * \return bool indicating if the connection was opened successfully
+ * \throw Returns eval_error if hostname is too long, or if there was already an
+ * open connection not closed by `tcp-close-connection`.
  */
 static lbm_value ext_tcp_connect_host(lbm_value *args, lbm_uint argn) {
     if (argn != 2 || !VESC_IF->lbm_is_byte_array(args[0])
@@ -2139,133 +2464,124 @@ static lbm_value ext_tcp_connect_host(lbm_value *args, lbm_uint argn) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    data *d = (data *)ARG;
+    data *d = use_state();
 
     char *hostname = VESC_IF->lbm_dec_str(args[0]);
     uint16_t port = (uint16_t)VESC_IF->lbm_dec_as_u32(args[1]);
 
-    tcp_connect_result_t result = tcp_connect_host(hostname, port);
-
-    if (result.error == CONNECT_NO_FREE_CID) {
-        return VESC_IF->lbm_enc_sym_nil;
+    if (strlen(hostname) > TCP_MAX_HOSTNAME_LEN) {
+        return VESC_IF->lbm_enc_sym_eerror;
     }
-    if (result.error == CONNECT_ERROR) {
-        return VESC_IF->lbm_enc_sym(d->symbol_error);
+    VESC_IF->mutex_lock(d->lock);
+    strcpy(d->tcp_hostname, hostname);
+    d->tcp_port = port;
+    VESC_IF->mutex_unlock(d->lock);
+
+    if (!lbm_call_tcp_cmd(TCP_CMD_CONNECT_HOST, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
     }
 
-    return VESC_IF->lbm_enc_i(result.handle);
+    return VESC_IF->lbm_enc_sym_nil;
 }
 
 /**
- * signature: (tcp-send-str handle string)
+ * signature: (tcp-send-str string)
  *
  * Send string over current tcp connection
  *
  * \return bool indicating success.
+ * \throw Returns eval_error if there wasn't an open connection.
  */
 static lbm_value ext_tcp_send_str(lbm_value *args, lbm_uint argn) {
-    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
-        || !VESC_IF->lbm_is_byte_array(args[1])) {
+    if (argn != 1 || !VESC_IF->lbm_is_byte_array(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
-    char *str = VESC_IF->lbm_dec_str(args[1]);
+    data *d = use_state();
 
-    bool result = tcp_send_str(handle, str);
+    char *str = VESC_IF->lbm_dec_str(args[0]);
+    size_t len = strlen(str);
 
-    return lbm_enc_bool(result);
+    char *send_buffer = VESC_IF->malloc(len + 1);
+    if (!send_buffer) {
+        return VESC_IF->lbm_enc_sym_merror;
+    }
+    strcpy(send_buffer, str);
+
+    VESC_IF->mutex_lock(d->lock);
+    d->tcp_send_buffer = send_buffer;
+    VESC_IF->mutex_unlock(d->lock);
+
+    if (!lbm_call_tcp_cmd(TCP_CMD_SEND, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        VESC_IF->free(send_buffer);
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
+
+    return VESC_IF->lbm_enc_sym_nil;
 }
 
 /**
- * signature: (tcp-recv-single handle len)
+ * signature: (tcp-recv-single)
  *
- * Receive single up to `len` bytes long string from the current tcp connection.
- * Does not wait for data to come in.
+ * Receive single string up to 100 characters long from the current tcp
+ * connection. This function receives data available in this instant. You can
+ * wait for data using `tcp-wait-for-recv`
+ *
+ * \return one of these possibilities:
+ * - The received string,
+ * - nil if no string was available,
+ * - 'error in case of an internal AT or UART error.
+ * \throw Returns memory_error if allocating the result string failed. If this
+ * is returned, simply run gc and rerun the command. \throw Returns eval_error
+ * if no connection was opened.
  */
 static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
-    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
-        || !VESC_IF->lbm_is_number(args[1])) {
+    (void)args;
+    if (argn != 0) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
-    size_t size = VESC_IF->lbm_dec_as_u32(args[1]) + 1;
-
-    if (size > TCP_BUFFER_SIZE) {
+    if (!lbm_call_tcp_cmd(TCP_CMD_RECV, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
         return VESC_IF->lbm_enc_sym_eerror;
     }
 
-    data *d = (data *)ARG;
-
-    char str[size];
-    str[0] = '\0';
-    ssize_t len;
-
-    // bool used_buffered_result = false;
-    if (d->recv_size != 0 && d->recv_buffer_handle == handle) {
-        d->recv_size = 0;
-        d->recv_buffer_handle = -1;
-        // used_buffered_result = true;
-
-        if (d->recv_size > size) {
-            return VESC_IF->lbm_enc_sym_eerror;
-        }
-
-        memcpy(str, d->recv_buffer, d->recv_size);
-        len = d->recv_size - 1;
-    } else {
-        len = tcp_recv(handle, str, size);
-    }
-
-    // VESC_IF->printf("returned len: %d, str: '%s'", len, str);
-    if (len == -1) {
-        return VESC_IF->lbm_enc_sym_eerror;
-    }
-
-    lbm_value result_str_lbm;
-    if (!VESC_IF->lbm_create_byte_array(&result_str_lbm, len + 1)) {
-        VESC_IF->printf("memory error, create_byte_array failed");
-
-        d->recv_size = len + 1;
-        memcpy(d->recv_buffer, str, len + 1);
-
-        d->recv_buffer_handle = handle;
-
-        return VESC_IF->lbm_enc_sym_merror;
-    }
-    // VESC_IF->printf("after lbm_create_byte_array");
-
-    if (!VESC_IF->lbm_is_byte_array(result_str_lbm)) {
-        // VESC_IF->printf("result_str_lbm wasn't a byte array!");
-        return VESC_IF->lbm_enc_sym_merror;
-    }
-    char *result_str = VESC_IF->lbm_dec_str(result_str_lbm);
-    memcpy(result_str, str, len + 1);
-    result_str[len] = '\0';
-
-    // VESC_IF->printf("before return :)");
-
-    return result_str_lbm;
+    return VESC_IF->lbm_enc_sym_nil;
 }
 
 /**
- * signature: (tcp-wait-for-recv handle tries)
+ * signature: (tcp-wait-for-recv timeout_ms)
  *
  * Wait until there is data to receive using tcp-recv-single.
- * Will look for "+CADATAIND: <cid>" `tries` times.
+ * Will look for "+CADATAIND: <cid>" until it has been found or timeout has ran
+ * out.
+ *
+ * \param timeout_ms How many milliseconds to search for at least.
  * \return bool indicating if any data was found.
+ * \throw Returns eval_error if no connection was opened.
  */
 static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
-    if (argn != 2 || !VESC_IF->lbm_is_number(args[0])
-        || !VESC_IF->lbm_is_number(args[1])) {
+    if (argn != 1 || !VESC_IF->lbm_is_number(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
 
-    tcp_handle_t handle = (tcp_handle_t)VESC_IF->lbm_dec_as_u32(args[0]);
-    size_t tries = VESC_IF->lbm_dec_as_u32(args[1]) + 1;
+    data *d = use_state();
 
-    return lbm_enc_bool(tcp_wait_for_recv(handle, tries));
+    uint_t timeout_ms = VESC_IF->lbm_dec_as_u32(args[0]);
+
+    // TODO: This assignment isn't really thread safe. This logic should be
+    // placed inside lbm_call_tcp_cmd, with proper locks around it, but that
+    // isn't possible as this logic is unique to this place, urgh..
+    d->tcp_timeout_ms = timeout_ms;
+
+    if (!lbm_call_tcp_cmd(TCP_CMD_WAIT_RECV, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
+
+    return VESC_IF->lbm_enc_sym_nil;
 }
 
 // /**
@@ -2292,36 +2608,20 @@ static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
 // }
 
 static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
-    (void)args;
-    (void)argn;
+    if (argn != 1) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
 
-    // int a;
-    // int b;
-    // char *c_str = "+CASTATE: 0,";
-    // char *d_str = "OK";
+    data *d = use_state();
 
-    // VESC_IF->printf("a: %p\nb: %p\nc_str: %p\nd_str: %p\n", &a, &b, c_str,
-    // d_str);
+    d->tcp_test_str = args[0];
 
-    // char *responses[] = {"+CASTATE: 0,", "OK"};
+    if (!lbm_call_tcp_cmd(TCP_CMD_TEST, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
 
-    int on_the_stack;
-    char *a = "+CASTATE: 0,";
-    char *b = "OK";
-    const char *const responses[] = {a, b};
-
-    VESC_IF->printf("on_the_stack: %p", &on_the_stack);
-    VESC_IF->printf("a: %p", a);
-    VESC_IF->printf("b: %p", b);
-    VESC_IF->printf("responses: %p", responses);
-    VESC_IF->printf("responses[0]: %p", responses[0]);
-    VESC_IF->printf("responses[1]: %p", responses[1]);
-    VESC_IF->printf("responses[0]: '%s'", responses[0]);
-    VESC_IF->printf("responses[1]: '%s'", responses[1]);
-
-    // testing(responses);
-
-    return VESC_IF->lbm_enc_sym_true;
+    return VESC_IF->lbm_enc_sym_nil;
 }
 
 /* ------------------------------------------------------------
@@ -2365,13 +2665,7 @@ INIT_FUN(lib_info *info) {
     d->mode = MODE_NONE;
     d->recv_filled = false;
     d->recv_size = 0;
-    d->recv_buffer_handle = -1;
-
-    d->symbol_disconnected = 0;
-    d->symbol_closed_remote = 0;
-    d->symbol_connected = 0;
-    d->symbol_server_mode = 0;
-    d->symbol_error = 0;
+    d->tcp_state = TCP_STATE_NOT_CONNECTED;
 
     if (!register_symbols()) {
         VESC_IF->printf("register_symbols failed");
@@ -2383,6 +2677,7 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("str-n-eq", ext_str_n_eq);
     VESC_IF->lbm_add_extension("str-extract-until", ext_str_extract_until);
     VESC_IF->lbm_add_extension("puts", ext_puts);
+    VESC_IF->lbm_add_extension("rethrow", ext_rethrow);
 
     VESC_IF->lbm_add_extension("ext-pause", ext_pause);
     VESC_IF->lbm_add_extension("ext-unpause", ext_unpause);
@@ -2404,14 +2699,15 @@ INIT_FUN(lib_info *info) {
     // VESC_IF->lbm_add_extension("ext-sim7070-mode", ext_sim7070_mode);
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
     VESC_IF->lbm_add_extension("at-init", ext_at_init);
-    VESC_IF->lbm_add_extension("tcp-is-connected", ext_tcp_is_connected);
     VESC_IF->lbm_add_extension("tcp-status", ext_tcp_status);
+    VESC_IF->lbm_add_extension("tcp-is-open", ext_tcp_is_open);
     VESC_IF->lbm_add_extension(
         "tcp-wait-until-connected", ext_tcp_wait_until_connected
     );
-    VESC_IF->lbm_add_extension("tcp-disconnect", ext_tcp_disconnect);
+    VESC_IF->lbm_add_extension(
+        "tcp-close-connection", ext_tcp_close_connection
+    );
     VESC_IF->lbm_add_extension("tcp-connect-host", ext_tcp_connect_host);
-    VESC_IF->lbm_add_extension("tcp-free-handle", ext_tcp_free_handle);
     VESC_IF->lbm_add_extension("tcp-send-str", ext_tcp_send_str);
     VESC_IF->lbm_add_extension("tcp-recv-single", ext_tcp_recv_single);
     VESC_IF->lbm_add_extension("tcp-wait-for-recv", ext_tcp_wait_for_recv);
@@ -2427,7 +2723,7 @@ INIT_FUN(lib_info *info) {
     // VESC_IF->sleep_ms(5);
     // VESC_IF->set_pad(PWR_PORT, PWR_PAD, 1);
 
-    d->thread = VESC_IF->spawn(thd, 4096, "VESC-TCP", d);
+    d->thread = VESC_IF->spawn(tcp_thd, 4096, "VESC-TCP", d);
     VESC_IF->printf("init fun");
     return true;
 }

@@ -403,8 +403,8 @@
     buf
 })
 
-(defun print-uart (buf-size) {
-    (print (uart-readline-trim buf-size))
+(defun print-uart () {
+    (print (uart-readline-trim 100))
 })
 
 (defunret tcp-connect (address port) {
@@ -511,7 +511,7 @@
     ; (uart-write )
 })
 
-(defun wait-for-recv-tcp (tries) {
+(defun wait-for-recv-tcp (cid tries) {
     (var target (str-merge
         "+CADATAIND: "
         (str-from-n cid)
@@ -593,18 +593,25 @@
 ;     (apply str-merge (reverse segments))
 ; })
 
-(defunret tcp-recv (handle) {
+(defunret tcp-recv () {
     (var segments (list))
-    (var result true)
-    (loopwhile result {
-        (var segment (tcp-recv-single handle 100))
-        ; (print segment)
-        ; (print (type-of segment))
-        (if (> (str-len segment) 0) {
-            (setq segments (cons segment segments))
-        } {
-            (setq result false)
-        })
+    (looprange i 0 100 {
+        (var segment (rethrow (tcp-recv-single)))
+        ; (var segment (tcp-recv-single))
+        ; (if (eq segment 'out_of_memory) {
+        ;     (gc)
+        ;     (setq segment (tcp-recv-single))
+        ; })
+        ; (rethrow segment)
+        (cond
+            ((eq (type-of segment) 'type-array)
+                (setq segments (cons segment segments))
+            )
+            ((eq segment 'error)
+                (return 'error)
+            )
+            (t (break))
+        )
     })
     
     (apply str-merge (reverse segments))
@@ -613,15 +620,15 @@
 ; works! :D
 (defunret do-request-lisp () {
     (var start (systime))
-    (connect-host)
+    (connect-host 0)
     (send-tcp ping-http-request)
-    (if (not (wait-for-recv-tcp 10)) {
+    (if (not (wait-for-recv-tcp 0 10)) {
         (print "couldn't find recv notification")
         (return false)
     })
     
     ; (print (recv-single))
-    (print (recv-tcp))
+    (print (recv-tcp 0))
     (print (to-str-delim ""
         "Took "
         (str-from-n (ms-since start))
@@ -634,19 +641,11 @@
 (defunret do-request () {
     (var request-start (systime))
     (var start (systime))
-    (var handle (tcp-connect-host "lindboard-staging.azurewebsites.net" 80))
-    (if (eq handle 'error) {
+    (var result (rethrow (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)))
+    (if (eq result 'error) {
         (print "tcp-connect-host failed")
-        (tcp-free-handle handle)
         (return false)
     })
-    (if (not handle) {
-        (print "no free connection was available")
-        (tcp-free-handle handle)
-        (return false)
-    })
-    (print (to-str-delim "" "handle " handle))
-    
     (print (to-str-delim ""
         "tcp-connect-host: "
         (str-from-n (ms-since start))
@@ -655,9 +654,8 @@
     (var ms-tcp-connect-host (ms-since start))
     (var start (systime))
     
-    (if (not (tcp-wait-until-connected handle 1000)) {
+    (if (not (rethrow (tcp-wait-until-connected 1000))) {
         (print "tcp connection wasn't established correctly")
-        (tcp-free-handle handle)
         (return false)
     })
     
@@ -670,9 +668,8 @@
     (var start (systime))
 
     
-    (if (not (tcp-send-str handle ping-http-request)) {
+    (if (not (rethrow (tcp-send-str ping-http-request))) {
         (print "tcp-send-str failed")
-        (tcp-free-handle handle)
         (return false)
     })
     
@@ -685,9 +682,8 @@
     (var start (systime))
 
 
-    (if (not (tcp-wait-for-recv handle 10)) {
+    (if (not (rethrow (tcp-wait-for-recv 1000))) {
         (print "couldn't find recv notification")
-        (tcp-free-handle handle)
         (return false)
     })
     
@@ -699,8 +695,7 @@
     (var ms-tcp-wait-for-recv (ms-since start))
     (var start (systime))
 
-    (gc)
-    (var data (tcp-recv handle))
+    (var data (tcp-recv))
     
     (print (to-str-delim ""
         "tcp-recv: "
@@ -739,13 +734,17 @@
     (print data)
     (var start (systime))
     
-    (if (not (tcp-free-handle handle)) {
-        (print "freeing handle failed")
+    (var result (rethrow (tcp-close-connection)))
+    (if (not result) {
+        (print "connection was already closed!")
+    })
+    (if (eq result 'error) {
+        (print "closing connection failed")
         (return false)
     })
     
     (print (to-str-delim ""
-        "tcp-free-handle: "
+        "tcp-close-connection: "
         (str-from-n (ms-since start))
         "ms"
     ))
@@ -760,50 +759,43 @@
     true
 })
 
-(defunret do-request-ret (handle) {
+(defunret do-request-ret () {
     ; (if (not (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)) {
     ;     (print "tcp-connect-host failed")
     ;     (return false)
     ; })
     
-    (if (not (tcp-wait-until-connected handle 1000)) {
+    (if (not (rethrow (tcp-wait-until-connected 1000))) {
         (print "tcp connection wasn't established correctly")
         (return false)
     })
     
-    (if (not (tcp-send-str handle ping-http-request-keep-alive)) {
+    (if (not (rethrow (tcp-send-str ping-http-request-keep-alive))) {
         (print "tcp-send-str failed")
         (return false)
     })
 
-    (if (not (tcp-wait-for-recv handle 10)) {
+    (if (not (rethrow (tcp-wait-for-recv 10))) {
         (print "couldn't find recv notification")
         (return false)
     })
     
-    ; (print )
-
-    (tcp-recv handle)
+    (tcp-recv)
 })
 
 (defunret test-do-request () {    
     (print "doing 10 requests... ---------------------------")
     (var start (systime))
     
-    (var handle (tcp-connect-host "lindboard-staging.azurewebsites.net" 80))
-    (if (eq handle 'error) {
+    (var result (rethrow (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)))
+    (if (eq result 'error) {
         (print "tcp-connect-host failed")
         (return false)
     })
-    (if (not handle) {
-        (print "no free connection was available")
-        (return false)
-    })
-    (print (to-str-delim "" "handle " handle))
     
     (looprange i 0 10 {
         (gc)
-        (var result (do-request-ret handle))
+        (var result (do-request-ret))
         (print (str-merge
             "("
             (to-str i)
@@ -820,8 +812,12 @@
         "ms)"
     ))
     
-    (if (not (tcp-free-handle handle)) {
-        (print "freeing handle failed")
+    (var result (rethrow (tcp-close-connection)))
+    (if (not result) {
+        (print "connection was already closed!")
+    })
+    (if (eq result 'error) {
+        (print "closing connection failed")
         (return false)
     })
     
@@ -839,7 +835,10 @@
         )
     ))
     
+    (puts "\n")
+    
     (var response (send-request request))
+    (puts "Response: ----------------------------------")
     (print response)
     
     (print (str-merge

@@ -15,7 +15,8 @@
         "vesc_c_if.h": "c",
         "types.h": "c",
         "stddef.h": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "stdatomic.h": "c"
     },
     "cSpell.words": [
         "acons",

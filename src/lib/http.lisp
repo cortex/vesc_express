@@ -76,38 +76,39 @@
     })
     (var request-str ping-http-request)
     
-    (var handle (tcp-connect-host (assoc request 'host) 80))
-    (if (eq handle 'error) {
+    (var result (rethrow (tcp-connect-host (assoc request 'host) 80)))
+    (if (not result) {
         (return 'error-connect-host)
     })
-    (if (eq handle nil) {
-        (return 'error-no-free)
-    })
-    ; (print-vars '(handle))
     
-    (if (not (tcp-wait-until-connected handle 1000)) {
-        (tcp-free-handle handle)
+    (if (not (tcp-wait-until-connected 1000)) {
+        (tcp-close-connection)
         (return 'error-wait-connected)
     })
         
-    (if (not (tcp-send-str handle request-str)) {
-        (tcp-free-handle)
+    (if (not (rethrow (tcp-send-str request-str))) {
+        (tcp-close-connection)
         (return 'error-send-str)
     })
     
-    (if (not (tcp-wait-for-recv handle 10)) {
-        (tcp-free-handle)
+    (if (not (rethrow (tcp-wait-for-recv 2000))) {
+        (tcp-close-connection)
         (return 'error-wait-for-recv)
     })
     
-    (var response (tcp-recv handle))
+    (var response (tcp-recv))
     (if (not-eq (type-of response) 'type-array) {
-        (tcp-free-handle)
+        (tcp-close-connection)
         (return 'error-recv)
     })
     
-    (if (not (tcp-free-handle handle)) {
-        (return 'error-free-handle)
+    (var result (tcp-close-connection))
+    (if (not result) {
+        (print "connection was somehow already closed!")
+    })
+    (if (eq result 'error) {
+        (print "closing connection failed")
+        (return false)
     })
     
     
@@ -116,12 +117,11 @@
 
 (def connection-errors (list
     'error-connect-host
-    'error-no-free
     'error-wait-connected
     'error-send-str
     'error-wait-for-recv
     'error-recv
-    'error-free-handle
+    'error-close-connection
 ))
 
 ; TODO: add some way to have incremental reading of response, to not run out of memory...
