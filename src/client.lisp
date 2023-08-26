@@ -890,7 +890,7 @@
 
 @const-end
 
-(pwr-on)
+(modem-pwr-on)
 
 (if (at-init)
     (print "init successfull")

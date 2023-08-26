@@ -488,6 +488,10 @@ static inline float time_ms_since(const uint32_t timestamp) {
     return VESC_IF->timer_seconds_elapsed_since(timestamp) * 1000.0;
 }
 
+static inline uint32_t time_ms_since_i(const uint32_t timestamp) {
+    return (uint32_t)(VESC_IF->timer_seconds_elapsed_since(timestamp) * 1000.0);
+}
+
 /**
  * Access the global state struct.
  */
@@ -859,8 +863,9 @@ static const char *at_find_of_responses(
         } else {
             error_index = 0;
         }
-
-        // VESC_IF->printf("found wrong response: '%s'", response);
+#ifdef AT_DEBUG_LOG
+        VESC_IF->printf("found wrong response: '%s'", response);
+#endif
 
         if (read_len != 0) {
             i = 0;
@@ -881,17 +886,21 @@ static const char *at_find_of_responses(
  * Run a simple at command with a single expected response.
  */
 static bool at_command(
-    const char *command, const char *expect, bool find_extra_ok
+    const char *command, const char *expect, bool find_extra_ok, const uint_t timeout
 ) {
     uart_write_string(command);
 
-    if (!at_find_response(expect, AT_READ_TIMEOUT_MS, true)) {
-        VESC_IF->printf("couldn't find find '%s' (for: %s)", expect, command);
+    if (!at_find_response(expect, timeout, true)) {
+        char buffer[strlen(command) + 1];
+        str_extract_n_until(buffer, strlen(command), command, "\r\n", 0);
+        VESC_IF->printf("couldn't find response '%s' (for: %s)", expect, buffer);
         return false;
     }
 
-    if (find_extra_ok && !at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
-        VESC_IF->printf("couldn't find find 'OK' (for: %s)", command);
+    if (find_extra_ok && !at_find_response("OK", timeout, true)) {
+        char buffer[strlen(command) + 1];
+        str_extract_n_until(buffer, strlen(command), command, "\r\n", 0);
+        VESC_IF->printf("couldn't find response 'OK' (for: %s)", buffer);
         return false;
     }
 
@@ -902,19 +911,19 @@ static bool at_command(
  * Run a simple at command with a multiple expected response.
  */
 static bool at_command_responses(
-    const char *command, const size_t count, const char *responses[count]
+    const char *command, const size_t count, const char *responses[count], const uint_t timeout
 ) {
     uart_write_string(command);
 
     const char *response =
-        at_find_of_responses(count, responses, AT_READ_TIMEOUT_MS);
+        at_find_of_responses(count, responses, timeout);
     if (response == NULL) {
         VESC_IF->printf("couldn't find any valid response (for: %s)", command);
         return false;
     }
 
     if (!strneq(response, "OK", 2)) {
-        if (!at_find_response("OK", AT_READ_TIMEOUT_MS, true)) {
+        if (!at_find_response("OK", timeout, true)) {
             VESC_IF->printf("couldn't find find 'OK' (for: %s)", command);
             return false;
         }
@@ -933,12 +942,12 @@ static bool at_init() {
         const char *response_ok = "OK";
         const char *response_echo = "ATE0";
         if (!at_command_responses(
-                "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}
+                "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}, AT_READ_TIMEOUT_MS
             )) {
             // modem might need more time at startup
             VESC_IF->sleep_ms(3000);
             if (!at_command_responses(
-                    "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}
+                    "ATE0\r\n", 2, (const char *[]){response_ok, response_echo}, AT_READ_TIMEOUT_MS
                 )) {
                 return false;
             }
@@ -946,22 +955,27 @@ static bool at_init() {
     }
 
     // Check if pin is required
-    if (!at_command("AT+CPIN?\r\n", "+CPIN: READY", true)) {
+    if (!at_command("AT+CPIN?\r\n", "+CPIN: READY", true, AT_READ_TIMEOUT_MS)) {
         return false;
     }
 
     // Select text mode for sms messages
-    if (!at_command("AT+CMGF=1\r\n", "OK", false)) {
+    if (!at_command("AT+CMGF=1\r\n", "OK", false, AT_READ_TIMEOUT_MS)) {
         return false;
     }
 
     // Set preferred mode to LTE only
-    if (!at_command("AT+CNMP=38\r\n", "OK", false)) {
+    if (!at_command("AT+CNMP=38\r\n", "OK", false, AT_READ_TIMEOUT_MS)) {
+        return false;
+    }
+    
+    // Attach GPRS
+    if (!at_command("AT+CGATT=1\r\n", "OK", false, 2000)) {
         return false;
     }
 
     // Check that GPRS is attached
-    if (!at_command("AT+CGATT?\r\n", "+CGATT: 1", true)) {
+    if (!at_command("AT+CGATT?\r\n", "+CGATT: 1", true, AT_READ_TIMEOUT_MS)) {
         return false;
     }
 
@@ -974,7 +988,7 @@ static bool at_init() {
     // Configure PDP with Internet Protocol Version 4 and the Access Point Name
     // "internet.telenor.se"
     // The result is then printed.
-    if (!at_command("AT+CNCFG=0,1,\"internet.telenor.se\"\r\n", "OK", false)) {
+    if (!at_command("AT+CNCFG=0,1,\"internet.telenor.se\"\r\n", "OK", false, AT_READ_TIMEOUT_MS)) {
         return false;
     }
 
@@ -1025,6 +1039,65 @@ static bool restore_at_if(void) {
     }
     return false;
 }
+
+/* **************************************************
+ * Modem power on/off
+ */
+
+static void modem_pwr_key(bool grounded) {
+    if (grounded) {
+        VESC_IF->set_pad(GPIOD, 8);
+    } else {
+        VESC_IF->clear_pad(GPIOD, 8);
+    }
+}
+
+static void modem_pwr_on() {
+    uint32_t start = time_now();
+    
+    VESC_IF->printf("powering on...");
+    
+    modem_pwr_key(false);
+    // Spec doesn't specify how long too wait here, urgh...
+    // Any lower doesn't seem very reliable.
+    VESC_IF->sleep_ms(800);
+    
+    modem_pwr_key(true);
+    VESC_IF->sleep_ms(1000);
+    modem_pwr_key(false);
+    
+    // checking takes forever (adds ~1400ms)
+    // if (!at_find_response("RDY", AT_READ_TIMEOUT_MS, true)) {
+    //     VESC_IF->printf("couldn't find 'RDY' response");
+    //     return;
+    // }
+    
+    // // purge remaining lines, including:
+    // // +CFUN: 1
+    // // +CPIN: READY
+    // // SMS Ready
+    // uart_purge(AT_PURGE_TIMEOUT_MS);
+    
+    VESC_IF->printf("ready, took %ums", time_ms_since_i(start));
+}
+
+static bool modem_pwr_off() {
+    VESC_IF->printf("powering off...");
+ 
+    uart_purge(AT_PURGE_TIMEOUT_MS);
+    
+    // should power off normally
+    uart_write_string("AT+CPOWD=1\r\n");
+    
+    if (!at_find_response("NORMAL POWER DOWN", AT_READ_TIMEOUT_MS, true)) {
+        return false;
+    }
+    
+    VESC_IF->printf("finished");
+    
+    return true;
+}
+
 
 /* **************************************************
  * Packet and data processing
@@ -2089,30 +2162,30 @@ static lbm_value ext_puts(lbm_value *args, lbm_uint argn) {
     return VESC_IF->lbm_enc_sym_true;
 }
 
-/**
- * signature: (rethrow value)
- *
- * Pass value throw, throwing an error if the value was one of the error
- * symbols:
- * - 'type_error
- * - 'eval_error
- * - 'out_of_memory
- * - 'fatal_error
- * - 'out_of_stack
- * - 'division_by_zero
- * - 'variable_not_bound
- *
- * \param value The value to pass through.
- * \return the value if it wasn't one of the error symbols.
- */
-static lbm_value ext_rethrow(lbm_value *args, lbm_uint argn) {
-    if (argn != 1) {
-        return VESC_IF->lbm_enc_sym_terror;
-    }
+// /**
+//  * signature: (rethrow value)
+//  *
+//  * Pass value throw, throwing an error if the value was one of the error
+//  * symbols:
+//  * - 'type_error
+//  * - 'eval_error
+//  * - 'out_of_memory
+//  * - 'fatal_error
+//  * - 'out_of_stack
+//  * - 'division_by_zero
+//  * - 'variable_not_bound
+//  *
+//  * \param value The value to pass through.
+//  * \return the value if it wasn't one of the error symbols.
+//  */
+// static lbm_value ext_rethrow(lbm_value *args, lbm_uint argn) {
+//     if (argn != 1) {
+//         return VESC_IF->lbm_enc_sym_terror;
+//     }
 
-    lbm_value value = args[0];
-    return value;
-}
+//     lbm_value value = args[0];
+//     return value;
+// }
 
 /* signature: (ext-pause) */
 static lbm_value ext_pause(lbm_value *args, lbm_uint argn) {
@@ -2383,6 +2456,28 @@ static lbm_value ext_pwr_key(lbm_value *args, lbm_uint argn) {
         return VESC_IF->lbm_enc_sym_true;
     }
     return VESC_IF->lbm_enc_sym_nil;
+}
+
+static lbm_value ext_modem_pwr_on(lbm_value *args, lbm_uint argn) {
+    (void)args;
+    if (argn != 0) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+    
+    modem_pwr_on();
+    
+    return VESC_IF->lbm_enc_sym_true;
+}
+
+static lbm_value ext_modem_pwr_off(lbm_value *args, lbm_uint argn) {
+    (void)args;
+    if (argn != 0) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+    
+    bool result = modem_pwr_off();
+    
+    return lbm_enc_bool(result);
 }
 
 static lbm_value ext_at_init(lbm_value *args, lbm_uint argn) {
@@ -2734,7 +2829,6 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("str-n-eq", ext_str_n_eq);
     VESC_IF->lbm_add_extension("str-extract-until", ext_str_extract_until);
     VESC_IF->lbm_add_extension("puts", ext_puts);
-    VESC_IF->lbm_add_extension("rethrow", ext_rethrow);
 
     VESC_IF->lbm_add_extension("ext-pause", ext_pause);
     VESC_IF->lbm_add_extension("ext-unpause", ext_unpause);
@@ -2755,6 +2849,8 @@ INIT_FUN(lib_info *info) {
     // VESC_IF->lbm_add_extension("ext-sim7000-mode", ext_sim7000_mode);
     // VESC_IF->lbm_add_extension("ext-sim7070-mode", ext_sim7070_mode);
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
+    VESC_IF->lbm_add_extension("modem-pwr-on", ext_modem_pwr_on);
+    VESC_IF->lbm_add_extension("modem-pwr-off", ext_modem_pwr_off);
     VESC_IF->lbm_add_extension("at-init", ext_at_init);
     VESC_IF->lbm_add_extension("tcp-status", ext_tcp_status);
     VESC_IF->lbm_add_extension("tcp-is-open", ext_tcp_is_open);
