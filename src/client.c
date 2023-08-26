@@ -163,6 +163,10 @@ typedef struct {
     lbm_uint symbol_server_mode;
     lbm_uint symbol_error;
     lbm_uint symbol_tcp_recv;
+    
+    lbm_uint symbol_terror;
+    lbm_uint symbol_eerror;
+    lbm_uint symbol_merror;
 } data;
 
 /* **************************************************
@@ -181,6 +185,10 @@ static bool register_symbols() {
         && VESC_IF->lbm_add_symbol_const("server-mode", &d->symbol_server_mode)
         && VESC_IF->lbm_add_symbol_const("error", &d->symbol_error)
         && VESC_IF->lbm_add_symbol_const("tcp-recv", &d->symbol_tcp_recv);
+
+    d->symbol_terror = VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_terror);
+    d->symbol_eerror = VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_eerror);
+    d->symbol_merror = VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_merror);
 
     return res;
 }
@@ -523,21 +531,47 @@ static bool lbm_flatten_str(lbm_flat_value_t *flat_value, const char *str) {
 
     size_t buff_size = data_size + 1  // type header
                        + 4;           // num_byte header
-    
+
     if (!VESC_IF->lbm_start_flatten(flat_value, buff_size)) {
         return false;
     }
-    
+
     if (!VESC_IF->f_lbm_array(flat_value, data_size, (uint8_t *)str)) {
         lbm_free_flat_value(flat_value);
         return false;
     }
-    
+
     if (!VESC_IF->lbm_finish_flatten(flat_value)) {
         lbm_free_flat_value(flat_value);
         return false;
     }
-    
+
+    return true;
+}
+
+
+// static bool lbm_flatten_simple_value(lbm_flat_value_t *flat_value, const lbm_value value) {
+//     if 
+// }
+
+static bool lbm_flatten_sym(lbm_flat_value_t *flat_value, const lbm_uint sym) {
+    size_t buff_size = 1     // type header
+                       + 4;  // value
+
+    if (!VESC_IF->lbm_start_flatten(flat_value, buff_size)) {
+        return false;
+    }
+
+    if (!VESC_IF->f_sym(flat_value, sym)) {
+        lbm_free_flat_value(flat_value);
+        return false;
+    }
+
+    if (!VESC_IF->lbm_finish_flatten(flat_value)) {
+        lbm_free_flat_value(flat_value);
+        return false;
+    }
+
     return true;
 }
 
@@ -1669,19 +1703,32 @@ static bool lbm_call_tcp_cmd(const tcp_cmd_t cmd, const uint_t timeout_ms) {
 }
 
 static void tcp_thd(void *arg) {
-    void return_result(lbm_value result) {
+    void return_result_unboxed(lbm_value result) {
         data *d = use_state();
-
+        
         if (!VESC_IF->lbm_unblock_ctx_unboxed(d->tcp_calling_thread, result)) {
             VESC_IF->printf("sending result to calling thread failed");
         }
-    }
 
-    void return_flat_result(lbm_flat_value_t *flat_value) {
+    }
+    void return_flat_result(lbm_flat_value_t * flat_value) {
         data *d = use_state();
 
         if (!VESC_IF->lbm_unblock_ctx(d->tcp_calling_thread, flat_value)) {
             VESC_IF->printf("sending flat result to calling thread failed");
+        }
+    }
+    void return_result(lbm_value result) {
+        if (VESC_IF->lbm_is_symbol(result)) {
+            lbm_flat_value_t flat_value;
+            if (!lbm_flatten_sym(&flat_value, VESC_IF->lbm_dec_sym(result))) {
+                VESC_IF->printf("failed to flatten symbol");
+                return_result_unboxed(VESC_IF->lbm_enc_sym_eerror);
+            }
+            
+            return_flat_result(&flat_value);
+        } else {
+            return_result_unboxed(result);
         }
     }
 
@@ -1813,12 +1860,21 @@ static void tcp_thd(void *arg) {
                     return_result(VESC_IF->lbm_enc_sym(d->symbol_error));
                     break;
                 }
-                
+
                 return_flat_result(&result);
                 break;
             }
             case TCP_CMD_TEST: {
-                return_result(d->tcp_test_str);
+                return_result(VESC_IF->lbm_enc_sym_eerror);
+                // lbm_uint sym = VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_eerror);
+                
+                // lbm_flat_value_t result;
+                // if (!lbm_flatten_sym(&result, sym)) {
+                //     return_result(VESC_IF->lbm_enc_sym_nil);
+                //     break;
+                // }
+                
+                // return_flat_result(&result);
                 break;
             }
             case TCP_CMD_CLOSE_CONNECTION: {
@@ -2608,13 +2664,14 @@ static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
 // }
 
 static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
-    if (argn != 1) {
-        return VESC_IF->lbm_enc_sym_terror;
-    }
-
     data *d = use_state();
 
-    d->tcp_test_str = args[0];
+    lbm_value argument = VESC_IF->lbm_enc_sym_nil;
+    if (argn >= 1) {
+        argument = args[0];
+    } 
+
+    d->tcp_test_str = argument;
 
     if (!lbm_call_tcp_cmd(TCP_CMD_TEST, TCP_CMD_TIMEOUT_MS)) {
         VESC_IF->printf("lbm_call_tcp_cmd timeout");

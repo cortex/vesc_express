@@ -76,7 +76,7 @@
     })
     (var request-str ping-http-request)
     
-    (var result (rethrow (tcp-connect-host (assoc request 'host) 80)))
+    (var result (tcp-connect-host (assoc request 'host) 80))
     (if (not result) {
         (return 'error-connect-host)
     })
@@ -86,12 +86,12 @@
         (return 'error-wait-connected)
     })
         
-    (if (not (rethrow (tcp-send-str request-str))) {
+    (if (not (tcp-send-str request-str)) {
         (tcp-close-connection)
         (return 'error-send-str)
     })
     
-    (if (not (rethrow (tcp-wait-for-recv 2000))) {
+    (if (not (tcp-wait-for-recv 2000)) {
         (tcp-close-connection)
         (return 'error-wait-for-recv)
     })

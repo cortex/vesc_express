@@ -596,13 +596,12 @@
 (defunret tcp-recv () {
     (var segments (list))
     (looprange i 0 100 {
-        (var segment (rethrow (tcp-recv-single)))
+        (var segment (tcp-recv-single))
         ; (var segment (tcp-recv-single))
         ; (if (eq segment 'out_of_memory) {
         ;     (gc)
         ;     (setq segment (tcp-recv-single))
         ; })
-        ; (rethrow segment)
         (cond
             ((eq (type-of segment) 'type-array)
                 (setq segments (cons segment segments))
@@ -641,7 +640,7 @@
 (defunret do-request () {
     (var request-start (systime))
     (var start (systime))
-    (var result (rethrow (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)))
+    (var result (tcp-connect-host "lindboard-staging.azurewebsites.net" 80))
     (if (eq result 'error) {
         (print "tcp-connect-host failed")
         (return false)
@@ -654,7 +653,7 @@
     (var ms-tcp-connect-host (ms-since start))
     (var start (systime))
     
-    (if (not (rethrow (tcp-wait-until-connected 1000))) {
+    (if (not (tcp-wait-until-connected 1000)) {
         (print "tcp connection wasn't established correctly")
         (return false)
     })
@@ -668,7 +667,7 @@
     (var start (systime))
 
     
-    (if (not (rethrow (tcp-send-str ping-http-request))) {
+    (if (not (tcp-send-str ping-http-request)) {
         (print "tcp-send-str failed")
         (return false)
     })
@@ -682,7 +681,7 @@
     (var start (systime))
 
 
-    (if (not (rethrow (tcp-wait-for-recv 1000))) {
+    (if (not (tcp-wait-for-recv 1000)) {
         (print "couldn't find recv notification")
         (return false)
     })
@@ -734,7 +733,7 @@
     (print data)
     (var start (systime))
     
-    (var result (rethrow (tcp-close-connection)))
+    (var result (tcp-close-connection))
     (if (not result) {
         (print "connection was already closed!")
     })
@@ -765,17 +764,17 @@
     ;     (return false)
     ; })
     
-    (if (not (rethrow (tcp-wait-until-connected 1000))) {
+    (if (not (tcp-wait-until-connected 1000)) {
         (print "tcp connection wasn't established correctly")
         (return false)
     })
     
-    (if (not (rethrow (tcp-send-str ping-http-request-keep-alive))) {
+    (if (not (tcp-send-str ping-http-request-keep-alive)) {
         (print "tcp-send-str failed")
         (return false)
     })
 
-    (if (not (rethrow (tcp-wait-for-recv 10))) {
+    (if (not (tcp-wait-for-recv 10)) {
         (print "couldn't find recv notification")
         (return false)
     })
@@ -787,7 +786,7 @@
     (print "doing 10 requests... ---------------------------")
     (var start (systime))
     
-    (var result (rethrow (tcp-connect-host "lindboard-staging.azurewebsites.net" 80)))
+    (var result (tcp-connect-host "lindboard-staging.azurewebsites.net" 80))
     (if (eq result 'error) {
         (print "tcp-connect-host failed")
         (return false)
@@ -812,7 +811,7 @@
         "ms)"
     ))
     
-    (var result (rethrow (tcp-close-connection)))
+    (var result (tcp-close-connection))
     (if (not result) {
         (print "connection was already closed!")
     })
