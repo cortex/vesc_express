@@ -5,45 +5,13 @@
 
 (import "lib/utils.lisp" 'code-utils)
 (import "lib/http.lisp" 'code-http)
+(import "lib/json.lisp" 'code-json)
 
 (read-eval-program code-utils)
 (read-eval-program code-http)
+(read-eval-program code-json)
 
 @const-start
-
-(defun str-ix-eq (str1 str2 i)
-    (if (and (< i (array-size str1))
-             (< i (array-size str2)))
-        (eq (array-read str1 i) (array-read str2 i))
-        nil
-))
-
-(defun str-eq (a b n) 
-    (= (str-cmp a b n) 0)
-)
-
-(defun ms-since (timestamp) {
-    (* (secs-since timestamp) 1000.0)
-})
-
-; Returns value or else-value if value is nil
-(defun else (value else-value) 
-    (if value value else-value)
-)
-
-(def time (macro (expr) `{
-    (var start (systime))
-    (var result ,expr)
-    (print (to-str-delim ""
-        "took "
-        (str-from-n
-            (ms-since start)
-        )
-        "ms"
-    ))
-    (print result)
-    result
-}))
 
 ;; to be removed after update of lbm.
 

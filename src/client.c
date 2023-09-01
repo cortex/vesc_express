@@ -138,6 +138,20 @@ typedef struct {
     lbm_uint symbol_error;
     lbm_uint symbol_tcp_recv;
 
+    lbm_uint symbol_error_unclosed_quote;
+    lbm_uint symbol_error_invalid_char;
+
+    lbm_uint symbol_tok_true;
+    lbm_uint symbol_tok_false;
+    lbm_uint symbol_tok_null;
+
+    lbm_uint symbol_tok_comma;
+    lbm_uint symbol_tok_colon;
+    lbm_uint symbol_tok_left_bracket;
+    lbm_uint symbol_tok_right_bracket;
+    lbm_uint symbol_tok_left_brace;
+    lbm_uint symbol_tok_right_brace;
+
     lbm_uint symbol_terror;
     lbm_uint symbol_eerror;
     lbm_uint symbol_merror;
@@ -158,7 +172,30 @@ static bool register_symbols() {
         && VESC_IF->lbm_add_symbol_const("connected", &d->symbol_connected)
         && VESC_IF->lbm_add_symbol_const("server-mode", &d->symbol_server_mode)
         && VESC_IF->lbm_add_symbol_const("error", &d->symbol_error)
-        && VESC_IF->lbm_add_symbol_const("tcp-recv", &d->symbol_tcp_recv);
+        && VESC_IF->lbm_add_symbol_const("tcp-recv", &d->symbol_tcp_recv)
+        && VESC_IF->lbm_add_symbol_const(
+            "error-unclosed-quote", &d->symbol_error_unclosed_quote
+        )
+        && VESC_IF->lbm_add_symbol_const(
+            "error-invalid-char", &d->symbol_error_invalid_char
+        )
+        && VESC_IF->lbm_add_symbol_const("tok-true", &d->symbol_tok_true)
+        && VESC_IF->lbm_add_symbol_const("tok-false", &d->symbol_tok_false)
+        && VESC_IF->lbm_add_symbol_const("tok-null", &d->symbol_tok_null)
+        && VESC_IF->lbm_add_symbol_const("tok-comma", &d->symbol_tok_comma)
+        && VESC_IF->lbm_add_symbol_const("tok-colon", &d->symbol_tok_colon)
+        && VESC_IF->lbm_add_symbol_const(
+            "tok-left-bracket", &d->symbol_tok_left_bracket
+        )
+        && VESC_IF->lbm_add_symbol_const(
+            "tok-right-bracket", &d->symbol_tok_right_bracket
+        )
+        && VESC_IF->lbm_add_symbol_const(
+            "tok-left-brace", &d->symbol_tok_left_brace
+        )
+        && VESC_IF->lbm_add_symbol_const(
+            "tok-right-brace", &d->symbol_tok_right_brace
+        );
 
     d->symbol_terror = VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_terror);
     d->symbol_eerror = VESC_IF->lbm_dec_sym(VESC_IF->lbm_enc_sym_eerror);
@@ -249,6 +286,16 @@ static bool strneq(const char *str1, const char *str2, const uint_t n) {
     return r;
 }
 
+static bool str_contains_delim(const char *str, const char *delims) {
+    for (size_t i = 0; i < strlen(str); i++) {
+        if (one_of(delims, str[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /**
  * Find the index of the first occurence substring.
  *
@@ -267,6 +314,39 @@ static ssize_t str_index_of(const char *str, const char *search) {
         }
     }
     return -1;
+}
+
+/**
+ * Extract a substring of at most length n from a string starting at a specified
+ * character.
+ *
+ * \param dest The string to store the extracted substring in. This needs to
+ * have a capacity of n + 1 bytes to account for the null byte. A terminating
+ * null byte is always written
+ * \param str The string to extract from.
+ * \param start The index of str where the substring starts.
+ * \param n How many characters to extract at a maximum. This is clamped to the
+ * length of str.
+ * \return the amount of characters written to dest (excluding the terminating
+ * null byte).
+ */
+static size_t str_extract_n_from(
+    char *dest, const char *str, size_t start, size_t n
+) {
+    size_t len = strlen(str);
+    if (start >= len) {
+        dest[0] = '\0';
+        return 0;
+    }
+
+    if (start + n > len) {
+        n = len - start;
+    }
+
+    memcpy(dest, str + start, n);
+
+    dest[n] = '\0';
+    return n;
 }
 
 /**
@@ -328,6 +408,48 @@ static size_t str_extract_n_until_skip(
     start += (size_t)start_skipped;
 
     return str_extract_n_until(dest, n, str, delims, start);
+}
+
+/**
+ * Extract the longest substring from a string that contains only the specified
+ * characters and is not longer than the specified length, starting at an index.
+ *
+ * \param dest The string to store the extracted substring in. This needs to
+ * have a capacity of n + 1 bytes to account for the null byte. A terminating
+ * null byte is always written
+ * \param n How many characters to extract at a maximum. This is clamped to the
+ * length of str.
+ * \param str The string to extract from.
+ * \param delims A string with the characters which dest will consist of
+ * entirely.
+ * \param start The index of str where the substring starts.
+ * \return the amount of characters written to dest (excluding the terminating
+ * null byte).
+ */
+static size_t str_extract_n_while(
+    char *dest, size_t n, const char *str, const char *delims, size_t start
+) {
+    size_t len = strlen(str);
+    if (start >= len || n > len) {
+        dest[0] = '\0';
+        return 0;
+    }
+
+    if (start + n > len) {
+        n = len - start;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        if (!one_of(delims, str[start + i])) {
+            dest[i] = '\0';
+
+            return i;
+        }
+        dest[i] = str[start + i];
+    }
+
+    dest[n] = '\0';
+    return n;
 }
 
 //
@@ -1757,6 +1879,329 @@ static void tcp_thd(void *arg) {
 }
 
 /* **************************************************
+ * JSON
+ */
+
+typedef enum {
+    JSON_OK,
+    JSON_UNCLOSED_QUOTE,
+    JSON_INVALID_CHAR,
+} json_result_t;
+
+typedef struct {
+    lbm_value token;
+    size_t len;
+    json_result_t error;
+} json_lex_unit_t;
+
+#define JSON_COMMA ','
+#define JSON_COLON ':'
+#define JSON_LEFT_BRACKET '['
+#define JSON_RIGHT_BRACKET ']'
+#define JSON_LEFT_BRACE '{'
+#define JSON_RIGHT_BRACE '}'
+#define JSON_QUOTE '"'
+#define JSON_NUMERIC_CHARS "0123456789-+.eE"
+#define JSON_SYNTAX_CHARS ",:[]{}"
+#define JSON_WHITESPACE_CHARS " \t\n\v\r"
+
+#define JSON_TRUE "true"
+#define JSON_FALSE "false"
+#define JSON_NULL "null"
+
+#define JSON_TRUE_LEN (sizeof(JSON_TRUE) - 1)
+#define JSON_FALSE_LEN (sizeof(JSON_FALSE) - 1)
+#define JSON_NULL_LEN (sizeof(JSON_NULL) - 1)
+
+static char json_translate_escape_char(char c) {
+    switch (c) {
+        case '"': return '"';
+        case '\\': return '\\';
+        // I have no idea what they mean with 'solidus' in the JSON docs
+        // https://www.json.org/json-en.html
+        // case '/': return '/';
+        case 'b': return '\b';
+        case 'f': return '\f';
+        case 'n': return '\n';
+        case 'r': return '\r';
+        case 't': return '\t';
+        // TODO: Figure out the deal with UTF-16 surrogate pairs...
+        // case 'u': return ...;
+        default: return c;
+    }
+}
+
+static size_t json_unescape_str(char *dest, const char *str) {
+    size_t len = strlen(str);
+    
+    size_t dest_i = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (str[i] == '\\') {
+            if (i != len - 1) {
+                i++;
+                dest[dest_i++] = json_translate_escape_char(str[i]);
+            }
+            continue;
+        }
+        
+        dest[dest_i++] = str[i];
+    }
+    
+    dest[dest_i] = '\0';
+    return dest_i;
+}
+
+/**
+ * \param str Must have a length >= 1.
+ */
+static json_lex_unit_t json_lex_str(const char *str) {
+    if (str[0] != JSON_QUOTE) {
+        return (json_lex_unit_t){
+            .token = VESC_IF->lbm_enc_sym_nil,
+            .len = 0,
+            .error = JSON_OK,
+        };
+    } else {
+        size_t len = strlen(str);
+
+        for (size_t i = 1; i < len; i++) {
+            if (str[i] == JSON_QUOTE) {
+                size_t buff_len = i - 1;
+                char buff[buff_len + 1];
+                str_extract_n_from(buff, str, 1, buff_len);
+
+                return (json_lex_unit_t){
+                    .token = lbm_create_str(buff),
+                    .len = buff_len + 2,
+                    .error = JSON_OK,
+                };
+            }
+        }
+
+        return (json_lex_unit_t){
+            .error = JSON_UNCLOSED_QUOTE,
+        };
+    }
+}
+
+static json_lex_unit_t json_lex_number(const char *str) {
+    size_t len = strlen(str);
+
+    ssize_t result = first_not_of(str, JSON_NUMERIC_CHARS);
+    size_t number_len;
+    if (result == -1) {
+        number_len = len;
+    } else {
+        number_len = (size_t)result;
+    }
+
+    if (number_len == 0) {
+        return (json_lex_unit_t){
+            .token = VESC_IF->lbm_enc_sym_nil,
+            .len = 0,
+            .error = JSON_OK,
+        };
+    }
+
+    char number_str[number_len];
+    str_extract_n_from(number_str, str, 0, number_len);
+
+    lbm_value value_lbm;
+
+    if (str_contains_delim(number_str, ".")) {
+        // TODO: figure out floating point number parsing.
+        value_lbm = VESC_IF->lbm_enc_float(69.0);
+    } else {
+        int value = ascii_to_int(number_str);
+        value_lbm = VESC_IF->lbm_enc_i32(value);
+    }
+
+    return (json_lex_unit_t){
+        .token = value_lbm,
+        .len = number_len,
+        .error = JSON_OK,
+    };
+}
+
+static json_lex_unit_t json_lex_bool_null(const char *str) {
+    data *d = use_state();
+
+    size_t len = strlen(str);
+
+    if (len >= JSON_TRUE_LEN && strneq(str, JSON_TRUE, JSON_TRUE_LEN)) {
+        return (json_lex_unit_t){
+            .token = VESC_IF->lbm_enc_sym(d->symbol_tok_true),
+            .len = JSON_TRUE_LEN,
+            .error = JSON_OK,
+        };
+    } else if (len >= JSON_FALSE_LEN && strneq(str, JSON_FALSE, JSON_FALSE_LEN)) {
+        return (json_lex_unit_t){
+            .token = VESC_IF->lbm_enc_sym(d->symbol_tok_false),
+            .len = JSON_FALSE_LEN,
+            .error = JSON_OK,
+        };
+    } else if (len >= JSON_NULL_LEN && strneq(str, JSON_NULL, JSON_NULL_LEN)) {
+        return (json_lex_unit_t){
+            .token = VESC_IF->lbm_enc_sym(d->symbol_tok_null),
+            .len = JSON_NULL_LEN,
+            .error = JSON_OK,
+        };
+    } else {
+        return (json_lex_unit_t){
+            .token = VESC_IF->lbm_enc_sym_nil,
+            .len = 0,
+            .error = JSON_OK,
+        };
+    }
+}
+
+/**
+ * \param str Must have a length >= 1.
+ */
+static json_lex_unit_t json_lex_syntax(const char *str) {
+    data *d = use_state();
+
+    // if (!one_of(str[0], JSON_SYNTAX_CHARS)) {
+    //     return (json_lex_unit_t){
+    //         .token = VESC_IF->lbm_enc_sym_nil,
+    //         .len = 0,
+    //         .error = JSON_OK,
+    //     };
+    // }
+
+    lbm_uint sym;
+
+    switch (str[0]) {
+        case JSON_COMMA: {
+            sym = d->symbol_tok_comma;
+            break;
+        }
+        case JSON_COLON: {
+            sym = d->symbol_tok_colon;
+            break;
+        }
+        case JSON_LEFT_BRACKET: {
+            sym = d->symbol_tok_left_bracket;
+            break;
+        }
+        case JSON_RIGHT_BRACKET: {
+            sym = d->symbol_tok_right_bracket;
+            break;
+        }
+        case JSON_LEFT_BRACE: {
+            sym = d->symbol_tok_left_brace;
+            break;
+        }
+        case JSON_RIGHT_BRACE: {
+            sym = d->symbol_tok_right_brace;
+            break;
+        }
+        default: {
+            return (json_lex_unit_t){
+                .token = VESC_IF->lbm_enc_sym_nil,
+                .len = 0,
+                .error = JSON_OK,
+            };
+        }
+    }
+
+    return (json_lex_unit_t){
+        .token = VESC_IF->lbm_enc_sym(sym),
+        .len = 1,
+        .error = JSON_OK,
+    };
+}
+
+/**
+ * \param tokens a reference to a lbm linked lists containing the extracted
+ * tokens. \return struct with the amount of characters consumed. Error field is
+ * set to some other value than JSON_OK in case of an error. The token field is
+ * set to nil except when an memory error has occurred, in which case the
+ * 'out_of_memory symbol is returned (this is totally not convoluted).
+ */
+static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
+    size_t consumed = 0;
+
+    {
+        json_lex_unit_t result = json_lex_str(str);
+        if (result.error != JSON_OK) {
+            result.token = VESC_IF->lbm_enc_sym_nil;
+            return result;
+        }
+        if (result.token == VESC_IF->lbm_enc_sym_merror) {
+            return result;
+        }
+
+        if (result.token != VESC_IF->lbm_enc_sym_nil) {
+            *tokens = VESC_IF->lbm_cons(result.token, *tokens);
+        }
+        str = str + result.len;
+        consumed += result.len;
+    }
+
+    {
+        json_lex_unit_t result = json_lex_number(str);
+        if (result.error != JSON_OK) {
+            result.token = VESC_IF->lbm_enc_sym_nil;
+            return result;
+        }
+
+        if (result.token != VESC_IF->lbm_enc_sym_nil) {
+            *tokens = VESC_IF->lbm_cons(result.token, *tokens);
+        }
+        str = str + result.len;
+        consumed += result.len;
+    }
+
+    {
+        json_lex_unit_t result = json_lex_bool_null(str);
+
+        if (result.token != VESC_IF->lbm_enc_sym_nil) {
+            *tokens = VESC_IF->lbm_cons(result.token, *tokens);
+        }
+        str = str + result.len;
+        consumed += result.len;
+    }
+
+    bool char_valid = false;
+    {
+        json_lex_unit_t result = json_lex_syntax(str);
+
+        if (result.token != VESC_IF->lbm_enc_sym_nil) {
+            *tokens = VESC_IF->lbm_cons(result.token, *tokens);
+            char_valid = true;
+        }
+        str = str + result.len;
+        consumed += result.len;
+    }
+
+    {
+        ssize_t count = first_not_of(str, JSON_WHITESPACE_CHARS);
+        if (count == -1) {
+            count = (ssize_t)strlen(str);
+        }
+        if (count > 0) {
+            char_valid = true;
+        }
+        str = str + count;
+        consumed += (size_t)count;
+    }
+
+    if (!char_valid) {
+        return (json_lex_unit_t){
+            .token = VESC_IF->lbm_enc_sym_nil,
+            .error = JSON_INVALID_CHAR,
+        };
+    }
+
+    return (json_lex_unit_t){
+        .token = VESC_IF->lbm_enc_sym_nil,
+        .len = consumed,
+        .error = JSON_OK,
+    };
+}
+
+/* **************************************************
  * Extensions
  */
 
@@ -1854,6 +2299,44 @@ static lbm_value ext_str_extract_until(lbm_value *args, lbm_uint argn) {
     char dest[n + 1];
 
     str_extract_n_until_skip(dest, n, str, delims, skip, start);
+
+    return lbm_create_str(dest);
+}
+
+/**
+ * signature: (str-extract-while str delims [start])
+ *
+ * Extract the longest substring from a string that contains only the specified
+ * characters, starting at index.
+ *
+ * \param str The string to extract from.
+ * \param delims A string with the characters which dest will consist of
+ * entirely.
+ * \param start (option) The index of str where the substring starts. Default is
+ * 0. \return the extracted substring.
+ */
+static lbm_value ext_str_extract_while(lbm_value *args, lbm_uint argn) {
+    if ((argn != 2 && argn != 3) || !VESC_IF->lbm_is_byte_array(args[0])
+        || !VESC_IF->lbm_is_byte_array(args[1])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    size_t start = 0;
+    if (argn == 3) {
+        if (!VESC_IF->lbm_is_number(args[2])) {
+            return VESC_IF->lbm_enc_sym_terror;
+        }
+        start = VESC_IF->lbm_dec_as_u32(args[2]);
+    }
+
+    const char *str = VESC_IF->lbm_dec_str(args[0]);
+    const char *delims = VESC_IF->lbm_dec_str(args[1]);
+
+    size_t n = strlen(str);
+
+    char dest[n + 1];
+
+    str_extract_n_while(dest, n, str, delims, start);
 
     return lbm_create_str(dest);
 }
@@ -2361,22 +2844,120 @@ static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
 //     VESC_IF->printf("responses[1]: (%p)", responses[1]);
 // }
 
+#define TCP_TEST_TIMES 10000
 static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
-    data *d = use_state();
+    (void)args;
+    (void)argn;
+    uint32_t start = time_now();
 
-    lbm_value argument = VESC_IF->lbm_enc_sym_nil;
-    if (argn >= 1) {
-        argument = args[0];
+    for (size_t i = 0; i < TCP_TEST_TIMES; i++) {
+        char delims[] = "0123456789";
+        // char str[] = "\"foo\": [1, 2, {\"bar\": 2}]}";
+        char str[] = "12345612, 2, {\"bar\": 2}]}";
+        char dest[sizeof(str)];
+
+        str_extract_n_while(dest, strlen(str), str, delims, 0);
     }
 
-    d->tcp_test_str = argument;
+    float ms = time_ms_since(start);
 
-    if (!lbm_call_tcp_cmd(TCP_CMD_TEST, TCP_CMD_TIMEOUT_MS)) {
-        VESC_IF->printf("lbm_call_tcp_cmd timeout");
-        return VESC_IF->lbm_enc_sym_eerror;
-    }
+    VESC_IF->printf("ran str_extract_n_while %d times", TCP_TEST_TIMES);
+    VESC_IF->printf(
+        "total: %fms, avg: %fms", (double)ms, (double)(ms / TCP_TEST_TIMES)
+    );
+
+    // data *d = use_state();
+
+    // lbm_value argument = VESC_IF->lbm_enc_sym_nil;
+    // if (argn >= 1) {
+    //     argument = args[0];
+    // }
+
+    // d->tcp_test_str = argument;
+
+    // if (!lbm_call_tcp_cmd(TCP_CMD_TEST, TCP_CMD_TIMEOUT_MS)) {
+    //     VESC_IF->printf("lbm_call_tcp_cmd timeout");
+    //     return VESC_IF->lbm_enc_sym_eerror;
+    // }
 
     return VESC_IF->lbm_enc_sym_nil;
+}
+
+/**
+ * signature: (json-tokenize str tokens)
+ *
+ * Perform a single step in the json tokenization loop
+ *
+ * \param str the current json string to tokenize.
+ * \param tokens the current list of tokens.
+ * \return list of three values:
+ * 1. the new list of tokens,
+ * 2. the new string,
+ * 3. and the amount of characters consumed,
+ * or an error symbol:
+ * - 'error-unclosed-quote
+ * - 'error-invalid-char
+ */
+static lbm_value ext_json_tokenize_step(lbm_value *args, lbm_uint argn) {
+    if (argn != 2 || !VESC_IF->lbm_is_byte_array(args[0])
+        || !(
+            VESC_IF->lbm_is_cons(args[1]) || VESC_IF->lbm_is_symbol_nil(args[1])
+        )) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+
+    data *d = use_state();
+
+    const char *str = VESC_IF->lbm_dec_str(args[0]);
+    lbm_value tokens = args[1];
+
+    json_lex_unit_t result = json_tokenize_step(str, &tokens);
+    if (result.error != JSON_OK) {
+        lbm_uint error_sym;
+        switch (result.error) {
+            case JSON_UNCLOSED_QUOTE: {
+                error_sym = d->symbol_error_unclosed_quote;
+                break;
+            }
+            case JSON_INVALID_CHAR: {
+                error_sym = d->symbol_error_invalid_char;
+                break;
+            }
+            default: {
+                return VESC_IF->lbm_enc_sym_eerror;
+            }
+        }
+        return VESC_IF->lbm_enc_sym(error_sym);
+    }
+    if (result.token == VESC_IF->lbm_enc_sym_merror) {
+        return VESC_IF->lbm_enc_sym_merror;
+    }
+
+    lbm_value len = VESC_IF->lbm_enc_i(result.len);
+    lbm_value result_str = lbm_create_str(str + result.len);
+    if (result_str == VESC_IF->lbm_enc_sym_merror) {
+        return VESC_IF->lbm_enc_sym_merror;
+    }
+
+    return VESC_IF->lbm_cons(
+        tokens, VESC_IF->lbm_cons(
+                    result_str, VESC_IF->lbm_cons(len, VESC_IF->lbm_enc_sym_nil)
+                )
+    );
+}
+
+static lbm_value ext_json_unescape_str(lbm_value *args, lbm_uint argn) {
+    if (argn != 1 || !VESC_IF->lbm_is_byte_array(args[0])) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+    
+    const char *str = VESC_IF->lbm_dec_str(args[0]);
+    size_t len = strlen(str);
+    char unescaped_str[len + 1];
+    
+    json_unescape_str(unescaped_str, str);
+    
+    return lbm_create_str(unescaped_str);
 }
 
 /* ------------------------------------------------------------
@@ -2407,6 +2988,7 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("str-index-of", ext_str_index_of);
     VESC_IF->lbm_add_extension("str-n-eq", ext_str_n_eq);
     VESC_IF->lbm_add_extension("str-extract-until", ext_str_extract_until);
+    VESC_IF->lbm_add_extension("str-extract-while", ext_str_extract_while);
     VESC_IF->lbm_add_extension("puts", ext_puts);
 
     VESC_IF->lbm_add_extension("ext-uart-write", ext_uart_write);
@@ -2434,6 +3016,9 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("tcp-recv-single", ext_tcp_recv_single);
     VESC_IF->lbm_add_extension("tcp-wait-for-recv", ext_tcp_wait_for_recv);
     VESC_IF->lbm_add_extension("tcp-test", ext_tcp_test);
+
+    VESC_IF->lbm_add_extension("json-tokenize-step", ext_json_tokenize_step);
+    VESC_IF->lbm_add_extension("json-unescape-str", ext_json_unescape_str);
 
     VESC_IF->set_pad_mode(
         GPIOD, 8, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_PUSHPULL
