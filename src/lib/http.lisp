@@ -4,6 +4,33 @@
 
 (def request-send-tries 3)
 
+;;; TCP function wrappers
+
+(defunret tcp-recv () {
+    (var segments (list))
+    (looprange i 0 100 {
+        (var segment (tcp-recv-single))
+        ; (var segment (tcp-recv-single))
+        ; (if (eq segment 'out_of_memory) {
+        ;     (gc)
+        ;     (setq segment (tcp-recv-single))
+        ; })
+        (cond
+            ((eq (type-of segment) 'type-array)
+                (setq segments (cons segment segments))
+            )
+            ((eq segment 'error)
+                (return 'error)
+            )
+            (t (break))
+        )
+    })
+    
+    (apply str-merge (reverse segments))
+})
+
+;;; Request stuff
+
 ; Create a request object.
 ; method is one of 'GET, 'HEAD, or 'POST
 (defun create-request (method path host)
