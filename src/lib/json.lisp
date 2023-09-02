@@ -196,7 +196,7 @@
         (_
             (cons
                 (json-token-value token)
-                (rest tokens)                
+                (rest tokens)
             )
         )
     )

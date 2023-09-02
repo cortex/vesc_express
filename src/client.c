@@ -2187,7 +2187,7 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
         consumed += (size_t)count;
     }
 
-    if (!char_valid) {
+    if (consumed == 0 && !char_valid) {
         return (json_lex_unit_t){
             .token = VESC_IF->lbm_enc_sym_nil,
             .error = JSON_INVALID_CHAR,
