@@ -3,15 +3,23 @@
 (import "../build/vesc4g.bin" 'lib)
 (load-native-lib lib)
 
+(import "env.lisp" 'code-env)
 (import "lib/utils.lisp" 'code-utils)
 (import "lib/http.lisp" 'code-http)
 (import "lib/json.lisp" 'code-json)
+(import "include/communication.lisp" 'code-communication)
 
+(read-eval-program code-env)
 (read-eval-program code-utils)
 (read-eval-program code-http)
 (read-eval-program code-json)
+(read-eval-program code-communication)
 
 @const-start
+
+(defun env-get (prop) 
+    (assoc env prop)
+)
 
 ;; to be removed after update of lbm.
 
@@ -93,6 +101,7 @@
     
     (if (not (tcp-wait-until-connected 1000)) {
         (print "tcp connection wasn't established correctly")
+        (tcp-close-connection)
         (return false)
     })
     
@@ -107,6 +116,7 @@
     
     (if (not (tcp-send-str ping-http-request)) {
         (print "tcp-send-str failed")
+        (tcp-close-connection)
         (return false)
     })
     
@@ -121,6 +131,7 @@
 
     (if (not (tcp-wait-for-recv 1000)) {
         (print "couldn't find recv notification")
+        (tcp-close-connection)
         (return false)
     })
     

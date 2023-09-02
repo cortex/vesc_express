@@ -39,6 +39,8 @@
         (cons 'path path)
         (cons 'host host)
         (cons 'headers nil)
+        (cons 'content-type nil)
+        (cons 'content nil)
     )
 )
 
@@ -55,13 +57,20 @@
     )
 )
 
+; May only be called once.
+(defun request-add-content (request content-type content) {
+    (setassoc request 'content-type content-type)
+    (setassoc request 'content content)
+})
+
 ; ex: GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: Close\r\n\r\n
 
 (defunret build-request (request) {
     (var method (assoc request 'method))
     (var path (assoc request 'path))
     (var host (assoc request 'host))
-        
+    
+    ; We use HTTP/1.0 to avoid chunked transfer encoding
     (var lines (list
         (str-merge
             (match method
@@ -84,6 +93,29 @@
     ))
     
     (var headers (assoc request 'headers))
+    (var content (assoc request 'content))
+    (var content-type (assoc request 'content-type))
+    
+    (if (or content (eq method 'POST)) {
+        (var content-length (if content
+            (str-len content)
+            0
+        ))
+        (setq headers (cons
+            (cons "Content-Length" (to-str content-length))
+            headers
+        ))
+        (if content-type {
+            (setq headers (cons
+                (cons "Content-Type" content-type)
+                headers
+            ))
+        })
+    })
+    
+    (if (not content)
+        (setq content "")
+    )
     
     (var lines (append
         lines
@@ -92,18 +124,14 @@
         ) headers)
     ))
     
-    (str-merge (join lines "\r\n") "\r\n\r\n")
+    
+    (str-merge (join lines "\r\n") "\r\n\r\n" content)
 })
 
-(defunret send-single-request (request) {
-    (var request-str (build-request request))
-    ; (print request-str)
-    (if (not request-str) {
-        (return 'error-invalid-request)
-    })
-    (var request-str ping-http-request)
+(defunret send-single-request (host request-str) {
+    (tcp-close-connection)
     
-    (var result (tcp-connect-host (assoc request 'host) 80))
+    (var result (tcp-connect-host host 80))
     (if (not result) {
         (return 'error-connect-host)
     })
@@ -138,6 +166,9 @@
         (return false)
     })
     
+    (puts "\nGot response:")
+    (puts response)
+    
     
     (parse-response response)
 })
@@ -153,9 +184,18 @@
 
 ; TODO: add some way to have incremental reading of response, to not run out of memory...
 (defunret send-request (request) {
+    (var request-str (build-request request))
+    ; (print request-str)
+    (if (not request-str) {
+        (return 'error-invalid-request)
+    })
+    
+    (puts "\nSending request:")
+    (puts request-str)
+    
     ; (var first-connect-error nil)
     (looprange i 0 request-send-tries {
-        (var result (send-single-request request))
+        (var result (send-single-request (assoc request 'host) request-str))
         
         (var success (eq (type-of result) 'type-list))
         (cond
@@ -169,7 +209,7 @@
             })
             (t {
                 (print (to-str-delim ""
-                    "request failed with "
+                    "request response parsing failed with "
                     result
                 ))
                 (return nil)
@@ -205,6 +245,18 @@
 ; ex: '(2 nil)
 (defun response-get-version (response)
     (assoc response 'version)
+)
+
+(defun response-get-content-length (response)
+    (assoc response 'content-length)
+)
+
+(defun response-get-content-type (response)
+    (assoc response 'content-type)
+)
+
+(defun response-get-content (response)
+    (assoc response 'content)
 )
 
 ; HTTP/1.1 200 OK
@@ -267,9 +319,35 @@
     })
     (setq header-lines nil)
     
-    ; find content length
-    (var content-length 0)
+    (var content-type nil)
     {
+        (var header (find-first-with (fn (header) (eq
+            (car header)
+            "content-type"
+        )) headers))
+        
+        (if header {
+            (set 'content-type (inspect (parse-mime-type (cdr header))))
+            (if (eq content-type 'mime-unrecognized)
+                (set 'content-type (cdr header))
+            )
+        })
+    }
+    
+    (var chunked-encoding false)
+    {
+        (var header (find-first-with (fn (header) (eq
+            (car header)
+            "transfer-encoding"
+        )) headers))
+        
+        (if header
+            (setq chunked-encoding (str-n-eq (cdr header) "chunked" 7))
+        )
+    }
+    
+    (var content-length nil)
+    (if (not chunked-encoding) {
         (var header (find-first-with (fn (header) (eq
             (car header)
             "content-length"
@@ -278,18 +356,39 @@
         (if header {
             (setq content-length (str-to-i (cdr header)))
         })
-    }
+    })
     
     ; get content
     (var real-content-length (- (str-len response-str) headers-end-index 4))
-    (if (!= content-length real-content-length) {
+    (if (and
+        (not chunked-encoding)
+        (> content-length real-content-length)
+    ) {
         (return 'error-invalid-content-length)
     })
-    (var content (if (> content-length 0)
-        (str-part response-str (+ headers-end-index 4))
-        ""
+    (var content (cond
+        (chunked-encoding {
+            (var content (str-part response-str (+ headers-end-index 4)))
+            (set 'response-str nil)
+            (var content (parse-chunked-content content))
+            (if (eq content nil)
+                (return 'error-invalid-chunk-len)
+            {
+                (setq content-length (str-len content))
+                content
+            })
+        })
+        ((not-eq content-length nil)
+            (if (> content-length 0)
+                (str-part response-str (+ headers-end-index 4))
+                ""
+            )
+        )
+        (_ {
+            (setq content-length 0)
+            ""
+        })
     ))
-    (setq response-str nil)
     
     (list
         (cons 'version version)
@@ -297,6 +396,7 @@
         (cons 'status-msg status-msg)
         (cons 'headers headers)
         (cons 'content-length content-length)
+        (cons 'content-type content-type)
         (cons 'content content)
     )
 })
@@ -362,4 +462,70 @@
         
         (cons name value)
     }) header-lines)
+)
+
+; Parse http content that is encoded using Transfer-Encoding: chunked.
+(defunret parse-chunked-content (chunked-content) {
+    (var total-len (str-len chunked-content))
+    (var content "")
+    ; Pairs of chunk indices and lengths.
+    (var chunk-positions (list))
+    (var current-i 0)
+    ; Find the total content length
+    (loopwhile (<= current-i total-len) {
+        (var len-str (str-extract-until chunked-content "\r" current-i))
+        (var len-str-len (str-len len-str))
+        (+set current-i (+ len-str-len 2)) 
+        
+        (var chunk-len (str-to-i len-str 16))
+        (if (= chunk-len 0)
+            (break)
+        )
+        
+        ; Check that the found content length is not outside chunked-content
+        (if (> (+ current-i chunk-len) total-len)
+            (return nil)
+        )
+        
+        (setq chunk-positions (cons
+            (cons current-i chunk-len)
+            chunk-positions
+        ))
+        
+        (+set current-i (+ chunk-len 2))
+    })
+    
+    (var chunk-positions (reverse chunk-positions))
+    
+    (var chunks (map (fn (pos) 
+        (str-part chunked-content (car pos) (cdr pos))
+    ) chunk-positions))
+    (set 'chunked-content nil)
+    
+    (apply str-merge chunks)
+})
+
+
+; Parse a MIME type.
+; Result is returned as a symbol representing a recognized MIME type, other
+; types return 'mime-unrecognized
+;
+; Supported MIME types and what they return:
+; - application/json: 'mime-json
+; - application/problem+json: 'mime-json
+(defun parse-mime-type (type-str) {
+    (cond
+        ((str-n-eq type-str "application/json" 16)
+            'mime-json
+        )
+        ((str-n-eq type-str "application/problem+json" 24)
+            'mime-json
+        )
+        (t 'mime-unrecognized)
+    )
+})
+
+; Check if the return value of `parse-mime-type` specifies an unrecognized type.
+(defun mime-is-unrecognized (mime-type)
+    (eq mime-type 'mime-unrecognized)
 )

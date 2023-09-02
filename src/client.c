@@ -2207,6 +2207,8 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
 
 /**
  * signature: (str-index-of str search [from-index])
+ * 
+ * \return the found index or -1 if no match was found.
  */
 static lbm_value ext_str_index_of(lbm_value *args, lbm_uint argn) {
     if ((argn != 2 && argn != 3) || !VESC_IF->lbm_is_byte_array(args[0])

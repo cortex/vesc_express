@@ -36,6 +36,7 @@
         "CPOWD",
         "eerror",
         "GPIOD",
+        "progn",
         "strneq",
         "uart"
     ],

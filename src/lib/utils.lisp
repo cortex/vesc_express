@@ -5,6 +5,14 @@
     (if value value else-value)
 )
 
+(defun min (a b) 
+    (if (> a b) b a)
+)
+
+(defun max (a b) 
+    (if (< a b) b a)
+)
+
 (defun join (lst delim)
     (apply to-str-delim (cons delim lst))
 )
@@ -139,6 +147,16 @@
         "ms"
     ))
 }))
+; POST /api/esp/batteryStatusUpdate HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nContent-Length: 0\r\nConnection: Cl
+(defun puts-long (value) 
+    (loopwhile (!= (str-len value) 0) {
+        (puts (str-part value 0 100))
+        (if (<= (str-len value) 100)
+            (set 'value "")
+            (set 'value (str-part value 100))
+        )
+    })
+)
 
 ; Debug print variable names and their contents on the same line.
 ; Ex:
