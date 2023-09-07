@@ -595,6 +595,34 @@ static inline uint32_t time_ms_since_i(const uint32_t timestamp) {
     return (uint32_t)(VESC_IF->timer_seconds_elapsed_since(timestamp) * 1000.0);
 }
 
+static void puts_long(const char *str) {
+    size_t len = strlen(str);
+    while (len > 0) {
+        // limit seems to be more like 399
+        if (len <= 100) {
+            VESC_IF->printf("%s", str);
+            len = 0;
+        } else {
+            ssize_t break_index = str_index_of(str, "\n");
+            
+            if (break_index == -1) {
+                break_index = 100;
+            } else {
+                // we also want to include the newline.
+                break_index += 1;
+            }
+            
+            char buffer[break_index + 1];
+            memcpy(buffer, str, break_index);
+            buffer[break_index] = '\0';
+         
+            VESC_IF->printf("%s", buffer);
+            str = str + break_index;
+            len -= break_index;
+        }
+    }
+}
+
 /**
  * Access the global state struct.
  */
@@ -660,7 +688,7 @@ static bool lbm_is_int(lbm_value value) {
     }
 }
 
-static bool lbm_is_float(lbm_value) {
+static bool lbm_is_float(lbm_value value) {
     switch (lbm_type_of_functional(value)) {
         case LBM_TYPE_FLOAT:
             return true;
@@ -1967,156 +1995,156 @@ typedef struct {
     json_result_t error;
 } json_lex_unit_t;
 
-/**
- * \param json_object Should be an associative lbm list, without the first
- * '+assoc element.
- */
-static size_t json_object_str_len(lbm_value json_object) {}
+// /**
+//  * \param json_object Should be an associative lbm list, without the first
+//  * '+assoc element.
+//  */
+// static size_t json_object_str_len(lbm_value json_object) {}
 
-/**
- * \param json_array Should be an lbm list.
- */
-static size_t json_array_str_len(lbm_value json_array) {}
+// /**
+//  * \param json_array Should be an lbm list.
+//  */
+// static size_t json_array_str_len(lbm_value json_array) {}
 
-/**
- * Get the length a lbm json value would have if stringified.
- *
- * \param json_value The json value to get the length of. This lbm value follow
- * the specific rules that are defined in json.lisp, to specify objects vs
- * arrays. (I.e assoc lists start with '+assoc to specify that they're objects.)
- */
-static size_t json_get_str_len(const lbm_value json_value) {
-    data *d = use_state();
+// /**
+//  * Get the length a lbm json value would have if stringified.
+//  *
+//  * \param json_value The json value to get the length of. This lbm value follow
+//  * the specific rules that are defined in json.lisp, to specify objects vs
+//  * arrays. (I.e assoc lists start with '+assoc to specify that they're objects.)
+//  */
+// static size_t json_get_str_len(const lbm_value json_value) {
+//     data *d = use_state();
 
-    size_t size = 0;
+//     size_t size = 0;
 
-    if (VESC_IF->lbm_is_symbol_nil(json_value)) {
-        // is an empty list
-        return 2;
-    }
-    if (VESC_IF->lbm_is_cons(json_value)) {
-        lbm_value first = VESC_IF->lbm_car(json_value);
+//     if (VESC_IF->lbm_is_symbol_nil(json_value)) {
+//         // is an empty list
+//         return 2;
+//     }
+//     if (VESC_IF->lbm_is_cons(json_value)) {
+//         lbm_value first = VESC_IF->lbm_car(json_value);
 
-        if (lbm_is_specific_symbol(first, d->symbol_plus_assoc)) {
-            return json_object_str_len(VESC_IF->lbm_cdr(json_value));
-        } else {
-            return json_array_str_len(json_value);
-        }
-    } else if (false)
-    // TODO
-}
+//         if (lbm_is_specific_symbol(first, d->symbol_plus_assoc)) {
+//             return json_object_str_len(VESC_IF->lbm_cdr(json_value));
+//         } else {
+//             return json_array_str_len(json_value);
+//         }
+//     } else if (false)
+//     // TODO
+// }
 
-static size_t json_stringify_object(char *dest, const lbm_value json_object) {
-    size_t offset = 0;
+// static size_t json_stringify_object(char *dest, const lbm_value json_object) {
+//     size_t offset = 0;
 
-    dest[offset++] = '{';
+//     dest[offset++] = '{';
 
-    lbm_value current = json_object;
+//     lbm_value current = json_object;
 
-    for (size_t i = 0; i < 200; i++) {  // safeguard
-        if (VESC_IF->lbm_is_symbol_nil(current)) {
-            break;
-        }
+//     for (size_t i = 0; i < 200; i++) {  // safeguard
+//         if (VESC_IF->lbm_is_symbol_nil(current)) {
+//             break;
+//         }
 
-        if (!VESC_IF->lbm_is_cons(current)) {
-            break;
-        }
+//         if (!VESC_IF->lbm_is_cons(current)) {
+//             break;
+//         }
 
-        lbm_value pair = VESC_IF->lbm_car(current);
-        if (!VESC_IF->lbm_is_cons(pair)) {
-            break;
-        }
+//         lbm_value pair = VESC_IF->lbm_car(current);
+//         if (!VESC_IF->lbm_is_cons(pair)) {
+//             break;
+//         }
 
-        if (!VESC_IF->lbm_is_byte_array(VESC_IF->lbm_car(pair))) {
-            // field name needs to be a string
-            break;
-        }
+//         if (!VESC_IF->lbm_is_byte_array(VESC_IF->lbm_car(pair))) {
+//             // field name needs to be a string
+//             break;
+//         }
 
-        const char *name = VESC_IF->lbm_dec_str(VESC_IF->lbm_car(pair));
+//         const char *name = VESC_IF->lbm_dec_str(VESC_IF->lbm_car(pair));
 
-        dest[offset++] = '"';
+//         dest[offset++] = '"';
 
-        size_t name_len = strlen(name);
-        memcpy(dest + offset, name, name_len);
-        offset += name_len;
+//         size_t name_len = strlen(name);
+//         memcpy(dest + offset, name, name_len);
+//         offset += name_len;
 
-        dest[offset++] = '"';
-        dest[offset++] = ':';
+//         dest[offset++] = '"';
+//         dest[offset++] = ':';
 
-        offset += json_stringify(dest + offset, VESC_IF->lbm_cdr(pair));
+//         offset += json_stringify(dest + offset, VESC_IF->lbm_cdr(pair));
 
-        current = VESC_IF->lbm_cdr(current);
+//         current = VESC_IF->lbm_cdr(current);
 
-        if (!VESC_IF->lbm_is_symbol_nil(current)) {
-            current[offset++] = ',';
-        }
-    }
+//         if (!VESC_IF->lbm_is_symbol_nil(current)) {
+//             current[offset++] = ',';
+//         }
+//     }
 
-    dest[offset++] = '}';
+//     dest[offset++] = '}';
 
-    return offset;
-}
+//     return offset;
+// }
 
-static size_t json_stringify_array(char *dest, const lbm_value json_array) {
-    size_t offset = 0;
+// static size_t json_stringify_array(char *dest, const lbm_value json_array) {
+//     size_t offset = 0;
 
-    dest[offset++] = '[';
+//     dest[offset++] = '[';
 
-    lbm_value current = json_array;
+//     lbm_value current = json_array;
 
-    for (size_t i = 0; i < 200; i++) {  // safeguard
-        if (VESC_IF->lbm_is_symbol_nil(current)) {
-            break;
-        }
+//     for (size_t i = 0; i < 200; i++) {  // safeguard
+//         if (VESC_IF->lbm_is_symbol_nil(current)) {
+//             break;
+//         }
 
-        if (!VESC_IF->lbm_is_cons(current)) {
-            break;
-        }
+//         if (!VESC_IF->lbm_is_cons(current)) {
+//             break;
+//         }
 
-        offset += json_stringify(dest + offset, VESC_IF->lbm_car(current));
+//         offset += json_stringify(dest + offset, VESC_IF->lbm_car(current));
 
-        current = VESC_IF->lbm_cdr(current);
+//         current = VESC_IF->lbm_cdr(current);
 
-        if (!VESC_IF->lbm_is_symbol_nil(current)) {
-            current[offset++] = ',';
-        }
-    }
+//         if (!VESC_IF->lbm_is_symbol_nil(current)) {
+//             current[offset++] = ',';
+//         }
+//     }
 
-    dest[offset++] = ']';
+//     dest[offset++] = ']';
 
-    return offset;
-}
+//     return offset;
+// }
 
-static size_t json_stringify_str(char *dest, const char *str) {
-    if (!VESC_iF->lbm_is_byte_array(json_str)) {
-        return 0;
-    }
+// static size_t json_stringify_str(char *dest, const char *str) {
+//     if (!VESC_iF->lbm_is_byte_array(json_str)) {
+//         return 0;
+//     }
     
-    size_t offset = 0;
+//     size_t offset = 0;
 
-    dest[offset++] = '"';
+//     dest[offset++] = '"';
     
-    size_t len = strlen(name);
-    memcpy(dest + offset, str, len);
-    offset += len;
+//     size_t len = strlen(name);
+//     memcpy(dest + offset, str, len);
+//     offset += len;
     
-    dest[offset++] = '"';
+//     dest[offset++] = '"';
     
-    return offset;
-}
+//     return offset;
+// }
 
-static size_t json_stringify_int(char *dest, const int64_t int) {
-    // unsigned 64 bit integers might overflow here, but I don't feel like
-    // supporting that...
+// static size_t json_stringify_int(char *dest, const int64_t int) {
+//     // unsigned 64 bit integers might overflow here, but I don't feel like
+//     // supporting that...
     
-    int_base10_str_len()
-}
+//     int_base10_str_len()
+// }
 
-static size_t json_stringify_simple_value(char *dest, const lbm_value json_value) {
+// static size_t json_stringify_simple_value(char *dest, const lbm_value json_value) {
     
-}
+// }
 
-static size_t json_stringify(char *dest, const lbm_value json_value) {}
+// static size_t json_stringify(char *dest, const lbm_value json_value) {}
 
 #define JSON_COMMA ','
 #define JSON_COLON ':'
@@ -2603,7 +2631,8 @@ static lbm_value ext_puts(lbm_value *args, lbm_uint argn) {
     }
     result[res_len] = '\0';
 
-    VESC_IF->printf("%s", result);
+    // VESC_IF->printf("%s", result);
+    puts_long(result);
 
     return VESC_IF->lbm_enc_sym_true;
 }

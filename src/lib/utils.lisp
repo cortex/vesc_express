@@ -148,7 +148,9 @@
     ))
 }))
 ; POST /api/esp/batteryStatusUpdate HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nContent-Length: 0\r\nConnection: Cl
-(defun puts-long (value) 
+
+; supports printing really long string (> 400 characters)
+(defun puts-long (value)
     (loopwhile (!= (str-len value) 0) {
         (puts (str-part value 0 100))
         (if (<= (str-len value) 100)

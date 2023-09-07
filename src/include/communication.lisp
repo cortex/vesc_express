@@ -63,6 +63,7 @@
     (var start-part (systime))
     ; (var data-str (json-stringify data))
     (var data-str (gen-json json-template-status-update (list
+        registration-id
         (env-get 'serial-number-batt)
         (env-get 'firmware-id-batt)
         (* batt-charge-level 100.0)
@@ -78,6 +79,9 @@
         (str-from-n (ms-since start-part))
         "ms"
     ))
+    
+    ; (puts data-str)
+    ; (return)
     
     (var response (api-post-request "/batteryStatusUpdate" "application/json" data-str))
     
