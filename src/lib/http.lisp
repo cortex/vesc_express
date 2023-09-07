@@ -169,8 +169,14 @@
     (puts "\nGot response:")
     (puts response)
     
-    
-    (parse-response response)
+    (var start (systime))
+    (var response (parse-response response))
+    (puts (str-merge
+        "parsing response took "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
+    response
 })
 
 (def connection-errors (list
@@ -184,7 +190,13 @@
 
 ; TODO: add some way to have incremental reading of response, to not run out of memory...
 (defunret send-request (request) {
+    (var start (systime))
     (var request-str (build-request request))
+    (puts (str-merge
+        "building request took "
+        (str-from-n (ms-since start))
+        "ms"
+    ))
     ; (print request-str)
     (if (not request-str) {
         (return 'error-invalid-request)

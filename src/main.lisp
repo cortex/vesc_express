@@ -9,6 +9,8 @@
 (import "lib/json.lisp" 'code-json)
 (import "include/communication.lisp" 'code-communication)
 
+(import "requests/status-update.json" 'json-template-status-update)
+
 (read-eval-program code-env)
 (read-eval-program code-utils)
 (read-eval-program code-http)

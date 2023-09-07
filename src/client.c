@@ -141,6 +141,10 @@ typedef struct {
     lbm_uint symbol_error_unclosed_quote;
     lbm_uint symbol_error_invalid_char;
 
+    lbm_uint symbol_false_val;
+    lbm_uint symbol_null;
+    lbm_uint symbol_plus_assoc;
+
     lbm_uint symbol_tok_true;
     lbm_uint symbol_tok_false;
     lbm_uint symbol_tok_null;
@@ -179,6 +183,9 @@ static bool register_symbols() {
         && VESC_IF->lbm_add_symbol_const(
             "error-invalid-char", &d->symbol_error_invalid_char
         )
+        && VESC_IF->lbm_add_symbol_const("false_val", &d->symbol_false_val)
+        && VESC_IF->lbm_add_symbol_const("null", &d->symbol_null)
+        && VESC_IF->lbm_add_symbol_const("+assoc", &d->symbol_plus_assoc)
         && VESC_IF->lbm_add_symbol_const("tok-true", &d->symbol_tok_true)
         && VESC_IF->lbm_add_symbol_const("tok-false", &d->symbol_tok_false)
         && VESC_IF->lbm_add_symbol_const("tok-null", &d->symbol_tok_null)
@@ -597,11 +604,72 @@ static inline data *use_state() { return (data *)ARG; }
  * Copied LBM UTILS
  */
 
-// ...
+#define LBM_ADDRESS_SHIFT 2
+#define LBM_VAL_SHIFT 4
+
+#define LBM_PTR_MASK 0x00000001u
+#define LBM_PTR_BIT 0x00000001u
+#define LBM_PTR_VAL_MASK 0x03FFFFFCu
+#define LBM_PTR_TYPE_MASK 0xFC000000u
+
+// The address is an index into the const heap.
+#define LBM_PTR_TO_CONSTANT_BIT 0x04000000u
+#define LBM_PTR_TO_CONSTANT_MASK ~LBM_PTR_TO_CONSTANT_BIT
+#define LBM_PTR_TO_CONSTANT_SHIFT 26
+
+#define LBM_VAL_TYPE_MASK 0x0000000Cu
+
+#define LBM_TYPE_U32 0x28000000u
+#define LBM_TYPE_I32 0x38000000u
+#define LBM_TYPE_I64 0x48000000u
+#define LBM_TYPE_U64 0x58000000u
+#define LBM_TYPE_FLOAT 0x68000000u
+#define LBM_TYPE_DOUBLE 0x78000000u
+#define LBM_TYPE_CHAR 0x00000004u
+#define LBM_TYPE_U 0x00000008u
+#define LBM_TYPE_I 0x0000000Cu
+
+static inline lbm_type lbm_type_of_functional(lbm_value x) {
+    return (x & LBM_PTR_MASK)
+               ? (x & (LBM_PTR_TO_CONSTANT_MASK & LBM_PTR_TYPE_MASK))
+               : (x & LBM_VAL_TYPE_MASK);
+}
 
 /* **************************************************
  * LBM UTILS
  */
+
+static bool lbm_is_int(lbm_value value) {
+    switch (lbm_type_of_functional(value)) {
+        case LBM_TYPE_CHAR:
+            return true;
+        case LBM_TYPE_I:
+            return true;
+        case LBM_TYPE_U:
+            return true;
+        case LBM_TYPE_I32:
+            return true;
+        case LBM_TYPE_U32:
+            return true;
+        case LBM_TYPE_I64:
+            return true;
+        case LBM_TYPE_U64:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool lbm_is_float(lbm_value) {
+    switch (lbm_type_of_functional(value)) {
+        case LBM_TYPE_FLOAT:
+            return true;
+        case LBM_TYPE_DOUBLE:
+            return true;
+        default:
+            return false;
+    }
+}
 
 static inline lbm_value lbm_enc_bool(bool value) {
     return value ? VESC_IF->lbm_enc_sym_true : VESC_IF->lbm_enc_sym_nil;
@@ -673,6 +741,11 @@ static bool lbm_flatten_sym(lbm_flat_value_t *flat_value, const lbm_uint sym) {
     }
 
     return true;
+}
+
+static bool lbm_is_specific_symbol(lbm_value value, lbm_uint symbol) {
+    return VESC_IF->lbm_is_symbol(value)
+           && VESC_IF->lbm_dec_sym(value) == symbol;
 }
 
 /* **************************************************
@@ -1894,6 +1967,157 @@ typedef struct {
     json_result_t error;
 } json_lex_unit_t;
 
+/**
+ * \param json_object Should be an associative lbm list, without the first
+ * '+assoc element.
+ */
+static size_t json_object_str_len(lbm_value json_object) {}
+
+/**
+ * \param json_array Should be an lbm list.
+ */
+static size_t json_array_str_len(lbm_value json_array) {}
+
+/**
+ * Get the length a lbm json value would have if stringified.
+ *
+ * \param json_value The json value to get the length of. This lbm value follow
+ * the specific rules that are defined in json.lisp, to specify objects vs
+ * arrays. (I.e assoc lists start with '+assoc to specify that they're objects.)
+ */
+static size_t json_get_str_len(const lbm_value json_value) {
+    data *d = use_state();
+
+    size_t size = 0;
+
+    if (VESC_IF->lbm_is_symbol_nil(json_value)) {
+        // is an empty list
+        return 2;
+    }
+    if (VESC_IF->lbm_is_cons(json_value)) {
+        lbm_value first = VESC_IF->lbm_car(json_value);
+
+        if (lbm_is_specific_symbol(first, d->symbol_plus_assoc)) {
+            return json_object_str_len(VESC_IF->lbm_cdr(json_value));
+        } else {
+            return json_array_str_len(json_value);
+        }
+    } else if (false)
+    // TODO
+}
+
+static size_t json_stringify_object(char *dest, const lbm_value json_object) {
+    size_t offset = 0;
+
+    dest[offset++] = '{';
+
+    lbm_value current = json_object;
+
+    for (size_t i = 0; i < 200; i++) {  // safeguard
+        if (VESC_IF->lbm_is_symbol_nil(current)) {
+            break;
+        }
+
+        if (!VESC_IF->lbm_is_cons(current)) {
+            break;
+        }
+
+        lbm_value pair = VESC_IF->lbm_car(current);
+        if (!VESC_IF->lbm_is_cons(pair)) {
+            break;
+        }
+
+        if (!VESC_IF->lbm_is_byte_array(VESC_IF->lbm_car(pair))) {
+            // field name needs to be a string
+            break;
+        }
+
+        const char *name = VESC_IF->lbm_dec_str(VESC_IF->lbm_car(pair));
+
+        dest[offset++] = '"';
+
+        size_t name_len = strlen(name);
+        memcpy(dest + offset, name, name_len);
+        offset += name_len;
+
+        dest[offset++] = '"';
+        dest[offset++] = ':';
+
+        offset += json_stringify(dest + offset, VESC_IF->lbm_cdr(pair));
+
+        current = VESC_IF->lbm_cdr(current);
+
+        if (!VESC_IF->lbm_is_symbol_nil(current)) {
+            current[offset++] = ',';
+        }
+    }
+
+    dest[offset++] = '}';
+
+    return offset;
+}
+
+static size_t json_stringify_array(char *dest, const lbm_value json_array) {
+    size_t offset = 0;
+
+    dest[offset++] = '[';
+
+    lbm_value current = json_array;
+
+    for (size_t i = 0; i < 200; i++) {  // safeguard
+        if (VESC_IF->lbm_is_symbol_nil(current)) {
+            break;
+        }
+
+        if (!VESC_IF->lbm_is_cons(current)) {
+            break;
+        }
+
+        offset += json_stringify(dest + offset, VESC_IF->lbm_car(current));
+
+        current = VESC_IF->lbm_cdr(current);
+
+        if (!VESC_IF->lbm_is_symbol_nil(current)) {
+            current[offset++] = ',';
+        }
+    }
+
+    dest[offset++] = ']';
+
+    return offset;
+}
+
+static size_t json_stringify_str(char *dest, const char *str) {
+    if (!VESC_iF->lbm_is_byte_array(json_str)) {
+        return 0;
+    }
+    
+    size_t offset = 0;
+
+    dest[offset++] = '"';
+    
+    size_t len = strlen(name);
+    memcpy(dest + offset, str, len);
+    offset += len;
+    
+    dest[offset++] = '"';
+    
+    return offset;
+}
+
+static size_t json_stringify_int(char *dest, const int64_t int) {
+    // unsigned 64 bit integers might overflow here, but I don't feel like
+    // supporting that...
+    
+    int_base10_str_len()
+}
+
+static size_t json_stringify_simple_value(char *dest, const lbm_value json_value) {
+    
+}
+
+static size_t json_stringify(char *dest, const lbm_value json_value) {}
+
 #define JSON_COMMA ','
 #define JSON_COLON ':'
 #define JSON_LEFT_BRACKET '['
@@ -1915,25 +2139,33 @@ typedef struct {
 
 static char json_translate_escape_char(char c) {
     switch (c) {
-        case '"': return '"';
-        case '\\': return '\\';
+        case '"':
+            return '"';
+        case '\\':
+            return '\\';
         // I have no idea what they mean with 'solidus' in the JSON docs
         // https://www.json.org/json-en.html
         // case '/': return '/';
-        case 'b': return '\b';
-        case 'f': return '\f';
-        case 'n': return '\n';
-        case 'r': return '\r';
-        case 't': return '\t';
+        case 'b':
+            return '\b';
+        case 'f':
+            return '\f';
+        case 'n':
+            return '\n';
+        case 'r':
+            return '\r';
+        case 't':
+            return '\t';
         // TODO: Figure out the deal with UTF-16 surrogate pairs...
         // case 'u': return ...;
-        default: return c;
+        default:
+            return c;
     }
 }
 
 static size_t json_unescape_str(char *dest, const char *str) {
     size_t len = strlen(str);
-    
+
     size_t dest_i = 0;
     for (size_t i = 0; i < len; i++) {
         if (str[i] == '\\') {
@@ -1943,10 +2175,10 @@ static size_t json_unescape_str(char *dest, const char *str) {
             }
             continue;
         }
-        
+
         dest[dest_i++] = str[i];
     }
-    
+
     dest[dest_i] = '\0';
     return dest_i;
 }
@@ -2207,7 +2439,7 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
 
 /**
  * signature: (str-index-of str search [from-index])
- * 
+ *
  * \return the found index or -1 if no match was found.
  */
 static lbm_value ext_str_index_of(lbm_value *args, lbm_uint argn) {
@@ -2952,13 +3184,13 @@ static lbm_value ext_json_unescape_str(lbm_value *args, lbm_uint argn) {
     if (argn != 1 || !VESC_IF->lbm_is_byte_array(args[0])) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    
+
     const char *str = VESC_IF->lbm_dec_str(args[0]);
     size_t len = strlen(str);
     char unescaped_str[len + 1];
-    
+
     json_unescape_str(unescaped_str, str);
-    
+
     return lbm_create_str(unescaped_str);
 }
 

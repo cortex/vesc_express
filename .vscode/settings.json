@@ -20,7 +20,10 @@
     },
     "cSpell.words": [
         "acons",
+        "bufcpy",
+        "bufcreate",
         "bufget",
+        "buflen",
         "CAOPEN",
         "CARECV",
         "CGATT",
@@ -45,5 +48,6 @@
     "editor.inlayHints.enabled": "off",
     "editor.formatOnSave": false,
     "C_Cpp.intelliSenseEngine": "Tag Parser",
-    "editor.formatOnPaste": false
+    "editor.formatOnPaste": false,
+    "json.validate.enable": false
 }

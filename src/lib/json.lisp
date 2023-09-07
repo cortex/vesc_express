@@ -1,5 +1,4 @@
 
-
 (def numeric-types (list
     'type-i
     'type-u
@@ -15,6 +14,43 @@
 (defun json-list-is-assoc (lst)
     (eq (car lst) '+assoc)
 )
+
+(defun gen-json (template data) {
+    (var data-str (map (fn (x)
+        (match (type-of x)
+            (type-symbol (sym2str x))
+            (type-i (str-from-n x))
+            (type-u (str-from-n x))
+            (type-float (str-from-n x "%.2f"))
+            (type-i32 (str-from-n x))
+            (type-u32 (str-from-n x))
+            (type-array x)
+            (_ "unknown")
+        )
+    ) data))
+
+    (var replace-len 0)
+    (loopforeach i data-str (setq replace-len (+ replace-len (str-len i))))
+    (var res (bufcreate (+ (buflen template) replace-len (- (* 2 (length data))))))
+    
+    (var offset-template 0)
+    (var offset-res 0)
+    (var place 0)
+    (loopforeach i data-str {
+        (var offset (str-index-of template "##" place))
+        (var len (- offset offset-template))
+        (bufcpy res offset-res template offset-template len)
+        (setq offset-res (+ offset-res len))
+        (bufcpy res offset-res i 0 (str-len i))
+        (setq offset-res (+ offset-res (str-len i)))
+        (setq offset-template (+ offset 2))
+        (setq place (+ place 1))
+    })
+    
+    (bufcpy res offset-res template offset-template (buflen template))
+    
+    res
+})
 
 ; Convert object to a valid json string.
 ; t values are interpreted as `true`, nil values are interpreted as `false`, and
@@ -33,7 +69,6 @@
 ; )
 ; > "{\"a-prop\":5,\"str-prop\":\"\\\"escaped\\\"\",\"list-prop\":[true,false,null]}"
 ; ```
-
 (defun json-stringify (object) 
     (cond
         ((includes numeric-types (type-of object)) {
@@ -106,7 +141,6 @@
         })
     )
 )
-
 
 ; Source: https://notes.eatonphil.com/writing-a-simple-json-parser.html
 (defunret json-parse (str) {

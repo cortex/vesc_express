@@ -30,31 +30,54 @@
         (charging 2)
     ))
     
-    (var data (list
-        '+assoc
-        (cons "registrationId" registration-id)
-        (cons "units" (list
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-batt))
-                (cons "firmwareId" (env-get 'firmware-id-batt))
-                (cons "chargeLevel" (* batt-charge-level 100.0))
-                (cons "chargeMinutesRemaining" batt-charge-remaining-mins)
-                (cons "chargeStatus" batt-charge-status)
-                (cons "chargeLimit" batt-charge-limit)
-            )
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-board))
-            )
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-jet))
-            )
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-remote))
-            )
-        ))
-    ))
+    ; (var data (list
+    ;     '+assoc
+    ;     (cons "registrationId" registration-id)
+    ;     (cons "units" (list
+    ;         (list '+assoc
+    ;             (cons "serialNumber" (env-get 'serial-number-batt))
+    ;             (cons "firmwareId" (env-get 'firmware-id-batt))
+    ;             (cons "chargeLevel" (* batt-charge-level 100.0))
+    ;             (cons "chargeMinutesRemaining" batt-charge-remaining-mins)
+    ;             (cons "chargeStatus" batt-charge-status)
+    ;             (cons "chargeLimit" batt-charge-limit)
+    ;         )
+    ;         (list '+assoc
+    ;             (cons "serialNumber" (env-get 'serial-number-board))
+    ;         )
+    ;         (list '+assoc
+    ;             (cons "serialNumber" (env-get 'serial-number-jet))
+    ;         )
+    ;         (list '+assoc
+    ;             (cons "serialNumber" (env-get 'serial-number-remote))
+    ;         )
+    ;     ))
+    ; ))
+    ; (print-vars '(
+    ;     (* batt-charge-level 100.0)
+    ;     batt-charge-remaining-mins
+    ;     batt-charge-status
+    ;     batt-charge-limit
+    ; ))
     
-    (var data-str (json-stringify data))
+    (var start-part (systime))
+    ; (var data-str (json-stringify data))
+    (var data-str (gen-json json-template-status-update (list
+        (env-get 'serial-number-batt)
+        (env-get 'firmware-id-batt)
+        (* batt-charge-level 100.0)
+        batt-charge-remaining-mins
+        batt-charge-status
+        batt-charge-limit
+        (env-get 'serial-number-board)
+        (env-get 'serial-number-jet)
+        (env-get 'serial-number-remote)
+    )))
+    (puts (str-merge
+        "stringifying json took "
+        (str-from-n (ms-since start-part))
+        "ms"
+    ))
     
     (var response (api-post-request "/batteryStatusUpdate" "application/json" data-str))
     
@@ -84,7 +107,14 @@
         (return nil)
     })
     
+    
+    (var start-part (systime))
     (var data (json-parse (response-get-content response)))
+    (puts (str-merge
+        "parsing json took "
+        (str-from-n (ms-since start-part))
+        "ms"
+    ))
     (puts "Response:")
     (puts (to-str data))
     
@@ -98,5 +128,9 @@
 })
 
 (defun api-test () {
+    ; (var long-str "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    ; (var really-long-str (str-merge long-str long-str long-str long-str long-str))
+    ; (print (str-len really-long-str))
+    ; (puts really-long-str)
     (api-status-update 0.5 10 'disconnected 0.8)
 })
