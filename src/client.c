@@ -2145,9 +2145,23 @@ static size_t json_stringify_simple_value(
             return json_maybe_copy_str(dest, "null");
         }
     } else if (lbm_is_int(json_value)) {
-        return json_maybe_copy_str(dest, "todo_int");
+        if (!dest) {
+            char buffer[1];
+            return lwprintf_snprintf(buffer, 1, "%d", VESC_IF->lbm_dec_as_i32(json_value));
+        } else {
+            char buffer[15];
+            lwprintf_snprintf(buffer, 15, "%d", VESC_IF->lbm_dec_as_i32(json_value));
+            return json_maybe_copy_str(dest, buffer);
+        }
     } else if (lbm_is_float(json_value)) {
-        return json_maybe_copy_str(dest, "todo_float");
+            if (!dest) {
+            char buffer[1];
+            return lwprintf_snprintf(buffer, 1, "%.3f", (double)VESC_IF->lbm_dec_as_float(json_value));
+        } else {
+            char buffer[50];
+            lwprintf_snprintf(buffer, 50, "%.3f", (double)VESC_IF->lbm_dec_as_float(json_value));
+            return json_maybe_copy_str(dest, buffer);
+        }
     }
     
     return json_maybe_copy_str(dest, "null");
