@@ -30,58 +30,52 @@
         (charging 2)
     ))
     
-    ; (var data (list
-    ;     '+assoc
-    ;     (cons "registrationId" registration-id)
-    ;     (cons "units" (list
-    ;         (list '+assoc
-    ;             (cons "serialNumber" (env-get 'serial-number-batt))
-    ;             (cons "firmwareId" (env-get 'firmware-id-batt))
-    ;             (cons "chargeLevel" (* batt-charge-level 100.0))
-    ;             (cons "chargeMinutesRemaining" batt-charge-remaining-mins)
-    ;             (cons "chargeStatus" batt-charge-status)
-    ;             (cons "chargeLimit" batt-charge-limit)
-    ;         )
-    ;         (list '+assoc
-    ;             (cons "serialNumber" (env-get 'serial-number-board))
-    ;         )
-    ;         (list '+assoc
-    ;             (cons "serialNumber" (env-get 'serial-number-jet))
-    ;         )
-    ;         (list '+assoc
-    ;             (cons "serialNumber" (env-get 'serial-number-remote))
-    ;         )
-    ;     ))
-    ; ))
-    ; (print-vars '(
+    (var data (list
+        '+assoc
+        (cons "registrationId" registration-id)
+        (cons "units" (list
+            (list '+assoc
+                (cons "serialNumber" (env-get 'serial-number-batt))
+                (cons "firmwareId" (env-get 'firmware-id-batt))
+                (cons "chargeLevel" (* batt-charge-level 100.0))
+                (cons "chargeMinutesRemaining" batt-charge-remaining-mins)
+                (cons "chargeStatus" batt-charge-status)
+                (cons "chargeLimit" batt-charge-limit)
+            )
+            (list '+assoc
+                (cons "serialNumber" (env-get 'serial-number-board))
+            )
+            (list '+assoc
+                (cons "serialNumber" (env-get 'serial-number-jet))
+            )
+            (list '+assoc
+                (cons "serialNumber" (env-get 'serial-number-remote))
+            )
+        ))
+    ))
+    
+    (var start-part (systime))
+    (var data-str (json-stringify data))
+    ; (var data-str (gen-json json-template-status-update (list
+    ;     registration-id
+    ;     (env-get 'serial-number-batt)
+    ;     (env-get 'firmware-id-batt)
     ;     (* batt-charge-level 100.0)
     ;     batt-charge-remaining-mins
     ;     batt-charge-status
     ;     batt-charge-limit
-    ; ))
-    
-    (var start-part (systime))
-    ; (var data-str (json-stringify data))
-    (var data-str (gen-json json-template-status-update (list
-        registration-id
-        (env-get 'serial-number-batt)
-        (env-get 'firmware-id-batt)
-        (* batt-charge-level 100.0)
-        batt-charge-remaining-mins
-        batt-charge-status
-        batt-charge-limit
-        (env-get 'serial-number-board)
-        (env-get 'serial-number-jet)
-        (env-get 'serial-number-remote)
-    )))
+    ;     (env-get 'serial-number-board)
+    ;     (env-get 'serial-number-jet)
+    ;     (env-get 'serial-number-remote)
+    ; )))
     (puts (str-merge
         "stringifying json took "
         (str-from-n (ms-since start-part))
         "ms"
     ))
     
-    ; (puts data-str)
-    ; (return)
+    (puts data-str)
+    (return)
     
     (var response (api-post-request "/batteryStatusUpdate" "application/json" data-str))
     

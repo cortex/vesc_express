@@ -335,7 +335,6 @@
 })
 
 @const-end
-
 (modem-pwr-on)
 
 (if (at-init)

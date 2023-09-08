@@ -1,3 +1,4 @@
+@const-start
 
 (def numeric-types (list
     'type-i
@@ -62,14 +63,14 @@
 ; 
 ; Example:
 ; ```
-; (json-stringify (list '+assoc
+; (json-stringify-lisp (list '+assoc
 ;     '("a-prop" . 5)
 ;     '("str-prop" . "\"escaped\"")
 ;     '("list-prop" . (t nil null)))
 ; )
 ; > "{\"a-prop\":5,\"str-prop\":\"\\\"escaped\\\"\",\"list-prop\":[true,false,null]}"
 ; ```
-(defun json-stringify (object) 
+(defun json-stringify-lisp (object) 
     (cond
         ((includes numeric-types (type-of object)) {
             (str-from-n object)
