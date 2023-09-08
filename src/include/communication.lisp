@@ -74,8 +74,8 @@
         "ms"
     ))
     
-    (puts data-str)
-    (return)
+    ; (puts data-str)
+    ; (return)
     
     (var response (api-post-request "/batteryStatusUpdate" "application/json" data-str))
     

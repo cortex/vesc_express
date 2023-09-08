@@ -3154,7 +3154,7 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (json-stringify value)
+ * \brief signature: (json-stringify value)
  * 
  * Translate a value into a json document string.
  * 
@@ -3164,6 +3164,16 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
  * - The nil symbol is interpreted as an empty json array.
  * - The symbol 'false_v is interpreted as false in json.
  * - The symbol 'null is interpreted as null in json.
+ * 
+ * Example:
+ * ```lispbm
+ * (json-stringify-lisp (list '+assoc
+ *      '("a-prop" . 5)
+ *      '("str-prop" . "\"escaped\"")
+ *      '("list-prop" . (t nil null)))
+ *  )
+ *  > "{\"a-prop\":5,\"str-prop\":\"\\\"escaped\\\"\",\"list-prop\":[true,false,null]}"
+ * ```
 */
 static lbm_value ext_json_stringify(lbm_value *args, lbm_uint argn) {
     if (argn != 1) {
