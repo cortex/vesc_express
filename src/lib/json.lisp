@@ -24,7 +24,7 @@
             (type-float (str-from-n x "%.2f"))
             (type-i32 (str-from-n x))
             (type-u32 (str-from-n x))
-            (type-array x)
+            (type-array (str-merge "\"" x "\""))
             (_ "unknown")
         )
     ) data))
