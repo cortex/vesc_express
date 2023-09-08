@@ -32,7 +32,7 @@
 (defun event-handler ()
     (loopwhile t
         (recv
-            ((event-esp-now-rx (? src) (? des) (? data)) (proc-data src des data))
+            ((event-esp-now-rx (? src) (? des) (? data) (?rssi)) (proc-data src des data))
             (_ nil)
 )))
 
