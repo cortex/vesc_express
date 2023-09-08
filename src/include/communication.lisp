@@ -37,10 +37,10 @@
             (list '+assoc
                 (cons "serialNumber" (env-get 'serial-number-batt))
                 (cons "firmwareId" (env-get 'firmware-id-batt))
-                (cons "chargeLevel" (* batt-charge-level 100.0))
+                (cons "chargeLevel" (to-i (* batt-charge-level 100.0)))
                 (cons "chargeMinutesRemaining" batt-charge-remaining-mins)
                 (cons "chargeStatus" batt-charge-status)
-                (cons "chargeLimit" batt-charge-limit)
+                (cons "chargeLimit" (to-i (* batt-charge-limit 100.0)))
             )
             (list '+assoc
                 (cons "serialNumber" (env-get 'serial-number-board))
