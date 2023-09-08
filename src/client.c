@@ -9,6 +9,11 @@
 #include <sys/types.h>
 // #include <stddef.h>
 
+#include "lwprintf/lwprintf.h"
+
+// I don't know how to link files, so I'll just include it directly here...
+#include "lwprintf/lwprintf.c"
+
 HEADER;
 
 #define STM32_UUID_8 ((uint8_t *)0x1FFF7A10)
@@ -3123,64 +3128,15 @@ static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
     return VESC_IF->lbm_enc_sym_nil;
 }
 
-// /**
-//  * signature: (tcp-recv)
-//  *
-//  * Receive entire string available from the current tcp connection.
-//  * Dynamically concatenates multiple results from tcp-recv-single until the
-//  * entire reveived string has been read.
-//  */
-// static lbm_value ext_tcp_recv(lbm_value *args, lbm_uint argn) {
-//     const size_t size = 50;
-
-// }
-
-#define TEST_INT_BASE10_STR_LEN(n) \
-    VESC_IF->printf("%d -> %u\n", n, int_base10_str_len(n))
-
-#define TEST_ASCII_TO_INT(n) VESC_IF->printf("'%s' -> %d\n", n, ascii_to_int(n))
-
-// static void testing(const char *responses[]) {
-//     VESC_IF->printf("responses: %p", responses);
-//     VESC_IF->printf("responses[0]: (%p)", responses[0]);
-//     VESC_IF->printf("responses[1]: (%p)", responses[1]);
-// }
-
-#define TCP_TEST_TIMES 10000
 static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
     (void)args;
     (void)argn;
-    uint32_t start = time_now();
-
-    for (size_t i = 0; i < TCP_TEST_TIMES; i++) {
-        char delims[] = "0123456789";
-        // char str[] = "\"foo\": [1, 2, {\"bar\": 2}]}";
-        char str[] = "12345612, 2, {\"bar\": 2}]}";
-        char dest[sizeof(str)];
-
-        str_extract_n_while(dest, strlen(str), str, delims, 0);
-    }
-
-    float ms = time_ms_since(start);
-
-    VESC_IF->printf("ran str_extract_n_while %d times", TCP_TEST_TIMES);
-    VESC_IF->printf(
-        "total: %fms, avg: %fms", (double)ms, (double)(ms / TCP_TEST_TIMES)
-    );
-
-    // data *d = use_state();
-
-    // lbm_value argument = VESC_IF->lbm_enc_sym_nil;
-    // if (argn >= 1) {
-    //     argument = args[0];
-    // }
-
-    // d->tcp_test_str = argument;
-
-    // if (!lbm_call_tcp_cmd(TCP_CMD_TEST, TCP_CMD_TIMEOUT_MS)) {
-    //     VESC_IF->printf("lbm_call_tcp_cmd timeout");
-    //     return VESC_IF->lbm_enc_sym_eerror;
-    // }
+    
+    char result[50];
+    
+    // lwprintf_snprintf(result, 50, "%f", (double)0.558);
+    
+    return lbm_create_str(result);
 
     return VESC_IF->lbm_enc_sym_nil;
 }

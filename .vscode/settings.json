@@ -16,7 +16,9 @@
         "types.h": "c",
         "stddef.h": "c",
         "type_traits": "c",
-        "stdatomic.h": "c"
+        "stdatomic.h": "c",
+        "limits.h": "c",
+        "climits": "c"
     },
     "cSpell.words": [
         "acons",
@@ -39,6 +41,7 @@
         "CPOWD",
         "eerror",
         "GPIOD",
+        "lwprintf",
         "progn",
         "strneq",
         "uart"
