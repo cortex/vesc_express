@@ -94,7 +94,7 @@ extern "C" {
  *
  */
 #ifndef LWPRINTF_CFG_SUPPORT_LONG_LONG
-#define LWPRINTF_CFG_SUPPORT_LONG_LONG 1
+#define LWPRINTF_CFG_SUPPORT_LONG_LONG 0
 #endif
 
 /**
@@ -112,7 +112,7 @@ extern "C" {
  * When enabled, architecture must support `uintptr_t` type, normally available with C11 standard
  */
 #ifndef LWPRINTF_CFG_SUPPORT_TYPE_POINTER
-#define LWPRINTF_CFG_SUPPORT_TYPE_POINTER 1
+#define LWPRINTF_CFG_SUPPORT_TYPE_POINTER 0
 #endif
 
 /**
@@ -130,7 +130,7 @@ extern "C" {
  *
  */
 #ifndef LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING
-#define LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING 1
+#define LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING 0
 #endif
 
 /**
@@ -138,7 +138,7 @@ extern "C" {
  *
  */
 #ifndef LWPRINTF_CFG_SUPPORT_TYPE_STRING
-#define LWPRINTF_CFG_SUPPORT_TYPE_STRING 1
+#define LWPRINTF_CFG_SUPPORT_TYPE_STRING 0
 #endif
 
 /**
@@ -146,7 +146,7 @@ extern "C" {
  *
  */
 #ifndef LWPRINTF_CFG_SUPPORT_TYPE_BYTE_ARRAY
-#define LWPRINTF_CFG_SUPPORT_TYPE_BYTE_ARRAY 1
+#define LWPRINTF_CFG_SUPPORT_TYPE_BYTE_ARRAY 0
 #endif
 
 /**
@@ -166,7 +166,7 @@ extern "C" {
  * It adds functions for default instance: `lwprintf`, `lwsnprintf` and others
  */
 #ifndef LWPRINTF_CFG_ENABLE_SHORTNAMES
-#define LWPRINTF_CFG_ENABLE_SHORTNAMES 1
+#define LWPRINTF_CFG_ENABLE_SHORTNAMES 0
 #endif /* LWPRINTF_CFG_ENABLE_SHORTNAMES */
 
 /**

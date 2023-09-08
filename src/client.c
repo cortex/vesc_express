@@ -9,8 +9,6 @@
 #include <sys/types.h>
 // #include <stddef.h>
 
-#include "lwprintf/lwprintf.h"
-
 // I don't know how to link files, so I'll just include it directly here...
 #include "lwprintf/lwprintf.c"
 
@@ -3134,7 +3132,7 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
     
     char result[50];
     
-    // lwprintf_snprintf(result, 50, "%f", (double)0.558);
+    lwprintf_snprintf(result, 50, "%f", (double)0.558);
     
     return lbm_create_str(result);
 

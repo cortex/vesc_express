@@ -507,6 +507,7 @@ prv_signed_longlong_int_to_str(lwprintf_int_t* p, signed long long int num) {
  */
 static void
 prv_calculate_dbl_num_data(lwprintf_int_t* p, float_num_t* n, double num, uint8_t e, const char type) {
+    (void)type;
     memset(n, 0x00, sizeof(*n));
 
     if (p->m.precision >= (int)LWPRINTF_ARRAYSIZE(powers_of_10)) {
@@ -610,13 +611,13 @@ prv_double_to_str(lwprintf_int_t* p, double in_num) {
         return prv_out_str(p, p->m.flags.uc ? "NAN" : "nan", 3);
     } else if (in_num < -DBL_MAX
 #if !LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING
-               || in_num < -FLOAT_MAX_B_ENG
+               || in_num < (double)-FLOAT_MAX_B_ENG
 #endif /* !LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING */
     ) {
         return prv_out_str(p, p->m.flags.uc ? "-INF" : "-inf", 4);
     } else if (in_num > DBL_MAX
 #if !LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING
-               || in_num > FLOAT_MAX_B_ENG
+               || in_num > (double)FLOAT_MAX_B_ENG
 #endif /* !LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING */
     ) {
         char str[5], *s_ptr = str;
