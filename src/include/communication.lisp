@@ -3,21 +3,51 @@
 ; Should be set dynamically during registration with bluetooth.
 ; This is a valid GUID for developing before we set up bluetooth communication
 ; between the battery and app.
-(def registration-id "712D6A50-349F-4A59-9791-8E8033B8C428")
+(def registration-id (str-to-lower "712D6A50-349F-4A59-9791-8E8033B8C428"))
+
+(def num-failed-status-requests 0)
+(def num-malformed-action-responses 0)
 
 @const-start
+
+(def charging-status-map '(
+    (0 . disconnected)
+    (1 . connected)
+    (2 . charging)
+))
+
+(defun charging-status-from-int (int)
+    (assoc charging-status-map (to-i int))
+)
+
+(defun charging-status-to-int (status)
+    (cossa charging-status-map status)
+)
+
+(def hw-action-map '(
+    (1 . hw-action-start-charging)
+    (2 . hw-action-stop-charging)
+    (3 . hw-action-change-charge-limit)
+    (4 . hw-action-apply-firmware) ; unused at the moment
+))
+
+(defun hw-action-from-int (int)
+    (assoc hw-action-map (to-i int))
+)
+
+(defun hw-action-to-int (action)
+    (cossa hw-action-map action)
+)
 
 ; Perform POST request to the lindboard API.
 ; `json-data` should be a valid json value
 ; Returns a response object.
-(defun api-post-request (path content-type json-data) {
+(defunret api-post-request (path content-type json-data) {
+    (var start (systime))
+    
     (var start-part (systime))
     (var data-str (json-stringify json-data))
-    (puts (str-merge
-        "stringifying json took "
-        (str-from-n (ms-since start-part))
-        "ms"
-    ))
+    (log-time "stringifying json" start-part)
     
     (var request (create-request 'POST (str-merge "/api/esp" path) "lindboard-staging.azurewebsites.net"))
     (request-add-headers request (list
@@ -25,16 +55,52 @@
     ))
     (request-add-content request content-type data-str)
   
-    (send-request request)
+    (var response (send-request request))
+    
+    (if (not response) {
+        (+set num-failed-status-requests 1)
+        (return nill)
+    })
+    
+    (if (= (response-get-content-length response) 0) {
+        (puts "got no response data from API")
+        (log-time nil start)
+        (return nil)
+    })
+    
+    (if (not-eq (response-get-content-type response) 'mime-json) {
+        (puts (str-merge
+            "got invalid mime type '"
+            (to-str 
+                (response-get-content-type response)
+            )
+            "' from API"
+        ))
+        (log-time nil start)
+        (return nil)
+    })
+    
+    (var start-part (systime))
+    (var data (json-parse (response-get-content response)))
+    (log-time "parsing json" start-part)
+    
+    (if (eq data 'error) {
+        (puts (str-merge
+            "parsing json failed, json:\n"
+            (response-get-content response)
+        ))
+        (return nil)
+    })
+    
+    (log-time nil start)
+    
+    data
 })
 
 (defunret api-status-update (batt-charge-level batt-charge-remaining-mins batt-charge-status batt-charge-limit long lat) {
-    (var start (systime))
-    (var batt-charge-status (match batt-charge-status
-        (disconnected 0)
-        (connected 1)
-        (charging 2)
-    ))
+    (var batt-charge-status 
+        (charging-status-to-int batt-charge-status)
+    )
     
     (var data (list
         '+assoc
@@ -64,50 +130,61 @@
     
     (var response (api-post-request "/batteryStatusUpdate" "application/json" data))
     
-    ; TODO: proper error handling
     (if (eq response nil) {
-        (exit-error response)
+        (return nil)
     })
     
-    (if (= (response-get-content-length response) 0) {
-        (print "Got no response data from API for status update")
-        (print (str-merge
-            "took "
-            (str-from-n (ms-since start))
-            "ms"
+    (if (not (is-list response)) {
+        (+set num-malformed-action-responses 1)
+        (puts (str-merge
+            "Invalid JSON value (expected list):"
+            (to-str response)
         ))
         (return nil)
     })
     
-    (if (not-eq (response-get-content-type response) 'mime-json) {
-        (print (str-merge
-            "Got invalid mime type '"
-            (to-str 
-                (response-get-content-type response)
+    ; TODO: fix `is-structure`
+    ; (if (not (is-structure response '(
+    ;     (
+    ;         ("registrationId" . type-str)
+    ;         ("hardwareActionId" . type-int)
+    ;         ("hardwareActionTypeId" . type-int)
+    ;         ("date" . type-str)
+    ;         ("data" . type-any)
+    ;     )
+    ; ))) {
+    ;     (+set num-malformed-action-responses 1)
+    ;     (puts (str-merge
+    ;         "Invalid JSON value:"
+    ;         (to-str response)
+    ;     ))
+    ;     (return nil)
+    ; })
+    
+    (var actions (map
+        (fn (object) {
+            (list
+                (cons 'hw-action-id (assoc object "hardwareActionId"))
+                (cons 'hw-action (hw-action-from-int
+                    (assoc object "hardwareActionTypeId")
+                ))
+                (cons 'data (assoc object "data"))
             )
-            "' in response."
-        ))
-        (return nil)
-    })
-    
-    
-    (var start-part (systime))
-    (var data (json-parse (response-get-content response)))
-    (puts (str-merge
-        "parsing json took "
-        (str-from-n (ms-since start-part))
-        "ms"
-    ))
-    (puts "Response:")
-    (puts (to-str-safe data))
-    
-    (print (str-merge
-        "took "
-        (str-from-n (ms-since start))
-        "ms"
+        })
+        (filter (fn (object) {
+            (if (not-eq
+                (str-to-lower (assoc object "registrationId"))
+                registration-id
+            ) {
+                (+set num-malformed-action-responses 1)
+                false
+            }
+                true
+            )
+        }) response)
     ))
     
-    data
+    actions
 })
 
 (defun api-test () {
@@ -115,5 +192,5 @@
     ; (var really-long-str (str-merge long-str long-str long-str long-str long-str))
     ; (print (str-len really-long-str))
     ; (puts really-long-str)
-    (api-status-update 0.5 10 'disconnected 0.8 0.0 0.0)
+    (print (api-status-update 0.5 10 'disconnected 0.8 0.0 0.0))
 })

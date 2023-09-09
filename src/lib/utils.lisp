@@ -38,7 +38,12 @@
     (foldl (fn (all x) (and all x)) true lst)
 )
 
-(defun is-list (value) (eq (type-of value) 'type-list))
+(defun is-list (value)
+    (or
+        (eq (type-of value) 'type-list)
+        (eq value nil)
+    )
+)
 
 ; You can't unambiguously identify assoc lists from normal lists :(
 ; (defun is-assoc-list (value) (and
@@ -64,6 +69,85 @@
     (type-u64 t)
     (type-char t)
     (_ false)
+))
+
+(defun is-int (value) (match (type-of value)
+    (type-i t)
+    (type-i32 t)
+    (type-u t)
+    (type-u32 t)
+    (type-i64 t)
+    (type-u64 t)
+    (type-char t)
+    (_ nil)
+))
+
+(defun is-float (value) (match (type-of value)
+    (type-float t)
+    (type-double t)
+    (_ nil)
+))
+
+; ! Warning: dangerous function that explodes
+; example:
+; (def value '((a . 5) (b . (any item values)) (c . (5 4.2 8))))
+; (is-structure value (list
+;     (cons 'a 'type-int)
+;     (cons 'b (list))
+;     (cons 'c (list 'type-number))
+; ))
+; > t
+(defun is-structure (value structure) (cond
+    ((is-list structure)
+        (and
+            (is-list value)
+            (or
+                (= (length structure) 0)
+                (looprange i 0 (length structure) {
+                    (var current (ix structure i))
+                    (if (not (if (eq (type-of current) 'type-list) {
+                        (is-structure
+                            (assoc (ix value i) (car current))
+                            (cdr current)
+                        )
+                    } {
+                        (all (map (fn (x)
+                            (is-structure x current)
+                        ) value))
+                    }))
+                        (break false)
+                    )
+                    
+                    true
+                })
+            )
+            
+        )
+    )
+    ((eq structure 'type-int)
+        (is-int value)
+    )
+    ((eq structure 'type-float)
+        (is-float value)
+    )
+    ((eq structure 'type-number)
+        (is-number value)
+    )
+    ((eq structure 'type-bool)
+        (or
+            (eq value true)
+            (eq value false)
+        )
+    )
+    ((eq structure 'type-str)
+        (eq (type-of value) 'type-array)
+    )
+    ((eq structure 'type-any)
+        true
+    )
+    (t
+        (eq value structure)
+    )
 ))
 
 (defun find-first-with (fun lst) {
@@ -225,6 +309,18 @@
         (puts (str-merge ,@pair-strings))
     }
 }))
+
+(defun log-time (operation timestamp) {
+    (puts (str-merge
+        (if operation
+            (str-merge operation " ")
+            ""
+        )
+        "took "
+        (str-from-n (ms-since timestamp))
+        "ms"
+    ))
+})
 
 ; Converts value to a string, passing the value straight through if it's already
 ; a string.
