@@ -5,16 +5,20 @@
     (if value value else-value)
 )
 
+(defun quote-val (value)
+    (eval `(quote ,value))
+)
+
+(defun apply-safe (fun args)
+    (eval (list fun (map quote-val args)))
+)
+
 (defun min (a b) 
     (if (> a b) b a)
 )
 
 (defun max (a b) 
     (if (< a b) b a)
-)
-
-(defun join (lst delim)
-    (apply to-str-delim (cons delim lst))
 )
 
 ; Returns true if list contains value at least once.
@@ -221,6 +225,16 @@
         (puts (str-merge ,@pair-strings))
     }
 }))
+
+; Converts value to a string, passing the value straight through if it's already
+; a string.
+; The normal to-str function will clamp the string length to 300 bytes.
+(defun to-str-safe (value) {
+    (if (eq (type-of value) type-array)
+        value
+        (to-str value)
+    )
+})
 
 (defun to-code-str (value) {
     (if (eq value (to-str value))

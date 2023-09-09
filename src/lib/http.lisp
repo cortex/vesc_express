@@ -57,20 +57,17 @@
     )
 )
 
-; May only be called once.
+; May only be called once per request.
 (defun request-add-content (request content-type content) {
     (setassoc request 'content-type content-type)
     (setassoc request 'content content)
 })
-
-; ex: GET /api/esp/ping HTTP/1.1\r\nHost: lindboard-staging.azurewebsites.net\r\nConnection: Close\r\n\r\n
 
 (defunret build-request (request) {
     (var method (assoc request 'method))
     (var path (assoc request 'path))
     (var host (assoc request 'host))
     
-    ; We use HTTP/1.0 to avoid chunked transfer encoding
     (var lines (list
         (str-merge
             (match method
@@ -102,7 +99,7 @@
             0
         ))
         (setq headers (cons
-            (cons "Content-Length" (to-str content-length))
+            (cons "Content-Length" (str-from-n content-length))
             headers
         ))
         (if content-type {
@@ -120,12 +117,11 @@
     (var lines (append
         lines
         (map (fn (header)
-            (str-merge (car header) ": " (to-str (cdr header)))
+            (str-merge (car header) ": " (to-str-safe (cdr header)))
         ) headers)
     ))
     
-    
-    (str-merge (join lines "\r\n") "\r\n\r\n" content)
+    (str-merge (str-join lines "\r\n") "\r\n\r\n" content)
 })
 
 (defunret send-single-request (host request-str) {
@@ -339,7 +335,7 @@
         )) headers))
         
         (if header {
-            (set 'content-type (inspect (parse-mime-type (cdr header))))
+            (set 'content-type (parse-mime-type (cdr header)))
             (if (eq content-type 'mime-unrecognized)
                 (set 'content-type (cdr header))
             )

@@ -465,6 +465,43 @@ static size_t str_extract_n_while(
     return n;
 }
 
+static ssize_t str_join(
+    size_t dest_size, char dest[dest_size], const size_t str_count,
+    const char *strings[str_count], const char *delim
+) {
+    size_t lengths[str_count];
+    size_t delim_len = strlen(delim);
+
+    size_t result_len = 0;
+    for (size_t i = 0; i < str_count; i++) {
+        lengths[i] = strlen(strings[i]);
+        result_len += lengths[i];
+    }
+    if (str_count > 0) {
+        result_len += delim_len * (str_count - 1);
+    }
+
+    if (result_len + 1 > dest_size) {
+        return -1;
+    }
+
+    size_t offset = 0;
+
+    for (size_t i = 0; i < str_count; i++) {
+        memcpy(dest + offset, strings[i], lengths[i]);
+        offset += lengths[i];
+
+        if (i + 1 != str_count) {
+            memcpy(dest + offset, delim, delim_len);
+            offset += delim_len;
+        }
+    }
+    
+    dest[offset] = '\0';
+
+    return (ssize_t)offset;
+}
+
 //
 /**
  * Calculate the amount of characters integer would have if formated as a base
@@ -605,14 +642,14 @@ static void puts_long(const char *str) {
     size_t len = strlen(str);
     while (len > 0) {
         // limit seems to be more like 399
-        if (len <= 100) {
+        if (len <= 350) {
             VESC_IF->printf("%s", str);
             len = 0;
         } else {
             ssize_t break_index = str_index_of(str, "\n");
 
             if (break_index == -1) {
-                break_index = 100;
+                break_index = 350;
             } else {
                 // we also want to include the newline.
                 break_index += 1;
@@ -674,8 +711,8 @@ static inline lbm_type lbm_type_of_functional(lbm_value x) {
  */
 
 /**
- * 
-*/
+ *
+ */
 static bool lbm_is_int(lbm_value value) {
     switch (lbm_type_of_functional(value)) {
         case LBM_TYPE_CHAR:
@@ -706,6 +743,40 @@ static bool lbm_is_float(lbm_value value) {
         default:
             return false;
     }
+}
+
+static inline bool lbm_is_list(lbm_value value) {
+    return VESC_IF->lbm_is_cons(value) || VESC_IF->lbm_is_symbol_nil(value);
+}
+
+static bool lbm_check_list(lbm_value value, bool (*checker)(lbm_value v)) {
+    if (!lbm_is_list(value)) {
+        return false;
+    }
+    
+    lbm_value current = value;
+    
+    while (VESC_IF->lbm_is_cons(current)) {
+        if (!checker(VESC_IF->lbm_car(current))) {
+            return false;
+        }
+        
+        current = VESC_IF->lbm_cdr(current);
+    }
+    
+    return true;
+}
+
+static size_t lbm_list_len(lbm_value value) {
+    size_t len = 0;
+    
+    lbm_value current = value;
+    while (VESC_IF->lbm_is_cons(current)) {
+        len++;
+        current = VESC_IF->lbm_cdr(current);
+    }
+    
+    return len;
 }
 
 static inline lbm_value lbm_enc_bool(bool value) {
@@ -1143,7 +1214,7 @@ static bool at_command_responses(
 
 static bool at_init() {
     uart_purge(AT_PURGE_TIMEOUT_MS);
-    
+
     // Disable echo mode
     {
         uart_write_string("ATE0\r\n");
@@ -1782,20 +1853,20 @@ static void tcp_thd(void *arg) {
             }
             case TCP_STATE_MODEM_PWR_OFF: {
                 modem_pwr_on();
-                
+
                 uint32_t start = time_now();
                 bool result = at_init();
                 uint32_t ms = time_ms_since_i(start);
                 if (result) {
                     VESC_IF->printf("AT ready (took %ums)", ms);
-                    
+
                     d->tcp_state = TCP_STATE_NOT_CONNECTED;
                     VESC_IF->mutex_lock(d->lock);
                     d->tcp_ready = true;
                     VESC_IF->mutex_unlock(d->lock);
                 } else {
                     VESC_IF->printf("AT init failed (took %ums)", ms);
-                    
+
                     d->tcp_state = TCP_STATE_INIT_FAILED;
                 }
                 VESC_IF->sleep_ms(1);
@@ -1814,11 +1885,14 @@ static void tcp_thd(void *arg) {
                         VESC_IF->mutex_lock(d->lock);
                         d->tcp_cmd = TCP_CMD_IDLE;
                         VESC_IF->mutex_unlock(d->lock);
-                        
+
                         return_result(VESC_IF->lbm_enc_sym_eerror);
                         // I don't think I can set the error reason for a
                         // blocked thread... :(
-                        VESC_IF->lbm_set_error_reason("Tried calling tcp function when init failed. Try calling `at-init` before.");
+                        VESC_IF->lbm_set_error_reason(
+                            "Tried calling tcp function when init failed. Try "
+                            "calling `at-init` before."
+                        );
                         VESC_IF->sleep_ms(1);
                         continue;
                     }
@@ -1829,7 +1903,6 @@ static void tcp_thd(void *arg) {
             }
         }
 
-
         switch (cmd) {
             case TCP_CMD_AT_INIT: {
                 bool result = at_init();
@@ -1838,9 +1911,8 @@ static void tcp_thd(void *arg) {
                         d->tcp_state = TCP_STATE_NOT_CONNECTED;
                         VESC_IF->mutex_lock(d->lock);
                         d->tcp_ready = true;
-                        VESC_IF->mutex_unlock(d->lock);                        
-                    }
-                    else {
+                        VESC_IF->mutex_unlock(d->lock);
+                    } else {
                         result = false;
                     }
                 } else {
@@ -2055,23 +2127,24 @@ static size_t json_maybe_copy_str(char *buffer, const char *str) {
 /**
  * Convert an lbm value into a json document string.
  * The lbm value should follow a specific structure:
- * - Objects are associative arrays with the '+assoc symbol before the cons cells.
+ * - Objects are associative arrays with the '+assoc symbol before the cons
+ * cells.
  * - Other lists are interpreted as arrays.
  * - The nil symbol is interpreted as an empty array.
  * - The symbol 'false_v is interpreted as false in json.
  * - The symbol 'null is interpreted as null in json.
- * 
+ *
  * If the specified destination buffer is null, the length that would have been
  * written is returned instead.
- * 
+ *
  * \param dest The buffer to place the json string in. Is not written to if
  * null. Must have enough capacity to fit the entire json document string,
  * including the terminating null byte. You can get the length using the
- * `json_get_str_len` function. 
+ * `json_get_str_len` function.
  * \param json_value The lbm value to convert to a json document.
  * \return The length the of the generated json value (or the length it would
  * have had if dest was null), excluding the terminating null byte.
-*/
+ */
 static size_t json_stringify(char *dest, const lbm_value json_value);
 
 static size_t json_stringify_object(char *dest, const lbm_value json_object) {
@@ -2180,35 +2253,44 @@ static size_t json_stringify_simple_value(
     } else if (lbm_is_int(json_value)) {
         if (!dest) {
             char buffer[1];
-            return lwprintf_snprintf(buffer, 1, "%d", VESC_IF->lbm_dec_as_i32(json_value));
+            return lwprintf_snprintf(
+                buffer, 1, "%d", VESC_IF->lbm_dec_as_i32(json_value)
+            );
         } else {
             char buffer[15];
-            lwprintf_snprintf(buffer, 15, "%d", VESC_IF->lbm_dec_as_i32(json_value));
+            lwprintf_snprintf(
+                buffer, 15, "%d", VESC_IF->lbm_dec_as_i32(json_value)
+            );
             return json_maybe_copy_str(dest, buffer);
         }
     } else if (lbm_is_float(json_value)) {
-            if (!dest) {
+        if (!dest) {
             char buffer[1];
-            return lwprintf_snprintf(buffer, 1, "%.3f", (double)VESC_IF->lbm_dec_as_float(json_value));
+            return lwprintf_snprintf(
+                buffer, 1, "%.3f", (double)VESC_IF->lbm_dec_as_float(json_value)
+            );
         } else {
             char buffer[50];
-            lwprintf_snprintf(buffer, 50, "%.3f", (double)VESC_IF->lbm_dec_as_float(json_value));
+            lwprintf_snprintf(
+                buffer, 50, "%.3f",
+                (double)VESC_IF->lbm_dec_as_float(json_value)
+            );
             return json_maybe_copy_str(dest, buffer);
         }
     }
-    
+
     return json_maybe_copy_str(dest, "null");
 }
 
 static size_t json_stringify(char *dest, const lbm_value json_value) {
     data *d = use_state();
-    
+
     if (VESC_IF->lbm_is_symbol_nil(json_value)) {
         // is an empty array
         return json_maybe_copy_str(dest, "[]");
     } else if (VESC_IF->lbm_is_cons(json_value)) {
         lbm_value first = VESC_IF->lbm_car(json_value);
-        
+
         if (lbm_is_specific_symbol(first, d->symbol_plus_assoc)) {
             return json_stringify_object(dest, VESC_IF->lbm_cdr(json_value));
         } else {
@@ -2224,12 +2306,13 @@ static size_t json_stringify(char *dest, const lbm_value json_value) {
 
 /**
  * Get the length a lbm json value would have if stringified.
- * 
+ *
  * For use with `json_stringify`.
  *
  * \param json_value The json value to get the length of. See `json_stringify`
  * for the required structure.
- * \return The length the json document string would have, excluding the terminating null byte.
+ * \return The length the json document string would have, excluding the
+ * terminating null byte.
  */
 static size_t json_get_str_len(const lbm_value json_value) {
     return json_stringify(NULL, json_value);
@@ -2664,7 +2747,8 @@ static lbm_value ext_str_extract_until(lbm_value *args, lbm_uint argn) {
  * \param delims A string with the characters which dest will consist of
  * entirely.
  * \param start (option) The index of str where the substring starts. Default is
- * 0. \return the extracted substring.
+ * 0.
+ * \return the extracted substring.
  */
 static lbm_value ext_str_extract_while(lbm_value *args, lbm_uint argn) {
     if ((argn != 2 && argn != 3) || !VESC_IF->lbm_is_byte_array(args[0])
@@ -2688,6 +2772,56 @@ static lbm_value ext_str_extract_while(lbm_value *args, lbm_uint argn) {
     char dest[n + 1];
 
     str_extract_n_while(dest, n, str, delims, start);
+
+    return lbm_create_str(dest);
+}
+
+/**
+ * signature: (str-join strings [delim])
+ *
+ * Concatenate list of strings with optional delimiter between them.
+ *
+ * \param strings The list of strings to join.
+ * \param delim The string to place between the strings. Defaults to an empty
+ * string if not present.
+ * \return the joined string.
+ */
+static lbm_value ext_str_join(lbm_value *args, lbm_uint argn) {
+    if ((argn != 1 && argn != 2) || !lbm_check_list(args[0], VESC_IF->lbm_is_byte_array)) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+    
+    const char *delim = "";
+    if (argn >= 2) {
+        if (!VESC_IF->lbm_is_byte_array(args[1])) {
+            return VESC_IF->lbm_enc_sym_terror;
+        }
+        delim = VESC_IF->lbm_dec_str(args[1]);
+    }
+
+    const size_t count = lbm_list_len(args[0]);
+    const char* strings[count];
+    
+    size_t total_len = 0;
+    
+    lbm_value current = args[0];
+    for (size_t i = 0; i < count; i++) {
+        strings[i] = VESC_IF->lbm_dec_str(VESC_IF->lbm_car(current));
+        total_len += strlen(strings[i]);
+        
+        current = VESC_IF->lbm_cdr(current);
+    }
+    if (count > 0) {
+        total_len += strlen(delim) * (count - 1);
+    }
+    
+    char dest[total_len + 1];
+    
+    ssize_t result_len = str_join(total_len + 1, dest, count, strings, delim);
+    if (result_len == -1) {
+        // This should never happen really, but just to be sure.
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
 
     return lbm_create_str(dest);
 }
@@ -2924,7 +3058,7 @@ static lbm_value ext_at_init(lbm_value *args, lbm_uint argn) {
     if (argn != 0) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    
+
     if (!lbm_call_tcp_cmd(TCP_CMD_AT_INIT, TCP_CMD_TIMEOUT_MS)) {
         VESC_IF->printf("lbm_call_tcp_cmd timeout");
         return VESC_IF->lbm_enc_sym_eerror;
@@ -3181,11 +3315,11 @@ static lbm_value ext_tcp_wait_for_recv(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
     (void)args;
     (void)argn;
-    
+
     char result[50];
-    
+
     lwprintf_snprintf(result, 50, "%f", (double)0.558);
-    
+
     return lbm_create_str(result);
 
     return VESC_IF->lbm_enc_sym_nil;
@@ -3193,16 +3327,17 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
 
 /**
  * \brief signature: (json-stringify value)
- * 
+ *
  * Translate a value into a json document string.
- * 
+ *
  * There are some rules to how the lbm value is translated to json values:
- * - Objects are represented by associative lists with the '+assoc symbol before the cons cells.
+ * - Objects are represented by associative lists with the '+assoc symbol before
+ * the cons cells.
  * - Other lists are interpreted as json arrays.
  * - The nil symbol is interpreted as an empty json array.
  * - The symbol 'false_v is interpreted as false in json.
  * - The symbol 'null is interpreted as null in json.
- * 
+ *
  * Example:
  * ```lispbm
  * (json-stringify-lisp (list '+assoc
@@ -3210,26 +3345,27 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
  *      '("str-prop" . "\"escaped\"")
  *      '("list-prop" . (t nil null)))
  *  )
- *  > "{\"a-prop\":5,\"str-prop\":\"\\\"escaped\\\"\",\"list-prop\":[true,false,null]}"
+ *  >
+ * "{\"a-prop\":5,\"str-prop\":\"\\\"escaped\\\"\",\"list-prop\":[true,false,null]}"
  * ```
-*/
+ */
 static lbm_value ext_json_stringify(lbm_value *args, lbm_uint argn) {
     if (argn != 1) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    
+
     lbm_value value = args[0];
-    
+
     size_t len = json_get_str_len(value);
-    
+
     lbm_value result;
     if (!VESC_IF->lbm_create_byte_array(&result, len + 1)) {
         return VESC_IF->lbm_enc_sym_merror;
     }
-    
+
     char *str = VESC_IF->lbm_dec_str(result);
     json_stringify(str, value);
-    
+
     return result;
 }
 
@@ -3339,6 +3475,7 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("str-n-eq", ext_str_n_eq);
     VESC_IF->lbm_add_extension("str-extract-until", ext_str_extract_until);
     VESC_IF->lbm_add_extension("str-extract-while", ext_str_extract_while);
+    VESC_IF->lbm_add_extension("str-join", ext_str_join);
     VESC_IF->lbm_add_extension("puts", ext_puts);
 
     VESC_IF->lbm_add_extension("ext-uart-write", ext_uart_write);

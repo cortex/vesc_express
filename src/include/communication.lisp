@@ -8,17 +8,22 @@
 @const-start
 
 ; Perform POST request to the lindboard API.
-; `data` should be a string
+; `json-data` should be a valid json value
 ; Returns a response object.
-(defun api-post-request (path content-type data) {
-    (var data (to-str data))
-    (var content-length (str-from-n (str-len data)))
+(defun api-post-request (path content-type json-data) {
+    (var start-part (systime))
+    (var data-str (json-stringify json-data))
+    (puts (str-merge
+        "stringifying json took "
+        (str-from-n (ms-since start-part))
+        "ms"
+    ))
     
     (var request (create-request 'POST (str-merge "/api/esp" path) "lindboard-staging.azurewebsites.net"))
     (request-add-headers request (list
         '("Connection" . "Close")
     ))
-    (request-add-content request content-type data)
+    (request-add-content request content-type data-str)
   
     (send-request request)
 })
@@ -57,30 +62,7 @@
         ))
     ))
     
-    (var start-part (systime))
-    (var data-str (json-stringify data))
-    ; (var data-str (gen-json json-template-status-update (list
-    ;     registration-id
-    ;     (env-get 'serial-number-batt)
-    ;     (env-get 'firmware-id-batt)
-    ;     (* batt-charge-level 100.0)
-    ;     batt-charge-remaining-mins
-    ;     batt-charge-status
-    ;     batt-charge-limit
-    ;     (env-get 'serial-number-board)
-    ;     (env-get 'serial-number-jet)
-    ;     (env-get 'serial-number-remote)
-    ; )))
-    (puts (str-merge
-        "stringifying json took "
-        (str-from-n (ms-since start-part))
-        "ms"
-    ))
-    
-    ; (puts data-str)
-    ; (return)
-    
-    (var response (api-post-request "/batteryStatusUpdate" "application/json" data-str))
+    (var response (api-post-request "/batteryStatusUpdate" "application/json" data))
     
     ; TODO: proper error handling
     (if (eq response nil) {
@@ -117,7 +99,7 @@
         "ms"
     ))
     (puts "Response:")
-    (puts (to-str data))
+    (puts (to-str-safe data))
     
     (print (str-merge
         "took "
