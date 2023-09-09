@@ -1,8 +1,9 @@
 @const-end
 
 ; Should be set dynamically during registration with bluetooth.
-; This is just some randomly generated 
-(def registration-id "6fb44fa6-0500-4c98-a298-ba3f6decbfac")
+; This is a valid GUID for developing before we set up bluetooth communication
+; between the battery and app.
+(def registration-id "712D6A50-349F-4A59-9791-8E8033B8C428")
 
 @const-start
 
@@ -22,7 +23,7 @@
     (send-request request)
 })
 
-(defunret api-status-update (batt-charge-level batt-charge-remaining-mins batt-charge-status batt-charge-limit) {
+(defunret api-status-update (batt-charge-level batt-charge-remaining-mins batt-charge-status batt-charge-limit long lat) {
     (var start (systime))
     (var batt-charge-status (match batt-charge-status
         (disconnected 0)
@@ -41,6 +42,8 @@
                 (cons "chargeMinutesRemaining" batt-charge-remaining-mins)
                 (cons "chargeStatus" batt-charge-status)
                 (cons "chargeLimit" (to-i (* batt-charge-limit 100.0)))
+                (cons "longitude" long)
+                (cons "latitude" lat)
             )
             (list '+assoc
                 (cons "serialNumber" (env-get 'serial-number-board))
@@ -130,5 +133,5 @@
     ; (var really-long-str (str-merge long-str long-str long-str long-str long-str))
     ; (print (str-len really-long-str))
     ; (puts really-long-str)
-    (api-status-update 0.5 10 'disconnected 0.8)
+    (api-status-update 0.5 10 'disconnected 0.8 0.0 0.0)
 })

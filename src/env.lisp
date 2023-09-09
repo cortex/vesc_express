@@ -3,9 +3,9 @@
 
 (def env '(
     (registration-id . "temp")
-    (serial-number-batt . "BA2222222")
-    (serial-number-board . "BO2222222")
-    (serial-number-jet . "JE1111111")
-    (serial-number-remote . "RE1111111")
+    (serial-number-batt . "BA8888888")
+    (serial-number-board . "BO8888888")
+    (serial-number-jet . "JE8888888")
+    (serial-number-remote . "RE8888888")
     (firmware-id-batt . "1")
 ))
