@@ -32,7 +32,7 @@
         ((eq token 'tok-false) nil)
         ((eq token 'tok-null) 'null)
         ((eq (type-of token) 'type-array)
-            (json-unescape-str str)
+            (json-unescape-str token)
         )
         ((is-number token) token)
         (t
