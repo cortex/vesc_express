@@ -69,6 +69,7 @@ typedef struct {
 
 typedef enum {
     TCP_CMD_IDLE = 0,
+    TCP_CMD_AT_INIT,
     TCP_CMD_CHECK_STATUS,
     TCP_CMD_IS_OPEN,
     TCP_CMD_CONNECT_HOST,
@@ -83,7 +84,8 @@ typedef enum {
 typedef enum {
     TCP_STATE_NOT_CONNECTED = 0,
     TCP_STATE_CONNECTED,
-    // TCP_STATE_RECEIVED,
+    TCP_STATE_MODEM_PWR_OFF,
+    TCP_STATE_INIT_FAILED,
 } tcp_state_t;
 
 typedef enum {
@@ -123,6 +125,7 @@ typedef struct {
     // char recv_buffer[TCP_BUFFER_SIZE];
 
     tcp_state_t tcp_state;
+    bool tcp_ready;
 
     tcp_cmd_t tcp_cmd;
     lbm_cid tcp_calling_thread;
@@ -1140,7 +1143,7 @@ static bool at_command_responses(
 
 static bool at_init() {
     uart_purge(AT_PURGE_TIMEOUT_MS);
-
+    
     // Disable echo mode
     {
         uart_write_string("ATE0\r\n");
@@ -1289,7 +1292,7 @@ static void modem_pwr_on() {
     // // SMS Ready
     // uart_purge(AT_PURGE_TIMEOUT_MS);
 
-    VESC_IF->printf("ready, took %ums", time_ms_since_i(start));
+    VESC_IF->printf("modem ready (took %ums)", time_ms_since_i(start));
 }
 
 static bool modem_pwr_off() {
@@ -1770,13 +1773,86 @@ static void tcp_thd(void *arg) {
         tcp_state_t state = d->tcp_state;
         VESC_IF->mutex_unlock(d->lock);
 
-        switch (cmd) {
-            case TCP_CMD_CHECK_STATUS: {
-                // if (state == TCP_STATE_RECEIVING) {
-                //     return_result(VESC_IF->lbm_enc_sym_eerror);
-                //     break;
-                // }
+        switch (d->tcp_state) {
+            case TCP_STATE_NOT_CONNECTED: {
+                break;
+            }
+            case TCP_STATE_CONNECTED: {
+                break;
+            }
+            case TCP_STATE_MODEM_PWR_OFF: {
+                modem_pwr_on();
+                
+                uint32_t start = time_now();
+                bool result = at_init();
+                uint32_t ms = time_ms_since_i(start);
+                if (result) {
+                    VESC_IF->printf("AT ready (took %ums)", ms);
+                    
+                    d->tcp_state = TCP_STATE_NOT_CONNECTED;
+                    VESC_IF->mutex_lock(d->lock);
+                    d->tcp_ready = true;
+                    VESC_IF->mutex_unlock(d->lock);
+                } else {
+                    VESC_IF->printf("AT init failed (took %ums)", ms);
+                    
+                    d->tcp_state = TCP_STATE_INIT_FAILED;
+                }
+                VESC_IF->sleep_ms(1);
+                continue;
+            }
+            case TCP_STATE_INIT_FAILED: {
+                switch (cmd) {
+                    case TCP_CMD_IDLE: {
+                        VESC_IF->sleep_ms(1);
+                        continue;
+                    }
+                    case TCP_CMD_AT_INIT: {
+                        break;
+                    }
+                    default: {
+                        VESC_IF->mutex_lock(d->lock);
+                        d->tcp_cmd = TCP_CMD_IDLE;
+                        VESC_IF->mutex_unlock(d->lock);
+                        
+                        return_result(VESC_IF->lbm_enc_sym_eerror);
+                        // I don't think I can set the error reason for a
+                        // blocked thread... :(
+                        VESC_IF->lbm_set_error_reason("Tried calling tcp function when init failed. Try calling `at-init` before.");
+                        VESC_IF->sleep_ms(1);
+                        continue;
+                    }
+                }
+            }
+            default: {
+                break;
+            }
+        }
 
+
+        switch (cmd) {
+            case TCP_CMD_AT_INIT: {
+                bool result = at_init();
+                if (result) {
+                    if (d->tcp_state == TCP_STATE_INIT_FAILED) {
+                        d->tcp_state = TCP_STATE_NOT_CONNECTED;
+                        VESC_IF->mutex_lock(d->lock);
+                        d->tcp_ready = true;
+                        VESC_IF->mutex_unlock(d->lock);                        
+                    }
+                    else {
+                        result = false;
+                    }
+                } else {
+                    d->tcp_state = TCP_STATE_INIT_FAILED;
+                    VESC_IF->mutex_lock(d->lock);
+                    d->tcp_ready = true;
+                    VESC_IF->mutex_unlock(d->lock);
+                }
+                return_result(lbm_enc_bool(result));
+                break;
+            }
+            case TCP_CMD_CHECK_STATUS: {
                 lbm_uint symbol;
                 switch (tcp_status(0)) {
                     case TCP_DISCONNECTED: {
@@ -1804,7 +1880,7 @@ static void tcp_thd(void *arg) {
                 break;
             }
             case TCP_CMD_IS_OPEN: {
-                bool result = d->tcp_state != TCP_STATE_NOT_CONNECTED;
+                bool result = d->tcp_state == TCP_STATE_CONNECTED;
 
                 return_result(lbm_enc_bool(result));
                 break;
@@ -1932,49 +2008,6 @@ static void tcp_thd(void *arg) {
         VESC_IF->mutex_lock(d->lock);
         d->tcp_cmd = TCP_CMD_IDLE;
         VESC_IF->mutex_unlock(d->lock);
-
-        switch (d->tcp_state) {
-            case TCP_STATE_NOT_CONNECTED: {
-                break;
-            }
-            case TCP_STATE_CONNECTED: {
-                break;
-            }
-            // case TCP_STATE_RECEIVED: {
-            //     VESC_IF->mutex_lock(d->lock);
-            //     bool recv_used = d->recv_used;
-            //     bool recv_filled = d->recv_filled;
-            //     VESC_IF->mutex_unlock(d->lock);
-
-            //     if (!recv_used && recv_filled) {
-            //         break;
-            //     }
-
-            //     char buffer[TCP_BUFFER_SIZE];
-            //     ssize_t result = tcp_recv(0, buffer, TCP_BUFFER_SIZE);
-
-            //     if (result == -1) {
-            //         VESC_IF->printf("tcp_recv error");
-            //         break;
-            //     }
-
-            //     VESC_IF->mutex_lock(d->lock);
-            //     memcpy(d->recv_buffer, buffer, sizeof(d->recv_buffer));
-            //     d->recv_size = (size_t)result;
-            //     d->recv_filled = true;
-            //     d->recv_used = false;
-            //     VESC_IF->mutex_unlock(d->lock);
-
-            //     if (result == 0) {
-            //         d->tcp_state = TCP_STATE_CONNECTED;
-            //     }
-
-            //     break;
-            // }
-            default: {
-                break;
-            }
-        }
 
         VESC_IF->sleep_ms(1);
     }
@@ -2891,8 +2924,13 @@ static lbm_value ext_at_init(lbm_value *args, lbm_uint argn) {
     if (argn != 0) {
         return VESC_IF->lbm_enc_sym_terror;
     }
+    
+    if (!lbm_call_tcp_cmd(TCP_CMD_AT_INIT, TCP_CMD_TIMEOUT_MS)) {
+        VESC_IF->printf("lbm_call_tcp_cmd timeout");
+        return VESC_IF->lbm_enc_sym_eerror;
+    }
 
-    return lbm_enc_bool(at_init());
+    return VESC_IF->lbm_enc_sym_nil;
 }
 
 /* **************************************************
@@ -3289,7 +3327,7 @@ INIT_FUN(lib_info *info) {
     d->lock = VESC_IF->mutex_create();
     // d->recv_filled = false;
     // d->recv_size = 0;
-    d->tcp_state = TCP_STATE_NOT_CONNECTED;
+    d->tcp_state = TCP_STATE_MODEM_PWR_OFF;
 
     if (!register_symbols()) {
         VESC_IF->printf("register_symbols failed");

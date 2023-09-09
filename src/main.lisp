@@ -335,12 +335,14 @@
 })
 
 @const-end
-(modem-pwr-on)
+; (modem-pwr-on)
 
-(if (at-init)
-    (print "init successfull")
-    (print "init failed")
-)
+; (if (at-init)
+;     (print "init successfull")
+;     (print "init failed")
+; )
+
+(print "parsing done")
 
 ;; 1F004D0014504B4D31383120
 ;; 
