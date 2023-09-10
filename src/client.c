@@ -496,7 +496,7 @@ static ssize_t str_join(
             offset += delim_len;
         }
     }
-    
+
     dest[offset] = '\0';
 
     return (ssize_t)offset;
@@ -753,29 +753,29 @@ static bool lbm_check_list(lbm_value value, bool (*checker)(lbm_value v)) {
     if (!lbm_is_list(value)) {
         return false;
     }
-    
+
     lbm_value current = value;
-    
+
     while (VESC_IF->lbm_is_cons(current)) {
         if (!checker(VESC_IF->lbm_car(current))) {
             return false;
         }
-        
+
         current = VESC_IF->lbm_cdr(current);
     }
-    
+
     return true;
 }
 
 static size_t lbm_list_len(lbm_value value) {
     size_t len = 0;
-    
+
     lbm_value current = value;
     while (VESC_IF->lbm_is_cons(current)) {
         len++;
         current = VESC_IF->lbm_cdr(current);
     }
-    
+
     return len;
 }
 
@@ -860,13 +860,26 @@ static bool lbm_is_specific_symbol(lbm_value value, lbm_uint symbol) {
  * UART
  */
 
-// Read from uart until one of the characters in delim is found
-// or the length len has been obtained.
-// len must be <= the size of the buffer minus one (to account for the
-// terminating null byte).
-// Doesn't start writing until leading whitspace is passed.
-// If buffer is null, then the characters are only read but not written to
-// buffer.
+/**
+ * Read from uart until one of the characters in delim is found, or the
+ * specified length has been reached.
+ *
+ * This doesn't start writing the read characters until any leading whitespace
+ * has been passed.
+ *
+ * If the buffer is null, then then the characters are only read but not written
+ * to buffer.
+ *
+ * \param buffer The buffer to write the read string into. May be null, in which
+ * case no bytes will be written. When not null, it must be large enough to hold
+ * len + 1 bytes. A terminating null byte is always written.
+ * \param delim A string containing the characters which will cause search to
+ * end. The found character will *not* be written to the buffer.
+ * \param len How many characters will be read at most.
+ * \param timeout_ms How many milliseconds to search for at least.
+ * \return How many characters were written to buffer (excluding the terminating
+ * null byte)
+ */
 static int uart_read_until_trim(
     char *buffer, const char *delim, const int len, const int timeout_ms
 ) {
@@ -876,7 +889,11 @@ static int uart_read_until_trim(
     bool leading_whitespace = true;
 
     while (n < len && sleep_count < timeout_ms) {
-        if (VESC_IF->should_terminate()) return 0;
+        if (VESC_IF->should_terminate()) {
+            buffer[n] = '\0';
+            return n;
+        }
+
         int res = VESC_IF->uart_read();
         if (res < 0) {
             sleep_count++;
@@ -913,11 +930,23 @@ static int uart_read_until_trim(
     return n;
 }
 
-// Read from uart until one of the characters in delim is found
-// or the length len has been obtained.
-// len must be <= the size of the buffer minus one (to account for the
-// terminating null byte).
-// If buffer is null, then the characters are only read but not stored anywhere.
+/**
+ * Read from uart until one of the characters in delim is found, or the
+ * specified length has been reached.
+ *
+ * If the buffer is null, then then the characters are only read but not written
+ * to the buffer.
+ *
+ * \param buffer The buffer to write the read string into. May be null, in which
+ * case no bytes will be written. When not null, it must be large enough to hold
+ * len + 1 bytes. A terminating null byte is always written.
+ * \param delim A string containing the characters which will cause search to
+ * end. The found character will *not* be written to the buffer.
+ * \param len How many characters will be read at most.
+ * \param timeout_ms How many milliseconds to search for at least.
+ * \return How many characters were written to buffer (excluding the terminating
+ * null byte)
+ */
 static int uart_read_until(
     char *buffer, const char *delim, int len, const int timeout_ms
 ) {
@@ -925,7 +954,11 @@ static int uart_read_until(
     int n = 0;
 
     while (n < len && sleep_count < timeout_ms) {
-        if (VESC_IF->should_terminate()) return 0;
+        if (VESC_IF->should_terminate()) {
+            buffer[n] = '\0';
+            return n;
+        }
+
         int res = VESC_IF->uart_read();
         if (res < 0) {
             sleep_count++;
@@ -1755,7 +1788,8 @@ static bool tcp_wait_for_recv(
 
     uint32_t start = time_now();
     char response[16];
-    while ((uint_t)time_ms_since(start) < timeout_ms) {
+    while ((uint_t)time_ms_since(start) < timeout_ms
+           && !VESC_IF->should_terminate()) {
         uart_read_until_trim(response, "\n", 15, AT_READ_TIMEOUT_MS);
         if (strneq(response, expect, 13)) {
             return true;
@@ -2787,10 +2821,11 @@ static lbm_value ext_str_extract_while(lbm_value *args, lbm_uint argn) {
  * \return the joined string.
  */
 static lbm_value ext_str_join(lbm_value *args, lbm_uint argn) {
-    if ((argn != 1 && argn != 2) || !lbm_check_list(args[0], VESC_IF->lbm_is_byte_array)) {
+    if ((argn != 1 && argn != 2)
+        || !lbm_check_list(args[0], VESC_IF->lbm_is_byte_array)) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    
+
     const char *delim = "";
     if (argn >= 2) {
         if (!VESC_IF->lbm_is_byte_array(args[1])) {
@@ -2800,23 +2835,23 @@ static lbm_value ext_str_join(lbm_value *args, lbm_uint argn) {
     }
 
     const size_t count = lbm_list_len(args[0]);
-    const char* strings[count];
-    
+    const char *strings[count];
+
     size_t total_len = 0;
-    
+
     lbm_value current = args[0];
     for (size_t i = 0; i < count; i++) {
         strings[i] = VESC_IF->lbm_dec_str(VESC_IF->lbm_car(current));
         total_len += strlen(strings[i]);
-        
+
         current = VESC_IF->lbm_cdr(current);
     }
     if (count > 0) {
         total_len += strlen(delim) * (count - 1);
     }
-    
+
     char dest[total_len + 1];
-    
+
     ssize_t result_len = str_join(total_len + 1, dest, count, strings, delim);
     if (result_len == -1) {
         // This should never happen really, but just to be sure.
