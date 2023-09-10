@@ -1,7 +1,17 @@
+@const-end
+
+;;; State
+
+; Timestamp of when the current tcp connection was opened.
+(def tcp-connection-time (systime))
+; The host of the currently open tcp connection. 
+(def tcp-current-host nil)
+
 @const-start
 
 ;;; Config
 
+(def tcp-open-tries 3)
 (def request-send-tries 3)
 
 ;;; TCP function wrappers
@@ -28,6 +38,62 @@
     
     (apply str-merge (reverse segments))
 })
+
+(defunret tcp-ensure-connection (host port) {
+    (tcp-close-connection)
+    
+    (var result (tcp-connect-host host 80))
+    (if (not result) {
+        (return 'error-connect-host)
+    })
+    
+    (if (not (tcp-wait-until-connected 1000)) {
+        (tcp-close-connection)
+        (return 'error-wait-connected)
+    })
+    
+    true
+})
+
+(defunret tcp-update-host (host) 
+    (if (or
+        (not-eq host tcp-current-host)
+        (not (tcp-is-open))
+        (not-eq (tcp-status) 'connected)
+    ) {
+        (var result (looprange i 0 tcp-open-tries {
+            (var result (tcp-ensure-connection host 80))
+            (if (eq result true) {
+                (break true)
+            })
+            
+            (puts (str-merge
+                "tcp-ensure-connection failed with "
+                (to-str result)
+                ", retrying..."
+            ))
+            
+            result
+        }))
+        
+        (if (not-eq result true) {
+            (puts (str-merge
+                "tcp-update-host timed out after "
+                (str-from-n tcp-open-tries)
+                " tries"
+            ))
+            (return false)
+        })
+        
+        (def tcp-current-host host)
+        (def tcp-last-session-secs (secs-since tcp-connection-time))
+        (def tcp-connection-time (systime))
+        
+        true
+    }
+        true
+    )
+)
 
 ;;; HTTP utils
 
@@ -163,29 +229,37 @@
 })
 
 (defunret send-single-request (host request-str) {
-    (tcp-close-connection)
+    ; (tcp-close-connection)
+    
+    ; (var start (systime))
+    ; (var result (tcp-connect-host host 80))
+    ; (if (not result) {
+    ;     (return 'error-connect-host)
+    ; })
+    ; (if dev-log-tcp-timings {
+    ;     (log-time "tcp-connect-host" start)
+    ; })
+    
+    ; (var start (systime))
+    ; (if (not (tcp-wait-until-connected 1000)) {
+    ;     (tcp-close-connection)
+    ;     (return 'error-wait-connected)
+    ; })
+    ; (if dev-log-tcp-timings {
+    ;     (log-time "tcp-wait-until-connected" start)
+    ; })
     
     (var start (systime))
-    (var result (tcp-connect-host host 80))
-    (if (not result) {
-        (return 'error-connect-host)
+    (if (not (tcp-update-host host)) {
+        (return 'error-update-host)
     })
     (if dev-log-tcp-timings {
-        (log-time "tcp-connect-host" start)
-    })
-    
-    (var start (systime))
-    (if (not (tcp-wait-until-connected 1000)) {
-        (tcp-close-connection)
-        (return 'error-wait-connected)
-    })
-    (if dev-log-tcp-timings {
-        (log-time "tcp-wait-until-connected" start)
+        (log-time "tcp-update-host" start)
     })
         
     (var start (systime))
     (if (not (tcp-send-str request-str)) {
-        (tcp-close-connection)
+        ; (tcp-close-connection)
         (return 'error-send-str)
     })
     (if dev-log-tcp-timings {
@@ -194,7 +268,7 @@
     
     (var start (systime))
     (if (not (tcp-wait-for-recv 2000)) {
-        (tcp-close-connection)
+        ; (tcp-close-connection)
         (return 'error-wait-for-recv)
     })
     (if dev-log-tcp-timings {
@@ -204,25 +278,25 @@
     (var start (systime))
     (var response (tcp-recv))
     (if (not-eq (type-of response) 'type-array) {
-        (tcp-close-connection)
+        ; (tcp-close-connection)
         (return 'error-recv)
     })
     (if dev-log-tcp-timings {
         (log-time "tcp-recv" start)
     })
     
-    (var start (systime))
-    (var result (tcp-close-connection))
-    (if (not result) {
-        (print "connection was somehow already closed!")
-    })
-    (if (eq result 'error) {
-        (print "closing connection failed")
-        (return false)
-    })
-    (if dev-log-tcp-timings {
-        (log-time "tcp-close-connection" start)
-    })
+    ; (var start (systime))
+    ; (var result (tcp-close-connection))
+    ; (if (not result) {
+    ;     (print "connection was somehow already closed!")
+    ; })
+    ; (if (eq result 'error) {
+    ;     (print "closing connection failed")
+    ;     (return false)
+    ; })
+    ; (if dev-log-tcp-timings {
+    ;     (log-time "tcp-close-connection" start)
+    ; })
     
     (if dev-log-request-contents {
         (puts "\nGot response:")

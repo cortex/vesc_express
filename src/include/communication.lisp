@@ -54,7 +54,7 @@
     
     (var request (create-request 'POST (str-merge "/api/esp" path) "lindboard-staging.azurewebsites.net"))
     (request-add-headers request (list
-        '("Connection" . "Close")
+        '("Connection" . "keep-alive")
     ))
     (request-add-content request "application/json" data-str)
     
