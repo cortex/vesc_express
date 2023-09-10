@@ -43,6 +43,12 @@
     (at-command "AT+CASTATE?\r\n" "" 100)
 })
 
+(defun wait-for-at () {
+    (loopwhile (not (at-ready))
+        (sleep-ms 10)
+    )
+})
+
 @const-end
 
 (def main-run true)
@@ -52,6 +58,8 @@
 (defun stop-main () {
     (def main-run false)
 })
+
+(wait-for-at)
 
 (loopwhile main-run {
     (tick)

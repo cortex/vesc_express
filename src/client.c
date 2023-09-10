@@ -1371,9 +1371,9 @@ static void modem_pwr_key(bool grounded) {
 }
 
 static void modem_pwr_on() {
-    uint32_t start = time_now();
+    // uint32_t start = time_now();
 
-    VESC_IF->printf("powering on...");
+    // VESC_IF->printf("powering on...");
 
     modem_pwr_key(false);
     // Spec doesn't specify how long too wait here, urgh...
@@ -1396,7 +1396,7 @@ static void modem_pwr_on() {
     // // SMS Ready
     // uart_purge(AT_PURGE_TIMEOUT_MS);
 
-    VESC_IF->printf("modem ready (took %ums)", time_ms_since_i(start));
+    // VESC_IF->printf("modem ready (took %ums)", time_ms_since_i(start));
 }
 
 static bool modem_pwr_off() {
@@ -1886,20 +1886,21 @@ static void tcp_thd(void *arg) {
                 break;
             }
             case TCP_STATE_MODEM_PWR_OFF: {
-                modem_pwr_on();
-
                 uint32_t start = time_now();
+                
+                modem_pwr_on();
                 bool result = at_init();
+                
                 uint32_t ms = time_ms_since_i(start);
                 if (result) {
-                    VESC_IF->printf("AT ready (took %ums)", ms);
+                    VESC_IF->printf("modem ready (took %ums)", ms);
 
                     d->tcp_state = TCP_STATE_NOT_CONNECTED;
                     VESC_IF->mutex_lock(d->lock);
                     d->tcp_ready = true;
                     VESC_IF->mutex_unlock(d->lock);
                 } else {
-                    VESC_IF->printf("AT init failed (took %ums)", ms);
+                    VESC_IF->printf("modem init failed (took %ums)", ms);
 
                     d->tcp_state = TCP_STATE_INIT_FAILED;
                 }
@@ -3087,6 +3088,21 @@ static lbm_value ext_modem_pwr_off(lbm_value *args, lbm_uint argn) {
     return lbm_enc_bool(result);
 }
 
+static lbm_value ext_at_ready(lbm_value *args, lbm_uint argn) {
+    (void)args;
+    if (argn != 0) {
+        return VESC_IF->lbm_enc_sym_terror;
+    }
+    
+    data *d = use_state();
+    
+    VESC_IF->mutex_lock(d->lock);
+    bool ready = d->tcp_ready;
+    VESC_IF->mutex_unlock(d->lock);
+    
+    return lbm_enc_bool(ready);
+}
+
 static lbm_value ext_at_init(lbm_value *args, lbm_uint argn) {
     (void)args;
 
@@ -3524,6 +3540,7 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
     VESC_IF->lbm_add_extension("modem-pwr-on", ext_modem_pwr_on);
     VESC_IF->lbm_add_extension("modem-pwr-off", ext_modem_pwr_off);
+    VESC_IF->lbm_add_extension("at-ready", ext_at_ready);
     VESC_IF->lbm_add_extension("at-init", ext_at_init);
     VESC_IF->lbm_add_extension("tcp-status", ext_tcp_status);
     VESC_IF->lbm_add_extension("tcp-is-open", ext_tcp_is_open);
