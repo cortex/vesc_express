@@ -310,7 +310,7 @@ static bool str_contains_delim(const char *str, const char *delims) {
 }
 
 /**
- * Find the index of the first occurence substring.
+ * Find the index of the first occurrence substring.
  *
  * \param str The string to search in.
  * \param search The substring to search for.
