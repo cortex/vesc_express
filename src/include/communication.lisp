@@ -41,13 +41,16 @@
 
 ; Perform POST request to the lindboard API.
 ; `json-data` should be a valid json value
-; Returns a response object.
+; Returns a response object, with an additional 'data field, containing the
+; parsed json value.
 (defunret api-post-request (path json-data expect-response-data) {
     (var start (systime))
     
     (var start-part (systime))
     (var data-str (json-stringify json-data))
-    (log-time "stringifying json" start-part)
+    (if dev-log-request-build-timings {
+        (log-time "stringifying json" start-part)
+    })
     
     (var request (create-request 'POST (str-merge "/api/esp" path) "lindboard-staging.azurewebsites.net"))
     (request-add-headers request (list
@@ -63,50 +66,77 @@
     })
     
     (if (not-eq (http-status-type (response-get-status-code response)) 'successful) {
-        (puts (str-merge
+        (log-response-error response (str-merge
             "invalid status code "
             (str-from-n (response-get-status-code response))
         ))
         (return nil)
     })
     
-    (if (not expect-response-data)
+    (if (not expect-response-data) {
+        (if dev-log-response-value {
+            (if (= (response-get-content-length response) 0) {
+                (puts "Response contained no data")
+            } {
+                (puts (str-merge
+                    "Ignored response of length "
+                    (str-from-n (response-get-content-length response))
+                ))
+            })
+        })
+    
         (return true)
-    )
+    })
     
     (if (= (response-get-content-length response) 0) {
-        (puts "got no response data from API")
-        (log-time nil start)
+        (log-response-error response "got no response data from API")
+        (if dev-log-request-build-timings {
+            (log-time nil start)
+        })
         (return nil)
     })
     
     (if (not-eq (response-get-content-type response) 'mime-json) {
-        (puts (str-merge
+        (log-response-error response (str-merge
             "got invalid mime type '"
             (to-str 
                 (response-get-content-type response)
             )
             "' from API"
         ))
-        (log-time nil start)
+        (if dev-log-request-build-timings {
+            (log-time nil start)
+        })
         (return nil)
     })
     
     (var start-part (systime))
     (var data (json-parse (response-get-content response)))
-    (log-time "parsing json" start-part)
+    (if dev-log-request-build-timings {
+        (log-time "parsing json" start-part)
+    })
+
     
     (if (eq data 'error) {
-        (puts (str-merge
+        (log-response-error response (str-merge
             "parsing json failed, json:\n"
             (response-get-content response)
         ))
+        (puts )
         (return nil)
     })
     
-    (log-time nil start)
+    (if dev-log-response-value {
+        (puts "\nResponse:")
+        (puts (to-str data))
+        (puts "\n")
+    })
     
-    data
+    (if dev-log-request-build-timings {
+        (log-time nil start)
+    })
+    
+    (cons (cons 'data data) response)
 })
 
 (defunret api-status-update (batt-charge-level batt-charge-remaining-mins batt-charge-status batt-charge-limit long lat) {
@@ -146,11 +176,13 @@
         (return nil)
     })
     
-    (if (not (is-list response)) {
+    (var data (assoc response 'data))
+    
+    (if (not (is-list data)) {
         (+set num-malformed-action-responses 1)
-        (puts (str-merge
-            "Invalid JSON value (expected list):"
-            (to-str response)
+        (log-response-error response (str-merge
+            "invalid JSON value (expected list):"
+            (to-str data)
         ))
         (return nil)
     })
@@ -193,7 +225,7 @@
             }
                 true
             )
-        }) response)
+        }) data)
     ))
     
     actions

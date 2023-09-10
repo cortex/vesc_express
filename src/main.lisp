@@ -49,6 +49,10 @@
 
 (print "parsing done")
 
+(defun stop-main () {
+    (def main-run false)
+})
+
 (loopwhile main-run {
     (tick)
     

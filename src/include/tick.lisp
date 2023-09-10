@@ -97,11 +97,10 @@
     (def delta-ms (ms-since last-tick-time))
     (def last-tick-time (systime))
     
-    (simulate-tick)
+    (simulate-tick (/ delta-ms 1000.0))
     
     (if (!= (length pending-actions) 0) {
         (var action (first pending-actions))
-        (print-vars action)
         (handle-action action)
         (list-pop-start pending-actions)
         (return)

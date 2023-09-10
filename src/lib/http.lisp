@@ -57,6 +57,16 @@
     )
 )
 
+(defun log-response-error (response reason) {
+    (puts "\nResponse:")
+    (puts (to-str-safe (assoc response 'raw)))
+    (puts (str-merge
+        "Request failed with:\n"
+        (to-str-safe reason)
+    ))
+})
+
+
 ;;; Request stuff
 
 ; Create a request object.
@@ -155,32 +165,53 @@
 (defunret send-single-request (host request-str) {
     (tcp-close-connection)
     
+    (var start (systime))
     (var result (tcp-connect-host host 80))
     (if (not result) {
         (return 'error-connect-host)
     })
+    (if dev-log-tcp-timings {
+        (log-time "tcp-connect-host" start)
+    })
     
+    (var start (systime))
     (if (not (tcp-wait-until-connected 1000)) {
         (tcp-close-connection)
         (return 'error-wait-connected)
     })
+    (if dev-log-tcp-timings {
+        (log-time "tcp-wait-until-connected" start)
+    })
         
+    (var start (systime))
     (if (not (tcp-send-str request-str)) {
         (tcp-close-connection)
         (return 'error-send-str)
     })
+    (if dev-log-tcp-timings {
+        (log-time "tcp-send-str" start)
+    })
     
+    (var start (systime))
     (if (not (tcp-wait-for-recv 2000)) {
         (tcp-close-connection)
         (return 'error-wait-for-recv)
     })
+    (if dev-log-tcp-timings {
+        (log-time "tcp-wait-for-recv" start)
+    })
     
+    (var start (systime))
     (var response (tcp-recv))
     (if (not-eq (type-of response) 'type-array) {
         (tcp-close-connection)
         (return 'error-recv)
     })
+    (if dev-log-tcp-timings {
+        (log-time "tcp-recv" start)
+    })
     
+    (var start (systime))
     (var result (tcp-close-connection))
     (if (not result) {
         (print "connection was somehow already closed!")
@@ -189,17 +220,20 @@
         (print "closing connection failed")
         (return false)
     })
+    (if dev-log-tcp-timings {
+        (log-time "tcp-close-connection" start)
+    })
     
-    (puts "\nGot response:")
-    (puts response)
+    (if dev-log-request-contents {
+        (puts "\nGot response:")
+        (puts response)        
+    })
     
     (var start (systime))
     (var response (parse-response response))
-    (puts (str-merge
-        "parsing response took "
-        (str-from-n (ms-since start))
-        "ms"
-    ))
+    (if dev-log-request-build-timings {
+        (log-time "parsing response" start)
+    })
     response
 })
 
@@ -216,18 +250,18 @@
 (defunret send-request (request) {
     (var start (systime))
     (var request-str (build-request request))
-    (puts (str-merge
-        "building request took "
-        (str-from-n (ms-since start))
-        "ms"
-    ))
+    (if dev-log-request-build-timings {
+        (log-time "building request" start)
+    })
     ; (print request-str)
     (if (not request-str) {
         (return 'error-invalid-request)
     })
     
-    (puts "\nSending request:")
-    (puts request-str)
+    (if dev-log-request-contents {
+        (puts "\nSending request:")
+        (puts request-str)        
+    })
     
     ; (var first-connect-error nil)
     (looprange i 0 request-send-tries {
@@ -237,14 +271,14 @@
         (cond
             (success (return result))
             ((includes connection-errors result) {
-                (print (to-str-delim ""
+                (puts (to-str-delim ""
                     "connection failed with "
                     result
                     ". Retrying..."
                 ))
             })
             (t {
-                (print (to-str-delim ""
+                (puts (to-str-delim ""
                     "request response parsing failed with "
                     result
                 ))
@@ -253,7 +287,7 @@
         )
     })
     
-    (print (str-merge
+    (puts (str-merge
         "request timed out after "
         (str-from-n request-send-tries)
         " tries"
@@ -435,6 +469,7 @@
         (cons 'content-length content-length)
         (cons 'content-type content-type)
         (cons 'content content)
+        (cons 'raw response-str)
     )
 })
 
