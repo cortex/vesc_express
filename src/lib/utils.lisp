@@ -38,6 +38,86 @@
     (foldl (fn (all x) (and all x)) true lst)
 )
 
+(defun list-last-item (lst)
+    (if (eq lst nil)
+        nil
+        (ix lst (- (length lst) 1))
+    )
+)
+
+; Destructively remove the last element of list, returning the removed item.
+; We need to return the list, since if it has a length of one, we can no longer
+; update it via a reference.
+; If the list has no length, nil is returned.
+(def list-pop-end (macro (lst) `{
+    (var len (length ,lst))
+    (match len
+        (0 nil)
+        (1 {
+            (var value (first ,lst))
+            (setq ,lst nil)
+            value
+        })
+        (_ {
+            (var current ,lst)
+            (looprange i 0 (- len 2) {
+                (setq current (cdr current))
+            })
+            (var value (car (cdr current)))
+            (setcdr current nil)
+            value
+        })
+    )
+}))
+
+(def list-push-start (macro (lst value) `{
+    (setq ,lst (cons ,value ,lst))
+    ,value
+}))
+
+(def list-push-end (macro (lst value) `{
+    (var len (length ,lst))
+    (var value ,value)
+    (match len
+        (0 {
+            (setq ,lst (cons value nil))
+            value
+        })
+        (_ {
+            (var current ,lst)
+            (looprange i 0 (- len 1) {
+                (setq current (cdr current))
+            })
+            (setcdr current (cons value nil))
+            value
+        })
+    )
+}))
+
+(def list-append-end (macro (lst value-list) `{
+    (var len (length ,lst))
+    (match len
+        (0 {
+            (setq ,lst ,value-list)
+            ,value-list
+        })
+        (_ {
+            (var current ,lst)
+            (looprange i 0 (- len 1) {
+                (setq current (cdr current))
+            })
+            (setcdr current ,value-list)
+            ,value-list
+        })
+    )
+}))
+
+(def list-pop-start (macro (lst) `{
+    (var value (car ,lst))
+    (setq ,lst (cdr ,lst))
+    value
+}))
+
 (defun is-list (value)
     (or
         (eq (type-of value) 'type-list)
@@ -195,6 +275,10 @@
 
 (defun ms-since (timestamp) {
     (* (secs-since timestamp) 1000.0)
+})
+
+(defun sleep-ms (ms) {
+    (sleep (/ ms 1000.0))
 })
 
 (defun inspect (value) {

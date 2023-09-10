@@ -8,7 +8,7 @@
 (def num-failed-status-requests 0)
 (def num-malformed-action-responses 0)
 
-@const-start
+; @const-start
 
 (def charging-status-map '(
     (0 . disconnected)
@@ -42,7 +42,7 @@
 ; Perform POST request to the lindboard API.
 ; `json-data` should be a valid json value
 ; Returns a response object.
-(defunret api-post-request (path content-type json-data) {
+(defunret api-post-request (path json-data expect-response-data) {
     (var start (systime))
     
     (var start-part (systime))
@@ -53,14 +53,26 @@
     (request-add-headers request (list
         '("Connection" . "Close")
     ))
-    (request-add-content request content-type data-str)
-  
+    (request-add-content request "application/json" data-str)
+    
     (var response (send-request request))
     
     (if (not response) {
         (+set num-failed-status-requests 1)
-        (return nill)
+        (return nil)
     })
+    
+    (if (not-eq (http-status-type (response-get-status-code response)) 'successful) {
+        (puts (str-merge
+            "invalid status code "
+            (str-from-n (response-get-status-code response))
+        ))
+        (return nil)
+    })
+    
+    (if (not expect-response-data)
+        (return true)
+    )
     
     (if (= (response-get-content-length response) 0) {
         (puts "got no response data from API")
@@ -110,7 +122,7 @@
                 (cons "serialNumber" (env-get 'serial-number-batt))
                 (cons "firmwareId" (env-get 'firmware-id-batt))
                 (cons "chargeLevel" (to-i (* batt-charge-level 100.0)))
-                (cons "chargeMinutesRemaining" batt-charge-remaining-mins)
+                (cons "chargeMinutesRemaining" (to-i batt-charge-remaining-mins))
                 (cons "chargeStatus" batt-charge-status)
                 (cons "chargeLimit" (to-i (* batt-charge-limit 100.0)))
                 (cons "longitude" long)
@@ -128,7 +140,7 @@
         ))
     ))
     
-    (var response (api-post-request "/batteryStatusUpdate" "application/json" data))
+    (var response (api-post-request "/batteryStatusUpdate" data true))
     
     (if (eq response nil) {
         (return nil)
@@ -187,10 +199,20 @@
     actions
 })
 
+(defun api-confirm-action (hw-action-id) {
+    (var data (list '+assoc
+        (cons "registrationId" registration-id)
+        (cons "hardwareActionId" hw-action-id)
+    ))
+    
+    (var response (api-post-request "/confirmAction" data false))
+    
+    (if (eq response nil) {
+        (return nil)
+    })
+    true
+})
+
 (defun api-test () {
-    ; (var long-str "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    ; (var really-long-str (str-merge long-str long-str long-str long-str long-str))
-    ; (print (str-len really-long-str))
-    ; (puts really-long-str)
     (print (api-status-update 0.5 10 'disconnected 0.8 0.0 0.0))
 })

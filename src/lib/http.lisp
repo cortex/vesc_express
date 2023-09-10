@@ -29,6 +29,34 @@
     (apply str-merge (reverse segments))
 })
 
+;;; HTTP utils
+
+(defun http-status-type (status-code)
+    (cond
+        ((and
+            (>= status-code 100)
+            (< status-code 200)
+        ) 'information)
+        ((and
+            (>= status-code 200)
+            (< status-code 300)
+        ) 'successful)
+        ((and
+            (>= status-code 300)
+            (< status-code 400)
+        ) 'redirect)
+        ((and
+            (>= status-code 400)
+            (< status-code 500)
+        ) 'client-error)
+        ((and
+            (>= status-code 500)
+            (< status-code 600)
+        ) 'server-error)
+        (_ nil)
+    )
+)
+
 ;;; Request stuff
 
 ; Create a request object.
@@ -370,6 +398,7 @@
     (var real-content-length (- (str-len response-str) headers-end-index 4))
     (if (and
         (not chunked-encoding)
+        (not-eq content-length nil)
         (> content-length real-content-length)
     ) {
         (return 'error-invalid-content-length)
@@ -414,7 +443,7 @@
 (defunret parse-response-dest-line (line) {
     (var dest-parts (str-split line " "))
     
-    (if (!= (length dest-parts) 3) {
+    (if (< (length dest-parts) 3) {
         (return 'error-invalid-status)
     })
     
@@ -446,7 +475,7 @@
         (return 'error-invalid-status)
     })
     
-    (var status-msg (ix dest-parts 2))
+    (var status-msg (str-join (drop dest-parts 2) " "))
     
     (list
         (cons 'version (list version-major version-minor))
