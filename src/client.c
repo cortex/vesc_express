@@ -3425,15 +3425,15 @@ static lbm_value ext_json_stringify(lbm_value *args, lbm_uint argn) {
  *
  * Perform a single step in the json tokenization loop
  *
- * \param str the current json string to tokenize.
- * \param tokens the current list of tokens.
- * \return list of three values:
+ * \param str The current json string to tokenize.
+ * \param tokens The current list of tokens.
+ * \return either a list of three values:
  * 1. the new list of tokens,
  * 2. the new string,
  * 3. and the amount of characters consumed,
  * or an error symbol:
- * - 'error-unclosed-quote
- * - 'error-invalid-char
+ * - 'error-unclosed-quote,
+ * - 'error-invalid-char.
  */
 static lbm_value ext_json_tokenize_step(lbm_value *args, lbm_uint argn) {
     if (argn != 2 || !VESC_IF->lbm_is_byte_array(args[0])

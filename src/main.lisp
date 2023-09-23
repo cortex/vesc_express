@@ -27,7 +27,20 @@
     (assoc env prop)
 )
 
-;; to be removed after update of lbm.
+(defun at-command (command expect b-size)
+    (let ((response (array-create b-size)))
+        (progn
+            (ext-uart-purge)
+            (ext-uart-write command)
+            (sleep 0.1)
+            (ext-uart-readline response b-size)
+            (print response)
+            (match (first (str-split response "\r"))
+                ( (? x) (str-cmp x expect (str-len expect)) 't)
+                ( (? x) (str-cmp x "ERROR" 5) 'nil)
+                ( _ (progn (print "AT-ERROR: " response) 'nil))
+            )
+)))
 
 (defun uart-readline-trim (buf-size) {
     (var buf (array-create (+ buf-size 1)))
@@ -38,6 +51,9 @@
 (defun print-uart () {
     (print (uart-readline-trim 100))
 })
+
+(defun set-baud-rate () 
+    (at-command "AT+IPR=115200\r\n" "OK" 1000))
 
 (defun status () {
     (at-command "AT+CASTATE?\r\n" "" 100)
