@@ -32,7 +32,7 @@
 (defun event-handler ()
     (loopwhile t
         (recv
-            ((event-esp-now-rx (? src) (? des) (? data)) (proc-data src des data))
+            ((event-esp-now-rx (? src) (? des) (? data) (?rssi)) (proc-data src des data))
             (_ nil)
 )))
 
@@ -186,102 +186,45 @@
 (def failed-pings 0)
 (def connection-n 0) ; when this reaches 4, the normal communications are ran
 
+(def thr-fail-cnt 0)
+(def is-connected true)
+(def any-ping-has-failed false)
+
 @const-start
 
 (defun connection-tick () {
-    (var ping-battery (if dev-simulate-connection
-        dbg-ping-battery
-        ping-battery
-    ))
-    (var start (systime))
-    
-    (var new-success (if dev-disable-connection-check
-        true
-        (ping-battery)
-    ))
-    
-    (if (and new-success (not ping-success) (not is-connected)) { ; connection established
-        ; (print "connection restored")
-    })
-    
-    (if (and
-        (not new-success)
-        ping-success
-    ) {; a ping failed
-        ; (print "first ping fail")
-        (def ping-fail-time (systime))
-        (def failed-pings 0)
-        (def any-ping-has-failed true)
+        (var start (systime))
         
-        (def measure-ping-failed-total-count (+ measure-ping-failed-total-count 1))
-    })
-    
-    (def ping-success new-success)
-    
-    (if (not dev-disable-connection-check) {
-        (if ping-success {
-            (def is-connected true)
-            (def any-ping-has-failed false)
-        } {
-            (def failed-pings (+ failed-pings 1))
-            (if (and
-                is-connected
-                (> failed-pings 4)
-                ; (> (secs-since ping-fail-time) 0.2) ; 200 ms
-                (> (secs-since ping-fail-time) 0.08) ; 80 ms
-            ) { ; connection with battery has been lost
-                (def is-connected false)
-                (def any-ping-has-failed false)
-                
-                ; (print (str-merge "connection has been lost (took " (to-str failed-pings) " pings)"))
-                (def measure-connections-lost-count (+ measure-connections-lost-count 1))
-                (def measure-last-fail-count failed-pings)            
-            })
-        })
-    } {
-        (def is-connected true)
-        (def any-ping-has-failed false)
-    })
-    
-    (var tick-secs (if any-ping-has-failed
-        0.004 ; 4 ms
-        0.01 ; 10 ms
-    ))
-    
-    ; normal communication
-    (if (and
-        (not any-ping-has-failed)
-        (= connection-n 0)
-    ) {
+        ; normal communication
         (def thr (thr-apply-gear thr-input))
         
         (if (and (> (secs-since last-input-time) 30.0) (not dev-disable-inactivity-check)) {
-            (set-thr-is-active false)
+                (set-thr-is-active false)
         })
         (if (and (not is-connected) (not dev-disable-connection-check))
             (set-thr-is-active false)
         )
         
         (if dev-force-thr-enable {
-            (set-thr-is-active true)
+                (set-thr-is-active true)
         })
         
-        (if is-connected
-            (send-thr (if thr-active
-                thr
-                0
-            ))
+        (if (send-thr (if thr-active thr 0))
+            (def thr-fail-cnt 0)
+            (def thr-fail-cnt (+ thr-fail-cnt 1))
         )
-
-    })
-    
-    (def connection-n (+ connection-n 1))
-    (if (>= connection-n 4)
-        (def connection-n 0)
-    )
-    
-    (var secs (- tick-secs (secs-since start)))
-    (sleep (if (< secs 0.0) 0 secs))
+        
+        (def is-connected (< thr-fail-cnt 8))
+        
+;        (if (not is-connected) (def thr-active false))
+        
+        (var tick-secs (if any-ping-has-failed
+                0.004 ; 4 ms
+                0.01 ; 10 ms
+        ))
+        
+        (var secs (- tick-secs (secs-since start)))
+        (sleep (if (< secs 0.0) 0 secs))
 })
 
 (defun connect-start-events () {
