@@ -16,7 +16,7 @@
 @const-start
 
 ;;; Dev flags
-(import "../.dev-flags.lisp" 'code-dev-flags)
+(import "../dev-flags.lisp" 'code-dev-flags)
 (read-eval-program code-dev-flags)
 
 ;;; Check and render remote low battery screen
