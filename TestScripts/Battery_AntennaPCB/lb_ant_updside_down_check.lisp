@@ -1,6 +1,8 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
+(import orientation.lisp)
+
 ;(def remote-addr '(96 85 249 201 187 161)) ; Remote 1
 ; (def remote-addr '(220 84 117 93 64 29)) ; Remote 3
 ;(def remote-addr '(220 84 117 137 75 53)) ; Remote v2.5 1
@@ -27,11 +29,6 @@
 (defun get-rpy
         (rcode-run bat1-can 0.5 '(get-imu-rpy)))
 
-;; Check if the board is upside down using roll component
-(defun upside-down (rpy) {
-    (def roll (car rpy))
-    (> (abs roll)  (* (acos 0))) ; If roll > 90 
-})
 
 (defun thr-rx (thr) {
         (def thr-val thr)
