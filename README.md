@@ -1,7 +1,7 @@
 # Firmware Guide
 Description of how to get and flash the firmwares for the different boards
 
-## CPU Overview
+## Overview
 
 The following is a summary of all microcontrollers (MCUs) present on the lindboard parts (Battery, Jet and Remote). Note that the CAN IDs in this table are set by default in the hardware files.
 
@@ -18,26 +18,54 @@ The following is a summary of all microcontrollers (MCUs) present on the lindboa
 ## LispBM source
 
 Remote https://github.com/Lindboard/remote_software
-
 Battery https://github.com/Lindboard/Lind_Battery_Software
+LB Ant https://github.com/Lindboard/hwconf_vesc_express
 
 ## Architecture
 
+### LB_ANT
 
-# Battery
-Main logic runs on LB_ANT, communicating via CAN 
+* Handles connection to Remote, WiFi, 4G
+* Handles NFC
 
+### LB-ANT-STM
 
+* ?
 
+### LB / ESC
+
+* Handles engine control
+* Runs LispBM code-server
+* Receives throttle RPC calls over CAN/code-server
+
+### LB BMS
+
+* Battery management system
+* Measures battery level
+
+## Throttle flow
 
 ```mermaid
 sequenceDiagram
 
-Remote ->> Battery: Throttle
+Remote ->> LB_ANT: Throttle thr-rx (ESP-NOW)
+LB_ANT ->> ESC: Throttle (canset-current-rel)
 
+LB_ANT -->> Remote: soc-bms, duty, kmh, motor-kw (ESP-NOW)
 ```
 
+## Pairing flow
 
+```mermaid
+sequenceDiagram
+
+Remote ->> Board: scan NFC tag
+Board ->> Remote: broadcast nfc tag id
+
+LB_ANT ->> Board: scan NFC tag
+LB_ANT ->> Board: broadcast NFC tag id
+
+```
 
 ## How to Build and Flash
 
