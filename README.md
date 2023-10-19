@@ -101,7 +101,7 @@ cp ../FirmwareGuide/conf_bldc/lb/* ./hwconf/lb/
 
 #Build
 make lb
-```shell
+```
 Files are in build/lb/lb.bin
 
 ### Battery/BMS - STM32L4
