@@ -1,6 +1,6 @@
 [submodule "vesc_express"]
 path = vesc_express
-url = git@github.com:vedderb/vesc_express
+url = git@github.com:laxsjo/vesc_express-laxsjo
 [submodule "bldc"]
 path = bldc
 url = git@github.com:vedderb/bldc
