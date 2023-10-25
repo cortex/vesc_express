@@ -12,6 +12,7 @@ conf_general.h.template:
 		sed -e 's/hw_xp_t.h/$$VESC_HW_HEADER/g' | \
 		sed -e 's/hw_xp_t.c/$$VESC_HW_SOURCE/g'  > conf_general.h.template
 
+.NOTPARALLEL: 
 vesc-express: conf_general.h.template 
 	# Install all hwconf files
 	cp conf_express/* vesc_express/main
@@ -27,6 +28,7 @@ lb-hc: vesc_express
 
 lb-bms-wifi: vesc_express
 	./build-vesc-express.sh lb_bms_wifi
+
 
 lb:
 	mkdir -p bldc/hwconf/lb
