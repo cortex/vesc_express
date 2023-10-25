@@ -1,12 +1,12 @@
 [submodule "vesc_express"]
-	path = vesc_express
-	url = git@github.com:vedderb/vesc_express
+path = vesc_express
+url = git@github.com:vedderb/vesc_express
 [submodule "bldc"]
-	path = bldc
-	url = git@github.com:vedderb/bldc
+path = bldc
+url = git@github.com:vedderb/bldc
 [submodule "vesc_bms_fw"]
-	path = vesc_bms_fw
-	url = git@github.com:vedderb/vesc_bms_fw
+path = vesc_bms_fw
+url = git@github.com:vedderb/vesc_bms_fw
 [submodule "vesc_gpstm"]
-	path = vesc_gpstm
-	url = git@github.com:vedderb/vesc_gpstm
+path = vesc_gpstm
+url = git@github.com:vedderb/vesc_gpstm
