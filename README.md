@@ -1,25 +1,29 @@
 # Firmware Guide
+
 Description of how to get and flash the firmwares for the different boards
 
 ## Overview
 
-The following is a summary of all microcontrollers (MCUs) present on the lindboard parts (Battery, Jet and Remote). Note that the CAN IDs in this table are set by default in the hardware files.
+The following is a summary of all microcontrollers (MCUs) present on the
+lindboard parts (Battery, Jet and Remote). 
 
-| Part    | PCB       | MCU       | CAN NAME    | CAN ID | Firmware     | LispBM | HW-file                                                              |
-|:--------|-----------|:----------|-------------|:-------|:-------------|--------|:---------------------------------------------------------------------|
-| Battery | ESC       | STM32F4   | LB          | 10, 11 | bldc         |        | `./conf_bldc`                                                        |
-| Battery | BMS       | STM32L4   | BMS(lb)     | 20     | vesc_bms_fw  |        | `./conf_bms/hw_lb.c`, `./conf_bms/hw_lb.h`                           |
-| Battery | BMS       | ESP32-C3  | LB BMS Wifi | 21     | vesc_express |        | `./conf_express/hw_lb_bms_wifi.c`, `./conf_express/hw_lb_bms_wifi.h` |
-| Battery | Antenna   | STM32G431 | LB-ANT-STM  | 30     | vesc_gpstm   |        | `./conf_gpstm/hw_lb_ant.c`, `./conf_gpstm/hw_lb_ant.h`               |
-| Battery | Antenna   | ESP32-C3  | LB_ANT      | 31     | vesc_express |        | `./conf_express/hw_lb_ant.c`, `./conf_express/hw_lb_ant.h`           |
-| Jet     | Interface | ESP32-C3  |             | 40     | vesc_express |        | `./conf_express/hw_lb_if.c`, `./conf_express/hw_lb_if.h`             |
-| Remote  | Display   | ESP32-C3  |             | 50     | vesc_express |        | `./conf_express/hw_lb_hc.c`, `./conf_express/hw_lb_hc.c`             |
+The CAN IDs in this table are set by default in the hardware files.
+
+| Part    | PCB  | MCU        | CAN NAME    | CAN ID | Firmware     |
+|:--------|------|:-----------|-------------|:-------|:-------------|
+| Battery | ESC  | STM32-F4   | LB          | 10, 11 | bldc         |
+| Battery | BMS  | STM32-L4   | BMS(lb)     | 20     | vesc_bms_fw  |
+| Battery | BMS  | ESP32-C3   | LB BMS Wifi | 21     | vesc_express |
+| Battery | ANT  | STM32-G431 | LB-ANT-STM  | 30     | vesc_gpstm   |
+| Battery | ANT  | ESP32-C3   | LB_ANT      | 31     | vesc_express |
+| Jet     | ANT  | ESP32-C3   |             | 40     | vesc_express |
+| Remote  | DISP | ESP32-C3   |             | 50     | vesc_express |
 
 ## LispBM source
 
-Remote https://github.com/Lindboard/remote_software
-Battery https://github.com/Lindboard/Lind_Battery_Software
-LB Ant https://github.com/Lindboard/hwconf_vesc_express
+Remote <https://github.com/Lindboard/remote_software>
+Battery <https://github.com/Lindboard/Lind_Battery_Software>
+LB Ant <https://github.com/Lindboard/hwconf_vesc_express>
 
 ## Architecture
 
@@ -66,6 +70,22 @@ LB_ANT ->> Board: scan NFC tag
 LB_ANT ->> Board: broadcast NFC tag id
 
 ```
+
+## Logging low
+
+```mermaid
+sequenceDiagram
+
+Remote ->> Board: scan NFC tag
+Board ->> Remote: broadcast nfc tag id
+
+LB_ANT ->> Board: scan NFC tag
+LB_ANT ->> Board: broadcast NFC tag id
+
+```
+
+
+
 
 ## How to Build and Flash
 
