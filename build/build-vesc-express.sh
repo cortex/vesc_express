@@ -1,15 +1,14 @@
-#!/bin/bash
-set -x
+#!/usr/bin/env bash
+set -euxo pipefail
 
-SRCDIR=vesc_express
-# Usage ./build-vesc-express template
+SRCDIR=./dependencies/vesc_express
+# Usage ./build-vesc-express template target
 # Patch conf_general.h
-cat conf_general.h.template |
+cat ./build/conf_general.h.template |
   VESC_HW_SOURCE=hw_$1.c VESC_HW_HEADER=hw_$1.h envsubst > \
     ./$SRCDIR/main/conf_general.h
-
-source esp-idf-v5.0.2/export.sh
 cd $SRCDIR
+# idf.py clean
 idf.py build
 mkdir -p build
-cp ./build/$SRCDIR.bin ../build/$1.bin
+cp ./build/vesc_express.bin ../../$2
