@@ -75,5 +75,6 @@ build/jet-if-esp.bin: \
 build/remote-disp-esp.bin: \
 	Remote/DISP/esp/conf_express/hw_lb_hc.c \
 	Remote/DISP/esp/conf_express/hw_lb_hc.h
-	
+
+	cp ./Remote/DISP/esp/conf_express/* ./dependencies/vesc_express/main
 	./build/build-vesc-express.sh lb_hc $@
