@@ -18,6 +18,7 @@
             sha256 = "sha256-dlmtTjoz4qQdFG229v9bIHKpYBzjM44fv+XhdDBu2Os=";
           })
           pkgs.python310Packages.future
+          pkgs.envsubst
         ];
         packages = [
           pkgs.envsubst
