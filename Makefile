@@ -59,7 +59,7 @@ build/bat-esc-esp.bin: \
 	Battery/ESC/esp/conf_bldc/lb/hw_lb_core.h \
 	Battery/ESC/esp/conf_bldc/lb/hw_lb.h
 	
-	cd ./dependencies/bldc && make arm_sdk_install
+	# cd ./dependencies/bldc && make arm_sdk_install
 	mkdir -p ./dependencies/bldc/hwconf/lb
 	cp Battery/ESC/esp/conf_bldc/lb/* ./dependencies/bldc/hwconf/lb
 	cd ./dependencies/bldc && make -j 4 fw_lb

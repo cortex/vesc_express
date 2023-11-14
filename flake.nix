@@ -19,6 +19,10 @@
           })
           pkgs.python310Packages.future
         ];
+        packages = [
+          pkgs.envsubst
+          pkgs.gcc-arm-embedded
+        ];
       };
     };
 }
