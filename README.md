@@ -3,13 +3,13 @@
 ## Overview
 
 | Part    | PCB  | MCU        | ID                                  | CAN NAME    | CAN ID | Firmware     |
-|:--------|------|:-----------|-------------------------------------|-------------|:-------|:-------------|
+| :------ | ---- | :--------- | ----------------------------------- | ----------- | :----- | :----------- |
 | Battery | ESC  | STM32-F4   | [bat-esc-stm](#bat-esc-stm)         | LB          | 10, 11 | bldc         |
 | Battery | BMS  | STM32-L4   | [bat-bms-stm](#bat-bms-stm)         | BMS(lb)     | 20     | vesc_bms_fw  |
 | Battery | BMS  | ESP32-C3   | [bat-bms-esp](#bat-bms-esp)         | LB BMS Wifi | 21     | vesc_express |
 | Battery | ANT  | STM32-G431 | [bat-ant-stm](#bat-ant-stm)         | LB-ANT-STM  | 30     | vesc_gpstm   |
 | Battery | ANT  | ESP32-C3   | [bat-ant-esp](#bat-ant-esp)         | LB_ANT      | 31     | vesc_express |
-| Jet     | IF  | ESP32-C3   | [jet-if-esp](#jet-if-esp)         |             | 40     | vesc_express |
+| Jet     | IF   | ESP32-C3   | [jet-if-esp](#jet-if-esp)           |             | 40     | vesc_express |
 | Remote  | DISP | ESP32-C3   | [remote-disp-esp](#remote-disp-esp) |             | 50     | vesc_express |
 
 ```mermaid
