@@ -1,0 +1,13 @@
+diff --git a/vesc_tool.pro b/vesc_tool.pro
+index 3539330..c6e7c2c 100644
+--- a/vesc_tool.pro
++++ b/vesc_tool.pro
+@@ -277,7 +277,7 @@ RESOURCES += res_config.qrc
+ 
+ !exclude_fw {
+     RESOURCES += res_fw_bms.qrc
+-    RESOURCES += res/firmwares/res_fw.qrc
++    #RESOURCES += res/firmwares/res_fw.qrc
+     RESOURCES += res/firmwares_esp/res_fw_esp.qrc
+ }
+ 
