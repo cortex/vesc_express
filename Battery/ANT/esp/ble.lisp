@@ -40,8 +40,9 @@
     (var addr (car (cdr char-spec)))
     `( 
         (uuid  . ,addr)
-        (prop  prop-read)
+        (prop  prop-read) 
         (max-len . 100)
+        ;(descr  ((uuid . [0x2a 0x25]) (max-len . 20) (default-value . [0 0]) ))
     )})
 
 
@@ -67,4 +68,6 @@
 (start-ble)
 (reset-ble)
 (print (register-service (apath services '(wifi))))
-(print (register-service (apath services '(registration))))
+(define  registration-handles (register-service (apath services '(registration))))
+(print (apath (car (cdr registration-handles)) '(registration_id)))
+(ble-attr-set-value (apath (car (cdr registration-handles)) '(registration_id)) "BA3333333")
