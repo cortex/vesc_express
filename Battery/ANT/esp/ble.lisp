@@ -1,12 +1,19 @@
 ;; Parse a UUID string to byte array
 (defun uuid (uuid-string) 
-    (let (
-        (out (bufcreate 16))
-        (hex-str (str-replace uuid-string "-" ""))
-        (hex-byte-at (lambda (i str) (str-to-i (str-part str (* i 2) 2) 16)))
-        (set-byte-at (lambda (i str buf) (bufset-u8 buf i (hex-byte-at i str)))))
-        {(map (lambda (i) (set-byte-at i hex-str out)) (range 16)) out }
-))
+    (let ((out (bufcreate 16))
+          (hex-str (str-replace uuid-string "-" ""))
+          (hex-byte-at (lambda (i str) (str-to-i (str-part str (* i 2) 2) 16)))
+          (set-byte-at (lambda (i str buf) (bufset-u8 buf i (hex-byte-at i str)))))
+         {(map (lambda (i) (set-byte-at i hex-str out)) (range 16)) out }))
+
+;; 
+(defun apath (alist path) 
+    (if (eq path nil) alist 
+        (apath (assoc alist (car path)) (cdr path))))
+
+(defun zip (xs ys)
+  (if (or (eq xs nil) (eq ys nil)) nil
+      (cons (cons (first xs) (first ys)) (zip (rest xs) (rest ys)))))
 
 ;; BLE Services specs
 (define services `(
@@ -26,29 +33,16 @@
       (status          ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319142"))
       (available       ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319143"))))))
 
-;; 
-(defun apath (alist path) 
-    (if (eq path nil) alist 
-        (apath (assoc alist (car path)) (cdr path))))
 
 (defun start-ble () {
     (ble-set-name "Lindboard battery 8") ; TODO: battery ID goes here
-    (ble-start-app)
-})
+    (ble-start-app)})
 
 (defun make-char (char-spec) {
     (var addr (car (cdr char-spec)))
-    `( 
-        (uuid  . ,addr)
-        (prop  prop-read) 
-        (max-len . 100)
-        ;(descr  ((uuid . [0x2a 0x25]) (max-len . 20) (default-value . [0 0]) ))
-    )})
-
-
-(defun zip (xs ys)
-  (if (or (eq xs nil) (eq ys nil)) nil
-      (cons (cons (first xs) (first ys)) (zip (rest xs) (rest ys)))))
+    `((uuid  . ,addr)
+      (prop  prop-read) 
+      (max-len . 100))})
 
 (defun register-service (service-spec) 
     (let ((service-addr (car (assoc service-spec 'service)))
@@ -60,14 +54,28 @@
 
 (defun reset-ble () {
     (var handles (ble-get-services))
-    (if handles {
-        (map ble-remove-service handles)
-    })
-})
+    (if handles {(map ble-remove-service handles)})})
+
+(defun remove-last-byte (string)
+    (let ((newlen (str-len string)) 
+          (out (bufcreate newlen)))
+         {(bufcpy out 0 string 0 newlen) out }))
 
 (start-ble)
 (reset-ble)
-(print (register-service (apath services '(wifi))))
-(define  registration-handles (register-service (apath services '(registration))))
-(print (apath (car (cdr registration-handles)) '(registration_id)))
-(ble-attr-set-value (apath (car (cdr registration-handles)) '(registration_id)) "BA3333333")
+
+(define registration-handles (register-service (apath services '(registration))))
+(define wifi-handles         (register-service (apath services '(wifi))))
+
+(defun ble-attr-set-str (handles path value-str) 
+    (ble-attr-set-value 
+        (apath (ix handles 1) path) 
+        (remove-last-byte value-str)))
+
+(ble-attr-set-str registration-handles '(battery) "BA3333333") 
+(ble-attr-set-str registration-handles '(jet)     "JE3333333") 
+(ble-attr-set-str registration-handles '(remote)  "RE3333333") 
+(ble-attr-set-str registration-handles '(board)   "BO3333333")
+
+
+
