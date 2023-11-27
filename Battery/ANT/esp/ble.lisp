@@ -6,7 +6,7 @@
           (set-byte-at (lambda (i str buf) (bufset-u8 buf i (hex-byte-at i str)))))
          {(map (lambda (i) (set-byte-at i hex-str out)) (range 16)) out }))
 
-;; 
+;; Get item from nested assoclist
 (defun apath (alist path) 
     (if (eq path nil) alist 
         (apath (assoc alist (car path)) (cdr path))))
@@ -20,29 +20,38 @@
   (registration 
     (service           ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a0"))
     (characteristics
-      (registration_id ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a1"))
-      (lte             ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a2"))
-      (battery         ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a3"))
-      (jet             ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a4"))
-      (board           ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a5"))
-      (remote          ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a6"))))
+      (registration_id ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a1") (prop-read prop-write))
+      (lte             ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a2") (prop-read))
+      (battery         ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a3") (prop-read))
+      (jet             ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a4") (prop-read))
+      (board           ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a5") (prop-read))
+      (remote          ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a6") (prop-read))))
   (wifi 
     (service           ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319140"))
     (characteristics
-      (credentials     ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319141"))
-      (status          ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319142"))
-      (available       ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319143"))))))
+      (credentials     ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319141") (prop-read))
+      (status          ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319142") (prop-read))
+      (available       ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319143") (prop-read))))))
 
 
 (defun start-ble () {
     (ble-set-name "Lindboard battery 8") ; TODO: battery ID goes here
     (ble-start-app)})
 
-(defun make-char (char-spec) {
-    (var addr (car (cdr char-spec)))
-    `((uuid  . ,addr)
-      (prop  prop-read) 
-      (max-len . 100))})
+(defun inspect (v) {
+    (print v)
+    v
+})
+
+(defun make-char (char-spec) 
+    (let ((addr (ix char-spec 1))
+          (prop (ix char-spec 2))){
+          (print prop)
+          (print char-spec)
+         (inspect 
+         `((uuid  . ,addr)
+           (prop  . ,(inspect prop)) 
+           (max-len . 100)))}))
 
 (defun register-service (service-spec) 
     (let ((service-addr (car (assoc service-spec 'service)))
