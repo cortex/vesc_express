@@ -13,7 +13,7 @@ pkgs.stdenv.mkDerivation rec {
     owner = "vedderb";
     repo = "vesc_tool";
     rev = "master";
-    hash = "sha256-SUx/LUyPVz6zfSJd0khWnS4jxtTLnsPxJh456jZoKZM=";
+    hash = "sha256-UqOIiUPUqjKdrt+Qkm5zKoRWjiv1OEmMfJ4Tzu5lP7E=";
   };
   patches = [
     ./res_fw.patch
@@ -38,6 +38,7 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.libsForQt5.qtconnectivity
     pkgs.libsForQt5.qtpositioning
     pkgs.libsForQt5.qtserialport
+    pkgs.libsForQt5.qtgraphicaleffects
     pkgs.libsForQt5.wrapQtAppsHook
   ];
 }
