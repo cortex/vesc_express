@@ -1,7 +1,7 @@
 all: build/bat-ant-esp.bin \
 	build/bat-ant-stm.bin \
 	build/bat-bms-esp.bin \
-	build/bat-esc-esp.bin \
+	build/bat-esc-stm.bin \
 	build/jet-if-esp.bin \
 	build/remote-disp-esp.bin
 
@@ -54,14 +54,14 @@ build/bat-bms-stm.bin: \
 	cd ./dependencies/vesc_bms_fw && make 
 	cp ./dependencies/vesc_bms_fw/build/vesc_bms.bin $@
 
-build/bat-esc-esp.bin: \
-	Battery/ESC/esp/conf_bldc/lb/hw_lb_core.c \
-	Battery/ESC/esp/conf_bldc/lb/hw_lb_core.h \
-	Battery/ESC/esp/conf_bldc/lb/hw_lb.h
+build/bat-esc-stm.bin: \
+	Battery/ESC/stm/conf_bldc/lb/hw_lb_core.c \
+	Battery/ESC/stm/conf_bldc/lb/hw_lb_core.h \
+	Battery/ESC/stm/conf_bldc/lb/hw_lb.h
 	
 	# cd ./dependencies/bldc && make arm_sdk_install
 	mkdir -p ./dependencies/bldc/hwconf/lb
-	cp Battery/ESC/esp/conf_bldc/lb/* ./dependencies/bldc/hwconf/lb
+	cp Battery/ESC/stm/conf_bldc/lb/* ./dependencies/bldc/hwconf/lb
 	cd ./dependencies/bldc && make -j 4 fw_lb
 	cp ./dependencies/bldc/build/lb/lb.bin $@
 

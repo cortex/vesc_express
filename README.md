@@ -3,7 +3,7 @@
 ## Overview
 
 | Part    | PCB  | MCU        | ID                                  | CAN NAME    | CAN ID | Firmware     |
-| :------ | ---- | :--------- | ----------------------------------- | ----------- | :----- | :----------- |
+|:--------|------|:-----------|-------------------------------------|-------------|:-------|:-------------|
 | Battery | ESC  | STM32-F4   | [bat-esc-stm](#bat-esc-stm)         | LB          | 10, 11 | bldc         |
 | Battery | BMS  | STM32-L4   | [bat-bms-stm](#bat-bms-stm)         | BMS(lb)     | 20     | vesc_bms_fw  |
 | Battery | BMS  | ESP32-C3   | [bat-bms-esp](#bat-bms-esp)         | LB BMS Wifi | 21     | vesc_express |
@@ -91,7 +91,7 @@ make
 sequenceDiagram
 
 Remote ->> bat-ant-esp: Throttle thr-rx (ESP-NOW)
-bat-ant-esp ->> bat-esc-esp: Throttle (canset-current-rel)
+bat-ant-esp ->> bat-esc-stm: Throttle (canset-current-rel)
 
 bat-ant-esp -->> Remote: soc-bms, duty, kmh, motor-kw (ESP-NOW)
 ```
