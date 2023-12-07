@@ -41,6 +41,7 @@ static volatile bool i2c_running = false;
 static THD_WORKING_AREA(mux_thread_wa, 256);
 static THD_FUNCTION(mux_thread, arg);
 static int can_fault_cnt = 0;
+static bool mux_thd_started = false;
 
 // I2C configuration
 static const I2CConfig i2cfg = {
@@ -193,6 +194,32 @@ void hw_init_gpio(void) {
 			terminal_custom_info);
 }
 
+void hw_configure_single_motor(void) {
+	palClearPad(GPIOC, 6);
+	palClearPad(GPIOC, 7);
+	palClearPad(GPIOC, 8);
+
+	palClearPad(GPIOB, 14);
+	palClearPad(GPIOB, 15);
+	palClearPad(GPIOA, 7);
+
+	palSetPadMode(GPIOC, 6, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetPadMode(GPIOC, 7, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetPadMode(GPIOC, 8, PAL_MODE_OUTPUT_PUSHPULL);
+
+	palSetPadMode(GPIOB, 14, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetPadMode(GPIOB, 15, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL);
+
+	palClearPad(GPIOC, 6);
+	palClearPad(GPIOC, 7);
+	palClearPad(GPIOC, 8);
+
+	palClearPad(GPIOB, 14);
+	palClearPad(GPIOB, 15);
+	palClearPad(GPIOA, 7);
+}
+
 void hw_setup_adc_channels(void) {
 	// ADC1 regular channels
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 1, ADC_SampleTime_15Cycles);
@@ -217,12 +244,17 @@ void hw_setup_adc_channels(void) {
 
 	// Injected channels
 	ADC_InjectedChannelConfig(ADC1, ADC_Channel_9, 1, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_8, 2, ADC_SampleTime_15Cycles);
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_8, 1, ADC_SampleTime_15Cycles);
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_0, 1, ADC_SampleTime_15Cycles);
 
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_5, 1, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_4, 2, ADC_SampleTime_15Cycles);
+	ADC_InjectedChannelConfig(ADC1, ADC_Channel_14, 2, ADC_SampleTime_15Cycles);
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_8, 2, ADC_SampleTime_15Cycles);
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_1, 2, ADC_SampleTime_15Cycles);
 
-	chThdCreateStatic(mux_thread_wa, sizeof(mux_thread_wa), NORMALPRIO, mux_thread, NULL);
+	if (!mux_thd_started) {
+		chThdCreateStatic(mux_thread_wa, sizeof(mux_thread_wa), NORMALPRIO, mux_thread, NULL);
+		mux_thd_started = true;
+	}
 }
 
 void hw_start_i2c(void) {
