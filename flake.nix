@@ -22,7 +22,7 @@
         ];
         packages = [
           pkgs.envsubst
-          pkgs.gcc-arm-embedded-9
+          pkgs.gcc-arm-embedded-7
         ];
       };
     };
