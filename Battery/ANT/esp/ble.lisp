@@ -29,7 +29,7 @@
   (wifi 
     (service           ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319140"))
     (characteristics
-      (credentials     ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319141") (prop-read))
+      (credentials     ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319141") (prop-read prop-write))
       (status          ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319142") (prop-read))
       (available       ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319143") (prop-read))))))
 
@@ -46,12 +46,10 @@
 (defun make-char (char-spec) 
     (let ((addr (ix char-spec 1))
           (prop (ix char-spec 2))){
-          (print prop)
-          (print char-spec)
-         (inspect 
+
          `((uuid  . ,addr)
-           (prop  . ,(inspect prop)) 
-           (max-len . 100)))}))
+           (prop  . ,prop) 
+           (max-len . 64))}))
 
 (defun register-service (service-spec) 
     (let ((service-addr (car (assoc service-spec 'service)))
@@ -87,4 +85,51 @@
 (ble-attr-set-str registration-handles '(board)   "BO3333333")
 
 
+(defun proc-ble-data (handle data) {
+    (if (eq handle (assoc (ix wifi-handles 1) 'credentials))
+        {
+              (bufset-u8 data 0 12) ; Hack because we get null byte
+              (var password (ix (str-split data "|") 1))
+              (print "connecting using password" password)
+              (wifi-connect "Lindboard" password) 
+        })
+    (if (eq handle (assoc (ix registration-handles 1) 'registration_id))
+        {
+              (print "Registration id set to" data)  
+        })
+    
+            (print (str-merge
+        "Value "
+        (to-str data)
+        " written to attribute handle "
+        (str-from-n handle)
+    ))
+})
 
+(defun event-handler ()
+    (loopwhile t
+        (recv
+            ((event-ble-rx (? handle) (? data)) (proc-ble-data handle data))
+            (_ nil) ; Ignore other events
+)))
+
+
+(event-register-handler (spawn event-handler))
+(event-enable 'event-ble-rx)
+
+(defun wifi-status-code (sym)
+(match sym 
+('disconnected 1)
+('connected 2)
+('connecting 1)
+))
+
+
+
+(defun status-poller () 
+(loopwhile t {
+        (sleep 0.5)
+        (ble-attr-set-str wifi-handles '(status) (to-str (wifi-status))) 
+    })) 
+    
+(spawn status-poller)
