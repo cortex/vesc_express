@@ -27,6 +27,8 @@
 #define HW_HAS_DUAL_MOTORS
 #endif
 
+#define HW_SET_SINGLE_MOTOR()	hw_configure_single_motor()
+
 #ifdef HW_HAS_DUAL_PARALLEL
 #ifdef HW_VER_0
 #define HW_NAME                 "LB_PARALLEL"
@@ -164,6 +166,10 @@
 
 #define ADC_IND_TEMP_MOTOR		21
 #define ADC_IND_TEMP_MOTOR_2	22
+
+#define HW_GET_INJ_CURR1()		ADC_GetInjectedConversionValue(ADC1, ADC_InjectedChannel_1)
+#define HW_GET_INJ_CURR2()		ADC_GetInjectedConversionValue(ADC2, ADC_InjectedChannel_1)
+#define HW_GET_INJ_CURR3()		ADC_GetInjectedConversionValue(ADC1, ADC_InjectedChannel_2)
 
 // ADC macros and settings
 
@@ -323,7 +329,7 @@
 #define MCCONF_FOC_OFFSETS_CURRENT_2	4096.0
 #else
 #define HW_LIM_CURRENT					-320.0, 320.0
-#define HW_LIM_CURRENT_ABS				0.0, 400.0
+#define HW_LIM_CURRENT_ABS				0.0, 500.0
 #define MCCONF_L_MAX_ABS_CURRENT		350.0
 #endif
 
@@ -335,5 +341,6 @@
 float hw_get_temp(int ad);
 float hw_get_temp_motor(int motor);
 void hw_clear_can_fault(void);
+void hw_configure_single_motor(void);
 
 #endif /* HW_LB_CORE_H_ */
