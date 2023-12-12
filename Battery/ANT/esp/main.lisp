@@ -2,7 +2,10 @@
 ; (def remote-addr '(220 84 117 93 64 29)) ; Remote 3
 ;(def remote-addr '(220 84 117 137 75 53)) ; Remote v2.5 1
 ;(def remote-addr '(220 84 117 137 202 129)) ; Remote v2.5 (rasmus' dev remote)
-(def remote-addr '(212 249 141 2 108 105)) ; Remote v2.5 7
+;(def remote-addr '(212 249 141 2 108 105)) ; Remote v2.5 7
+(def remote-addr '(220 84 117 137 184 245)) ; Benjamin's remote
+;(def remote-addr '(52 133 24 192 211 181)) ; Remote originally for bat 4
+
 
 (esp-now-start)
 (esp-now-add-peer remote-addr)
