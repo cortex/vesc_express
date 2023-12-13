@@ -26,7 +26,7 @@
 #include "adc.h"
 #include <math.h>
 
-#define HW_NAME						"LB HC"
+#define HW_NAME						"remote-disp-esp"
 #define HW_DEFAULT_ID				50
 
 // I2C bus

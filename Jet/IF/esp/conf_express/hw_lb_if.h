@@ -26,7 +26,7 @@
 #include "bme280_if.h"
 #include <math.h>
 
-#define HW_NAME						"LB Interface"
+#define HW_NAME						"jet-if-esp"
 #define HW_DEFAULT_ID				40
 
 // CAN

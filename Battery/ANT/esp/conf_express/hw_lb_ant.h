@@ -22,7 +22,7 @@
 
 #include "driver/gpio.h"
 
-#define HW_NAME						"LB_ANT"
+#define HW_NAME						"bat-ant-esp"
 #define HW_DEFAULT_ID				31
 
 #define HW_INIT_HOOK()				hw_init()

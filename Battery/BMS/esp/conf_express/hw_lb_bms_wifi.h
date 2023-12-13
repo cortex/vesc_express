@@ -22,7 +22,7 @@
 
 #include "driver/gpio.h"
 
-#define HW_NAME						"LB BMS Wifi"
+#define HW_NAME						"bat-bms-esp"
 #define HW_DEFAULT_ID				21
 
 #define HW_INIT_HOOK()				hw_init()
