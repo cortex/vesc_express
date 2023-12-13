@@ -35,7 +35,7 @@
 #endif
 #else
 #ifdef HW_VER_0
-#define HW_NAME                 "bat-esp-stm"
+#define HW_NAME                 "bat-esc-stm"
 #endif
 #endif
 

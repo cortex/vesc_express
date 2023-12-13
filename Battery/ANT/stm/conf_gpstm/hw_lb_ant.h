@@ -20,7 +20,7 @@
 #ifndef HWCONF_HW_LB_ANT_H_
 #define HWCONF_HW_LB_ANT_H_
 
-#define HW_NAME							"LB-ANT-STM"
+#define HW_NAME							"bat-ant-stm"
 #define HW_DEFAULT_ID					30
 
 // HW-specific
