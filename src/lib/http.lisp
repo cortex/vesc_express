@@ -19,11 +19,11 @@
 (defunret tcp-recv () {
     (var segments (list))
     (looprange i 0 100 {
-        (var segment (tcp-recv-single))
-        ; (var segment (tcp-recv-single))
+        (var segment (ext-tcp-recv-single))
+        ; (var segment (ext-tcp-recv-single))
         ; (if (eq segment 'out_of_memory) {
         ;     (gc)
-        ;     (setq segment (tcp-recv-single))
+        ;     (setq segment (ext-tcp-recv-single))
         ; })
         (cond
             ((eq (type-of segment) 'type-array)
@@ -40,15 +40,15 @@
 })
 
 (defunret tcp-ensure-connection (host port) {
-    (tcp-close-connection)
+    (ext-tcp-close-connection)
     
-    (var result (tcp-connect-host host 80))
+    (var result (ext-tcp-connect-host host 80))
     (if (not result) {
         (return 'error-connect-host)
     })
     
-    (if (not (tcp-wait-until-connected 1000)) {
-        (tcp-close-connection)
+    (if (not (ext-tcp-wait-until-connected 1000)) {
+        (ext-tcp-close-connection)
         (return 'error-wait-connected)
     })
     
@@ -58,8 +58,8 @@
 (defunret tcp-update-host (host) 
     (if (or
         (not-eq host tcp-current-host)
-        (not (tcp-is-open))
-        (not-eq (tcp-status) 'connected)
+        (not (ext-tcp-is-open ))
+        (not-eq (ext-tcp-status) 'connected)
     ) {
         (var result (looprange i 0 tcp-open-tries {
             (var result (tcp-ensure-connection host 80))
@@ -67,7 +67,7 @@
                 (break true)
             })
             
-            (puts (str-merge
+            (ext-puts (str-merge
                 "tcp-ensure-connection failed with "
                 (to-str result)
                 ", retrying..."
@@ -77,7 +77,7 @@
         }))
         
         (if (not-eq result true) {
-            (puts (str-merge
+            (ext-puts (str-merge
                 "tcp-update-host timed out after "
                 (str-from-n tcp-open-tries)
                 " tries"
@@ -124,9 +124,9 @@
 )
 
 (defun log-response-error (response reason) {
-    (puts "\nResponse:")
-    (puts (to-str-safe (assoc response 'raw)))
-    (puts (str-merge
+    (ext-puts "\nResponse:")
+    (ext-puts (to-str-safe (assoc response 'raw)))
+    (ext-puts (str-merge
         "Request failed with:\n"
         (to-str-safe reason)
     ))
@@ -225,28 +225,28 @@
         ) headers)
     ))
     
-    (str-merge (str-join lines "\r\n") "\r\n\r\n" content)
+    (str-merge (ext-str-join lines "\r\n") "\r\n\r\n" content)
 })
 
 (defunret send-single-request (host request-str) {
-    ; (tcp-close-connection)
+    ; (ext-tcp-close-connection)
     
     ; (var start (systime))
-    ; (var result (tcp-connect-host host 80))
+    ; (var result (ext-tcp-connect-host host 80))
     ; (if (not result) {
     ;     (return 'error-connect-host)
     ; })
     ; (if dev-log-tcp-timings {
-    ;     (log-time "tcp-connect-host" start)
+    ;     (log-time "ext-tcp-connect-host" start)
     ; })
     
     ; (var start (systime))
-    ; (if (not (tcp-wait-until-connected 1000)) {
-    ;     (tcp-close-connection)
+    ; (if (not (ext-tcp-wait-until-connected 1000)) {
+    ;     (ext-tcp-close-connection)
     ;     (return 'error-wait-connected)
     ; })
     ; (if dev-log-tcp-timings {
-    ;     (log-time "tcp-wait-until-connected" start)
+    ;     (log-time "ext-tcp-wait-until-connected" start)
     ; })
     
     (var start (systime))
@@ -258,27 +258,27 @@
     })
         
     (var start (systime))
-    (if (not (tcp-send-str request-str)) {
-        ; (tcp-close-connection)
+    (if (not (ext-tcp-send-str request-str)) {
+        ; (ext-tcp-close-connection)
         (return 'error-send-str)
     })
     (if dev-log-tcp-timings {
-        (log-time "tcp-send-str" start)
+        (log-time "ext-tcp-send-str" start)
     })
     
     (var start (systime))
-    (if (not (tcp-wait-for-recv 2000)) {
-        ; (tcp-close-connection)
+    (if (not (ext-tcp-wait-for-recv 2000)) {
+        ; (ext-tcp-close-connection)
         (return 'error-wait-for-recv)
     })
     (if dev-log-tcp-timings {
-        (log-time "tcp-wait-for-recv" start)
+        (log-time "ext-tcp-wait-for-recv" start)
     })
     
     (var start (systime))
     (var response (tcp-recv))
     (if (not-eq (type-of response) 'type-array) {
-        ; (tcp-close-connection)
+        ; (ext-tcp-close-connection)
         (return 'error-recv)
     })
     (if dev-log-tcp-timings {
@@ -286,7 +286,7 @@
     })
     
     ; (var start (systime))
-    ; (var result (tcp-close-connection))
+    ; (var result (ext-tcp-close-connection))
     ; (if (not result) {
     ;     (print "connection was somehow already closed!")
     ; })
@@ -295,12 +295,12 @@
     ;     (return false)
     ; })
     ; (if dev-log-tcp-timings {
-    ;     (log-time "tcp-close-connection" start)
+    ;     (log-time "ext-tcp-close-connection" start)
     ; })
     
     (if dev-log-request-contents {
-        (puts "\nGot response:")
-        (puts response)        
+        (ext-puts "\nGot response:")
+        (ext-puts response)        
     })
     
     (var start (systime))
@@ -333,8 +333,8 @@
     })
     
     (if dev-log-request-contents {
-        (puts "\nSending request:")
-        (puts request-str)        
+        (ext-puts "\nSending request:")
+        (ext-puts request-str)        
     })
     
     ; (var first-connect-error nil)
@@ -345,14 +345,14 @@
         (cond
             (success (return result))
             ((includes connection-errors result) {
-                (puts (to-str-delim ""
+                (ext-puts (to-str-delim ""
                     "connection failed with "
                     result
                     ". Retrying..."
                 ))
             })
             (t {
-                (puts (to-str-delim ""
+                (ext-puts (to-str-delim ""
                     "request response parsing failed with "
                     result
                 ))
@@ -361,7 +361,7 @@
         )
     })
     
-    (puts (str-merge
+    (ext-puts (str-merge
         "request timed out after "
         (str-from-n request-send-tries)
         " tries"
@@ -422,7 +422,7 @@
 ; 
 ; <!DOCTYPE html>… (here come the 29769 bytes of the requested web page)
 (defunret parse-response (response-str) {
-    (var headers-end-index (str-index-of response-str "\r\n\r\n"))
+    (var headers-end-index (ext-str-index-of response-str "\r\n\r\n"))
     (if (= headers-end-index -1) {
         (return 'error-no-header-end)
     })
@@ -486,7 +486,7 @@
         )) headers))
         
         (if header
-            (setq chunked-encoding (str-n-eq (cdr header) "chunked" 7))
+            (setq chunked-encoding (ext-str-n-eq (cdr header) "chunked" 7))
         )
     }
     
@@ -556,10 +556,10 @@
         (return 'error-invalid-status)
     })
     
-    (if (not (str-n-eq (ix dest-parts 0) "HTTP/" 5)) {
+    (if (not (ext-str-n-eq (ix dest-parts 0) "HTTP/" 5)) {
         (return 'error-invalid-status)
     })
-    (var version-line (str-extract-until (ix dest-parts 0) " " 5))
+    (var version-line (ext-str-extract-until (ix dest-parts 0) " " 5))
     (var version (str-split version-line "."))
     (var len (length version))
     ; (print-vars '(dest-parts version-line len))
@@ -584,7 +584,7 @@
         (return 'error-invalid-status)
     })
     
-    (var status-msg (str-join (drop dest-parts 2) " "))
+    (var status-msg (ext-str-join (drop dest-parts 2) " "))
     
     (list
         (cons 'version (list version-major version-minor))
@@ -598,13 +598,13 @@
 (defunret parse-response-headers (header-lines) 
     (map (fn (line) {
         ; (print line)
-        (str-index-of line ":")
-        (if (= (str-index-of line ":") -1) {
+        (ext-str-index-of line ":")
+        (if (= (ext-str-index-of line ":") -1) {
             (return 'error-invalid-header)
         })
         
-        (var name (str-to-lower (str-extract-until line ": \t\r\n" 0)))
-        (var value (str-extract-until line "\r\n" ": \t\r\n" (str-len name)))
+        (var name (str-to-lower (ext-str-extract-until line ": \t\r\n" 0)))
+        (var value (ext-str-extract-until line "\r\n" ": \t\r\n" (str-len name)))
         
         (cons name value)
     }) header-lines)
@@ -619,7 +619,7 @@
     (var current-i 0)
     ; Find the total content length
     (loopwhile (<= current-i total-len) {
-        (var len-str (str-extract-until chunked-content "\r" current-i))
+        (var len-str (ext-str-extract-until chunked-content "\r" current-i))
         (var len-str-len (str-len len-str))
         (+set current-i (+ len-str-len 2)) 
         
@@ -661,10 +661,10 @@
 ; - application/problem+json: 'mime-json
 (defun parse-mime-type (type-str) {
     (cond
-        ((str-n-eq type-str "application/json" 16)
+        ((ext-str-n-eq type-str "application/json" 16)
             'mime-json
         )
-        ((str-n-eq type-str "application/problem+json" 24)
+        ((ext-str-n-eq type-str "application/problem+json" 24)
             'mime-json
         )
         (t 'mime-unrecognized)

@@ -1589,11 +1589,6 @@ static bool tcp_disconnect(const tcp_handle_t cid) {
     uart_write_string(cid_str);
     uart_write_string("\r\n");
 
-    // char response[16];
-    // uart_read_until_trim(response, "\n", 15, AT_READ_TIMEOUT_MS);
-    // if (!strneq(response, "OK", 2)) {
-    //     return false;
-    // }
     if (!at_find_response("OK", AT_READ_TIMEOUT_MS, false)) {
         return false;
     }
@@ -1887,10 +1882,10 @@ static void tcp_thd(void *arg) {
             }
             case TCP_STATE_MODEM_PWR_OFF: {
                 uint32_t start = time_now();
-                
+
                 modem_pwr_on();
                 bool result = at_init();
-                
+
                 uint32_t ms = time_ms_since_i(start);
                 if (result) {
                     VESC_IF->printf("modem ready (took %ums)", ms);
@@ -1926,7 +1921,7 @@ static void tcp_thd(void *arg) {
                         // blocked thread... :(
                         VESC_IF->lbm_set_error_reason(
                             "Tried calling tcp function when init failed. Try "
-                            "calling `at-init` before."
+                            "calling `ext-at-init` before."
                         );
                         VESC_IF->sleep_ms(1);
                         continue;
@@ -2673,7 +2668,7 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
  */
 
 /**
- * signature: (str-index-of str search [from-index])
+ * signature: (ext-str-index-of str search [from-index])
  *
  * \return the found index or -1 if no match was found.
  */
@@ -2705,7 +2700,7 @@ static lbm_value ext_str_index_of(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (str-n-eq str-a str-b n)
+ * signature: (ext-str-n-eq str-a str-b n)
  */
 static lbm_value ext_str_n_eq(lbm_value *args, lbm_uint argn) {
     if (argn != 3 || !VESC_IF->lbm_is_byte_array(args[0])
@@ -2725,7 +2720,7 @@ static lbm_value ext_str_n_eq(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (str-extract-until str delims [skip-chars] start)
+ * signature: (ext-str-extract-until str delims [skip-chars] start)
  */
 static lbm_value ext_str_extract_until(lbm_value *args, lbm_uint argn) {
     if ((argn != 3 && argn != 4) || !VESC_IF->lbm_is_byte_array(args[0])
@@ -2773,7 +2768,7 @@ static lbm_value ext_str_extract_until(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (str-extract-while str delims [start])
+ * signature: (ext-str-extract-while str delims [start])
  *
  * Extract the longest substring from a string that contains only the specified
  * characters, starting at index.
@@ -2812,7 +2807,7 @@ static lbm_value ext_str_extract_while(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (str-join strings [delim])
+ * signature: (ext-str-join strings [delim])
  *
  * Concatenate list of strings with optional delimiter between them.
  *
@@ -2862,7 +2857,7 @@ static lbm_value ext_str_join(lbm_value *args, lbm_uint argn) {
     return lbm_create_str(dest);
 }
 
-/* signature: (puts ...values) */
+/* signature: (ext-puts ...values) */
 static lbm_value ext_puts(lbm_value *args, lbm_uint argn) {
     if (argn == 0) {
         return VESC_IF->lbm_enc_sym_true;
@@ -3093,13 +3088,13 @@ static lbm_value ext_at_ready(lbm_value *args, lbm_uint argn) {
     if (argn != 0) {
         return VESC_IF->lbm_enc_sym_terror;
     }
-    
+
     data *d = use_state();
-    
+
     VESC_IF->mutex_lock(d->lock);
     bool ready = d->tcp_ready;
     VESC_IF->mutex_unlock(d->lock);
-    
+
     return lbm_enc_bool(ready);
 }
 
@@ -3124,7 +3119,7 @@ static lbm_value ext_at_init(lbm_value *args, lbm_uint argn) {
  */
 
 /**
- * signature: (tcp-status)
+ * signature: (ext-tcp-status)
  *
  * \return one of the following symbols corresponding to the different statuses:
  * - 'disconnected
@@ -3148,10 +3143,10 @@ static lbm_value ext_tcp_status(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-is-open)
+ * signature: (ext-tcp-is-open )
  *
- * Check if there is a connection opened by `tcp-connect-host` that hasn't been
- * closed by `tcp-close-connection`.
+ * Check if there is a connection opened by `ext-tcp-connect-host` that hasn't been
+ * closed by `ext-tcp-close-connection`.
  *
  * \return bool indicating if a connection is open.
  */
@@ -3170,10 +3165,10 @@ static lbm_value ext_tcp_is_open(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-wait-until-connected timeout-ms)
+ * signature: (ext-tcp-wait-until-connected timeout-ms)
  *
  * Wait until a connection is confirmed to be established. If no connection has
- * been opened before calling this through `tcp-connect-host`, this function
+ * been opened before calling this through `ext-tcp-connect-host`, this function
  * returns nil immediately.
  *
  * \return a bool specifying if a connection was confirmed within the timeout.
@@ -3201,12 +3196,12 @@ static lbm_value ext_tcp_wait_until_connected(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-close-connection)
+ * signature: (ext-tcp-close-connection)
  *
- * Close a connection opened by `tcp-connect-host`.
+ * Close a connection opened by `ext-tcp-connect-host`.
  *
  * Note: You always need to call this at least once for each call to
- * tcp-connect-host no matter what, as a connection is still considered open
+ * ext-tcp-connect-host no matter what, as a connection is still considered open
  * even if the remote has disconnected.
  *
  * \return a bool specifying if a connection was open. 'error is returned when
@@ -3226,7 +3221,7 @@ static lbm_value ext_tcp_close_connection(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-connect-host hostname port)
+ * signature: (ext-tcp-connect-host hostname port)
  *
  *
  *
@@ -3235,7 +3230,7 @@ static lbm_value ext_tcp_close_connection(lbm_value *args, lbm_uint argn) {
  * \param port The tcp port of the host to connect to.
  * \return bool indicating if the connection was opened successfully
  * \throw Returns eval_error if hostname is too long, or if there was already an
- * open connection not closed by `tcp-close-connection`.
+ * open connection not closed by `ext-tcp-close-connection`.
  */
 static lbm_value ext_tcp_connect_host(lbm_value *args, lbm_uint argn) {
     if (argn != 2 || !VESC_IF->lbm_is_byte_array(args[0])
@@ -3265,7 +3260,7 @@ static lbm_value ext_tcp_connect_host(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-send-str string)
+ * signature: (ext-tcp-send-str string)
  *
  * Send string over current tcp connection
  *
@@ -3302,11 +3297,11 @@ static lbm_value ext_tcp_send_str(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-recv-single)
+ * signature: (ext-tcp-recv-single)
  *
  * Receive single string up to 100 characters long from the current tcp
  * connection. This function receives data available in this instant. You can
- * wait for data using `tcp-wait-for-recv`
+ * wait for data using `ext-tcp-wait-for-recv`
  *
  * \return one of these possibilities:
  * - The received string,
@@ -3331,9 +3326,9 @@ static lbm_value ext_tcp_recv_single(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * signature: (tcp-wait-for-recv timeout_ms)
+ * signature: (ext-tcp-wait-for-recv timeout_ms)
  *
- * Wait until there is data to receive using tcp-recv-single.
+ * Wait until there is data to receive using ext-tcp-recv-single.
  * Will look for "+CADATAIND: <cid>" until it has been found or timeout has ran
  * out.
  *
@@ -3377,7 +3372,7 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
 }
 
 /**
- * \brief signature: (json-stringify value)
+ * \brief signature: (ext-json-stringify value)
  *
  * Translate a value into a json document string.
  *
@@ -3391,7 +3386,7 @@ static lbm_value ext_tcp_test(lbm_value *args, lbm_uint argn) {
  *
  * Example:
  * ```lispbm
- * (json-stringify-lisp (list '+assoc
+ * (ext-json-stringify-lisp (list '+assoc
  *      '("a-prop" . 5)
  *      '("str-prop" . "\"escaped\"")
  *      '("list-prop" . (t nil null)))
@@ -3522,12 +3517,12 @@ INIT_FUN(lib_info *info) {
 
     VESC_IF->uart_start(115200, false);
 
-    VESC_IF->lbm_add_extension("str-index-of", ext_str_index_of);
-    VESC_IF->lbm_add_extension("str-n-eq", ext_str_n_eq);
-    VESC_IF->lbm_add_extension("str-extract-until", ext_str_extract_until);
-    VESC_IF->lbm_add_extension("str-extract-while", ext_str_extract_while);
-    VESC_IF->lbm_add_extension("str-join", ext_str_join);
-    VESC_IF->lbm_add_extension("puts", ext_puts);
+    VESC_IF->lbm_add_extension("ext-str-index-of", ext_str_index_of);
+    VESC_IF->lbm_add_extension("ext-str-n-eq", ext_str_n_eq);
+    VESC_IF->lbm_add_extension("ext-str-extract-until", ext_str_extract_until);
+    VESC_IF->lbm_add_extension("ext-str-extract-while", ext_str_extract_while);
+    VESC_IF->lbm_add_extension("ext-str-join", ext_str_join);
+    VESC_IF->lbm_add_extension("ext-puts", ext_puts);
 
     VESC_IF->lbm_add_extension("ext-uart-write", ext_uart_write);
     VESC_IF->lbm_add_extension("ext-uart-readline", ext_uart_readline);
@@ -3538,27 +3533,27 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("ext-uart-purge", ext_uart_purge);
     VESC_IF->lbm_add_extension("ext-get-uuid", ext_get_uuid);
     VESC_IF->lbm_add_extension("ext-pwr-key", ext_pwr_key);
-    VESC_IF->lbm_add_extension("modem-pwr-on", ext_modem_pwr_on);
-    VESC_IF->lbm_add_extension("modem-pwr-off", ext_modem_pwr_off);
-    VESC_IF->lbm_add_extension("at-ready", ext_at_ready);
-    VESC_IF->lbm_add_extension("at-init", ext_at_init);
-    VESC_IF->lbm_add_extension("tcp-status", ext_tcp_status);
-    VESC_IF->lbm_add_extension("tcp-is-open", ext_tcp_is_open);
+    VESC_IF->lbm_add_extension("ext-modem-pwr-on", ext_modem_pwr_on);
+    VESC_IF->lbm_add_extension("ext-modem-pwr-off", ext_modem_pwr_off);
+    VESC_IF->lbm_add_extension("ext-at-ready", ext_at_ready);
+    VESC_IF->lbm_add_extension("ext-at-init", ext_at_init);
+    VESC_IF->lbm_add_extension("ext-tcp-status", ext_tcp_status);
+    VESC_IF->lbm_add_extension("ext-tcp-is-open ", ext_tcp_is_open);
     VESC_IF->lbm_add_extension(
-        "tcp-wait-until-connected", ext_tcp_wait_until_connected
+        "ext-tcp-wait-until-connected", ext_tcp_wait_until_connected
     );
     VESC_IF->lbm_add_extension(
-        "tcp-close-connection", ext_tcp_close_connection
+        "ext-tcp-close-connection", ext_tcp_close_connection
     );
-    VESC_IF->lbm_add_extension("tcp-connect-host", ext_tcp_connect_host);
-    VESC_IF->lbm_add_extension("tcp-send-str", ext_tcp_send_str);
-    VESC_IF->lbm_add_extension("tcp-recv-single", ext_tcp_recv_single);
-    VESC_IF->lbm_add_extension("tcp-wait-for-recv", ext_tcp_wait_for_recv);
-    VESC_IF->lbm_add_extension("tcp-test", ext_tcp_test);
+    VESC_IF->lbm_add_extension("ext-tcp-connect-host", ext_tcp_connect_host);
+    VESC_IF->lbm_add_extension("ext-tcp-send-str", ext_tcp_send_str);
+    VESC_IF->lbm_add_extension("ext-tcp-recv-single", ext_tcp_recv_single);
+    VESC_IF->lbm_add_extension("ext-tcp-wait-for-recv", ext_tcp_wait_for_recv);
+    VESC_IF->lbm_add_extension("ext-tcp-test", ext_tcp_test);
 
-    VESC_IF->lbm_add_extension("json-stringify", ext_json_stringify);
-    VESC_IF->lbm_add_extension("json-tokenize-step", ext_json_tokenize_step);
-    VESC_IF->lbm_add_extension("json-unescape-str", ext_json_unescape_str);
+    VESC_IF->lbm_add_extension("ext-json-stringify", ext_json_stringify);
+    VESC_IF->lbm_add_extension("ext-json-tokenize-step", ext_json_tokenize_step);
+    VESC_IF->lbm_add_extension("ext-json-unescape-str", ext_json_unescape_str);
 
     VESC_IF->set_pad_mode(
         GPIOD, 8, PAL_STM32_MODE_OUTPUT | PAL_STM32_OTYPE_PUSHPULL

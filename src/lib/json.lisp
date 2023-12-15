@@ -4,7 +4,7 @@
 (defunret json-parse (str) {
     (var tokens (json-tokenize str))
     (if (json-is-error tokens) {
-        (puts (str-merge
+        (ext-puts (str-merge
             "JSON error: "
             (json-stringify-error tokens)
         ))
@@ -13,7 +13,7 @@
     
     (var result (json-parse-tokens tokens))
     (if (json-is-error result) {
-        puts (str-merge
+        ext-puts (str-merge
             "JSON error: "
             (json-stringify-error result)
         )
@@ -32,7 +32,7 @@
         ((eq token 'tok-false) nil)
         ((eq token 'tok-null) 'null)
         ((eq (type-of token) 'type-array)
-            (json-unescape-str token)
+            (ext-json-unescape-str token)
         )
         ((is-number token) token)
         (t
@@ -51,7 +51,7 @@
     ;     (tok-false nil)
     ;     (tok-null 'null)
     ;     ( (? str) (eq (type-of str) 'type-array)
-    ;         (json-unescape-str str)
+    ;         (ext-json-unescape-str str)
     ;     )
     ;     ((? n) (is-number n) n)
     ;     ; ( (? n) true n)
@@ -149,7 +149,7 @@
                         false
                     ))
                 })
-                (setq key (json-unescape-str key))
+                (setq key (ext-json-unescape-str key))
                 
                 (if (not-eq (ix tokens 0) 'tok-colon) {
                     (return (json-create-error
@@ -297,7 +297,7 @@
     (var current-index 0)
     (var tokens (list))
     (loopwhile (> len 0) {
-        (var result (json-tokenize-step str tokens))
+        (var result (ext-json-tokenize-step str tokens))
         (match result
             (error-unclosed-quote
                 (return (json-create-error "tokenizer" "unmatched quote" current-index false))

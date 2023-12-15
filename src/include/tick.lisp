@@ -109,7 +109,7 @@
     (if (!= (length completed-actions) 0) {
         (var hw-action-id (first completed-actions))
         (if (api-confirm-action hw-action-id) {
-            (puts "confirmed action " (str-from-n hw-action-id))
+            (ext-puts "confirmed action " (str-from-n hw-action-id))
             (list-pop-start completed-actions)
         })
         (return)

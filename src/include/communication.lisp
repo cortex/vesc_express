@@ -47,7 +47,7 @@
     (var start (systime))
     
     (var start-part (systime))
-    (var data-str (json-stringify json-data))
+    (var data-str (ext-json-stringify json-data))
     (if dev-log-request-build-timings {
         (log-time "stringifying json" start-part)
     })
@@ -76,9 +76,9 @@
     (if (not expect-response-data) {
         (if dev-log-response-value {
             (if (= (response-get-content-length response) 0) {
-                (puts "Response contained no data")
+                (ext-puts "Response contained no data")
             } {
-                (puts (str-merge
+                (ext-puts (str-merge
                     "Ignored response of length "
                     (str-from-n (response-get-content-length response))
                 ))
@@ -122,14 +122,14 @@
             "parsing json failed, json:\n"
             (response-get-content response)
         ))
-        (puts )
+        (ext-puts )
         (return nil)
     })
     
     (if dev-log-response-value {
-        (puts "\nResponse:")
-        (puts (to-str data))
-        (puts "\n")
+        (ext-puts "\nResponse:")
+        (ext-puts (to-str data))
+        (ext-puts "\n")
     })
     
     (if dev-log-request-build-timings {
@@ -198,7 +198,7 @@
     ;     )
     ; ))) {
     ;     (+set num-malformed-action-responses 1)
-    ;     (puts (str-merge
+    ;     (ext-puts (str-merge
     ;         "Invalid JSON value:"
     ;         (to-str response)
     ;     ))

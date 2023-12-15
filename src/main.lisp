@@ -60,7 +60,7 @@
 })
 
 (defun wait-for-at () {
-    (loopwhile (not (at-ready))
+    (loopwhile (not (ext-at-ready))
         (sleep-ms 10)
     )
 })
@@ -77,8 +77,8 @@
 
 (wait-for-at)
 
-(loopwhile main-run {
-    (tick)
+; (loopwhile main-run {
+;     (tick)
     
-    (sleep-ms 10)
-})
+;     (sleep-ms 10)
+; })

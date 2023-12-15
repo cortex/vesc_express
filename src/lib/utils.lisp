@@ -301,7 +301,7 @@
 }))
 
 (def benchmark (macro (times expr) `{
-    (puts (str-merge
+    (ext-puts (str-merge
         "running "
         (str-from-n ,times)
         " times..."
@@ -310,8 +310,8 @@
     (var start (systime))
     (var result (first (map (fn (i) ,expr) (range ,times))))
     (var ms (ms-since start))
-    (puts (to-code-str ',expr) "=" (to-code-str result))
-    (puts (str-merge
+    (ext-puts (to-code-str ',expr) "=" (to-code-str result))
+    (ext-puts (str-merge
         "total: "
         (str-from-n ms)
         "ms, avg: "
@@ -324,7 +324,7 @@
 ; supports printing really long string (> 400 characters)
 (defun puts-long (value)
     (loopwhile (!= (str-len value) 0) {
-        (puts (str-part value 0 100))
+        (ext-puts (str-part value 0 100))
         (if (<= (str-len value) 100)
             (set 'value "")
             (set 'value (str-part value 100))
@@ -366,7 +366,7 @@
     }) vars))
     `{
         ; (print ',vars ,(cons 'list vars))
-        (puts (str-merge ,@pair-strings))
+        (ext-puts (str-merge ,@pair-strings))
     }
 }))
 
@@ -390,12 +390,12 @@
     }) vars))
     `{
         ; (print ',vars ,(cons 'list vars))
-        (puts (str-merge ,@pair-strings))
+        (ext-puts (str-merge ,@pair-strings))
     }
 }))
 
 (defun log-time (operation timestamp) {
-    (puts (str-merge
+    (ext-puts (str-merge
         (if operation
             (str-merge operation " ")
             ""
