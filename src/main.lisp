@@ -36,7 +36,7 @@
             (ext-uart-readline-trim response b-size)
             (print response)
             (match (first (str-split response "\r"))
-                ( (? x) {(print x expect)(str-cmp x expect (str-len expect))} 't)
+                ( (? x) (str-cmp x expect (str-len expect)) 't)
                 ( (? x) (str-cmp x "ERROR" 5) 'nil)
                 ( _ (progn (print "AT-ERROR: " response) 'nil))
             )
