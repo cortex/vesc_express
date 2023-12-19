@@ -8,6 +8,15 @@
             (map (lambda (i) (set-byte-at i hex-str out)) (range 16))
             out)))
 
+;; Reverse a byte array
+(defun buf-reverse (in){
+    (var len (buflen in))
+    (var out (bufcreate (buflen in)))
+    (loopfor  i 0 (< i (buflen in)) (+ i 1) 
+        (bufset-u8 out (- len (+ i 1)) (bufget-u8 in i)))
+    out
+})
+
 ;; Get item from nested assoclist
 (defun apath (alist path) 
     (if (eq path nil) alist 
@@ -41,8 +50,24 @@
 
 
 (defun start-ble () {
-    (ble-set-name "Lindboard battery 8") ; TODO: battery ID goes here
-    (ble-start-app)})
+        (ble-set-name "L8") ; TODO: battery ID goes here
+
+        (def adv-data `(
+               (flags . [0x06])
+               (name-complete . ,(buf-resize "Lind 123" -1)) 
+               ; (conn-interval-range . [0x06 0x00 0x03 0x00])
+                (incomplete-uuid-128 . ,(buf-reverse (uuid "beb5483e-36e1-4688-b7f5-ea07361b26a0")))
+        ))
+        
+        (def scan-rsp-data `(
+                (flags . [0x06])
+                (tx-power-level . [0x12])
+                (conn-interval-range . [0x06 0x00 0x03 0x00])
+        ))
+        
+        (ble-conf-adv true adv-data scan-rsp-data)        
+        (ble-start-app)
+})
 
 (defun inspect (v) {
     (print v)
@@ -89,8 +114,8 @@
 (start-ble)
 (reset-ble)
 
-(define wifi-service         (register-service (apath services '(wifi))))
 (define registration-service (register-service (apath services '(registration))))
+(define wifi-service         (register-service (apath services '(wifi))))
 
 (defun ble-attr-set-str (handles path value-str) 
     (ble-attr-set-value 
@@ -133,15 +158,43 @@
         (handle-wifi-mode data)
       )})     
 
-      
-(defun handle-wifi-mode (data) {
+
+(defun trap (code)
+{
+ (spawn-trap code)       
+} )
+                  
+(defun handle-wifi-mode (newmode) {
+        ; TODO: check mde
         (set-wifi-status 'scanning)
-        (var networks (wifi-scan-networks 0.12))
-        (var network-list-str (format-available-networks networks))
-        (print (str-len network-list-str))
-        (ble-attr-set-str wifi-service '(available) network-list-str)
-        (print "set network list")
+        (spawn-trap
+            (lambda ()
+                {
+                    ;(var networks (wifi-scan-networks 0.01))
+                    (print "scanning here")
+                    (1)
+                    networks
+                }
+            )
+            (recv
+                ((exit-error (? tid) (? e)) {
+                        (print "trapped error" e)
+                        (set-wifi-status 'error)
+                })
+                ((exit-ok    (? tid) (? v)) {
+                        (print "ok" v)
+                        (var networks v)
+                        (var network-list-str (format-available-networks networks))
+                        (print (str-len network-list-str))
+                        (ble-attr-set-str wifi-service '(available) network-list-str)
+                        (print "set network list")
+                        
+                })
+            )
+    )
 })
+
+
 
 (defun set-wifi-status (status) {
         (var buf (bufcreate 1))
@@ -150,23 +203,23 @@
         (ble-attr-set-value (charid wifi-service 'status) buf)
 })
 
-(defun handle-connect-wifi (data) {
-        (var parts (str-split (to-c-str data) "|"))
-        (if (not (eq (length parts)) 2)
-                (set-wifi-status 'error)           
-            {
-                (var ssid (ix parts 0))
-                (var password (ix parts 1))
-                (set-wifi-status 'connecting)
-                (var result (wifi-connect ssid password))
-                (if result
-                    (set-wifi-status 'connected)
+    (defun handle-connect-wifi (data) {
+        (print "connect wifi")
+            (var parts (str-split (to-c-str data) "|"))
+            (if (not (eq (length parts)) 2)
+                (set-wifi-status 'error)
+                {
+                    (var ssid (ix parts 0))
+                    (var password (ix parts 1))
+                    (set-wifi-status 'connecting)
+                    (var result (wifi-connect ssid password))
+                    (if result
+                        (set-wifi-status 'connected)
                     (set-wifi-status 'error))
-            }
-        )
-    }
-)
-
+                }
+            )
+    })
+    
 
 (event-register-handler (spawn event-handler))
 (event-enable 'event-ble-rx)
@@ -181,3 +234,9 @@
 ))
 
 (define wifi-mode 'off)
+
+(defun scan-wifi () {
+       (wifi-scan-networks 0.12) 
+})
+
+
