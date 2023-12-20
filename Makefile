@@ -3,7 +3,8 @@ all: build/bat-ant-esp.bin \
 	build/bat-bms-esp.bin \
 	build/bat-esc-stm.bin \
 	build/jet-if-esp.bin \
-	build/remote-disp-esp.bin
+	build/remote-disp-esp.bin \
+	build/vesc4g.bin
 
 clean:
 	rm build/*.bin
@@ -41,7 +42,7 @@ build/bat-ant-stm.bin: \
 
 build/bat-bms-esp.bin: \
 	Battery/BMS/esp/conf_express/hw_lb_bms_wifi.c \
-	Battery/BMS/esp/conf_express/hw_lb_bms_wifi.h \
+	Battery/BMS/esp/conf_express/hw_lb_bms_wifi.h
 	
 	cp Battery/BMS/esp/conf_express/* ./dependencies/vesc_express/main 
 	./build/build-vesc-express.sh lb_bms_wifi $@
@@ -78,3 +79,7 @@ build/remote-disp-esp.bin: \
 
 	cp ./Remote/DISP/esp/conf_express/* ./dependencies/vesc_express/main
 	./build/build-vesc-express.sh lb_hc $@
+
+build/vesc4g.bin:
+	cd ./dependencies/vesc4g && make
+	cp ./dependencies/vesc4g/build/vesc4g.bin build/vesc4g.bin
