@@ -102,16 +102,15 @@ vesc-tool: result/bin/vesc_tool_6.05
 
 VESC_TOOL=$(realpath result/bin/vesc_tool_6.05) 
 
-build/bat-esc-stm/main.lpkg:
+build/bat-esc-stm/main.lpkg: vesc-tool
 	cd ./Battery/ESC/stm/lisp/ && make && $(VESC_TOOL) --packLisp src/main.lisp:main.lpkg
 	cp ./Battery/ESC/stm/lisp/main.lpkg $@
 
-build/bat-ant-esp/main.lpkg:
+build/bat-ant-esp/main.lpkg: vesc-tool
 	cd ./Battery/ANT/esp/lisp/ && $(VESC_TOOL) --packLisp main.lisp:main.lpkg
 	cp ./Battery/ANT/esp/lisp/main.lpkg $@
 
-build/bat-bms-esp/main.lpkg:
-
+build/bat-bms-esp/main.lpkg: vesc-tool
 	mkdir -p build/bat-bms-esp
 	cd ./Battery/BMS/esp/lisp/ && $(VESC_TOOL) --packLisp main.lisp:main.lpkg
 	cp ./Battery/BMS/esp/lisp/main.lpkg $@
