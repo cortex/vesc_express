@@ -1,0 +1,63 @@
+{
+    "makefile.makefilePath": "Makefile",
+    // "makefile.makeDirectory": "client",
+    "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
+    "makefile.makePath": "make",
+    "makefile.configurations": [
+        {
+            "name": "Default",
+            "makeArgs": []
+        }
+    ],
+    "files.associations": {
+        "*.ini-development": "ini",
+        "st_types.h": "c",
+        "vesc_c_if.h": "c",
+        "types.h": "c",
+        "stddef.h": "c",
+        "type_traits": "c",
+        "stdatomic.h": "c",
+        "limits.h": "c",
+        "climits": "c"
+    },
+    "cSpell.words": [
+        "acons",
+        "bufcpy",
+        "bufcreate",
+        "bufget",
+        "buflen",
+        "CAOPEN",
+        "CARECV",
+        "cccd",
+        "CFUN",
+        "CGATT",
+        "CGNAPN",
+        "cids",
+        "CIPRXGET",
+        "CMGF",
+        "CNACT",
+        "CNCFG",
+        "CNMP",
+        "cond",
+        "cossa",
+        "CPIN",
+        "CPOWD",
+        "descr",
+        "eerror",
+        "GPIO",
+        "GPIOB",
+        "GPIOD",
+        "lispbm",
+        "lwprintf",
+        "progn",
+        "strneq",
+        "uart"
+    ],
+    "C_Cpp.loggingLevel": "Debug",
+    "editor.formatOnType": false,
+    "editor.inlayHints.enabled": "off",
+    "editor.formatOnSave": false,
+    "C_Cpp.intelliSenseEngine": "Tag Parser",
+    "editor.formatOnPaste": false,
+    "json.validate.enable": false
+}

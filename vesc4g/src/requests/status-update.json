@@ -1,0 +1,22 @@
+{
+  "registrationId": ##,
+  "units": [
+    {
+      "serialNumber": ##,
+      "firmwareId": ##,
+      "chargeLevel": ##,
+      "chargeMinutesRemaining": ##,
+      "chargeStatus": ##,
+      "chargeLimit": ##
+    },
+    {
+      "serialNumber": ##
+    },
+    {
+      "serialNumber": ##
+    },
+    {
+      "serialNumber": ##
+    }
+  ]
+}

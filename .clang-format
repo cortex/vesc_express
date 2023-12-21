@@ -1,0 +1,6 @@
+BasedOnStyle: Google
+IndentWidth: 4
+AlignAfterOpenBracket: BlockIndent
+SortIncludes: false
+BreakBeforeBinaryOperators: NonAssignment
+IndentCaseLabels: true
