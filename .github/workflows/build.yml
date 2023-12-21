@@ -21,4 +21,4 @@ jobs:
         with:
           name: firmware-binaries
           path: |
-            build/*.bin
+            build/
