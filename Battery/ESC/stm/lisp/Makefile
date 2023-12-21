@@ -8,7 +8,7 @@ BUILDDIR = build/obj/
 
 USE_STLIB = yes
 
-VESC_C_LIB_PATH = ../dependencies/bldc/lispBM/c_libs/
+VESC_C_LIB_PATH = ../../../../dependencies/bldc/lispBM/c_libs/
 
 # ==== ^Config^ ====
 
