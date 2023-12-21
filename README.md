@@ -51,6 +51,7 @@ make
 * Handles engine control
 * Runs LispBM code-server
 * Receives throttle RPC calls over CAN/code-server
+* Handles LTE communication
 
 ### bat-bms-stm
 
@@ -59,7 +60,6 @@ make
 
 ### bat-ant-esp
 
-* Handle connection to 4G
 * Handle connection to Remote via esp-now
 * Writes logs to SD card
 * Handle NFC
