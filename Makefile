@@ -81,5 +81,5 @@ build/remote-disp-esp.bin: \
 	./build/build-vesc-express.sh lb_hc $@
 
 build/vesc4g.bin:
-	cd ./dependencies/vesc4g && make
-	cp ./dependencies/vesc4g/build/vesc4g.bin build/vesc4g.bin
+	cd ./vesc4g && make
+	cp ./vesc4g/build/vesc4g.bin build/vesc4g.bin
