@@ -26,7 +26,7 @@
         ;     (setq segment (ext-tcp-recv-single))
         ; })
         (cond
-            ((eq (type-of segment) 'type-array)
+            ((is-str segment)
                 (setq segments (cons segment segments))
             )
             ((eq segment 'error)
@@ -38,6 +38,22 @@
     
     (apply str-merge (reverse segments))
 })
+
+(defun tcp-recv-gen () 
+    (gen-create (fn () {
+        (var str (ext-tcp-recv-single))
+        (cond
+            ((is-str str)
+                str
+            )
+            ((eq segment 'error) {
+                (print 'error-recv)
+                nil
+            })
+            (t nil)
+        )
+    }))
+)
 
 (defunret tcp-ensure-connection (host port) {
     (ext-tcp-close-connection)
@@ -58,7 +74,7 @@
 (defunret tcp-update-host (host) 
     (if (or
         (not-eq host tcp-current-host)
-        (not (ext-tcp-is-open ))
+        (not (ext-tcp-is-open))
         (not-eq (ext-tcp-status) 'connected)
     ) {
         (var result (looprange i 0 tcp-open-tries {
@@ -67,7 +83,7 @@
                 (break true)
             })
             
-            (ext-puts (str-merge
+            (puts (str-merge
                 "tcp-ensure-connection failed with "
                 (to-str result)
                 ", retrying..."
@@ -77,7 +93,7 @@
         }))
         
         (if (not-eq result true) {
-            (ext-puts (str-merge
+            (puts (str-merge
                 "tcp-update-host timed out after "
                 (str-from-n tcp-open-tries)
                 " tries"
@@ -124,9 +140,9 @@
 )
 
 (defun log-response-error (response reason) {
-    (ext-puts "\nResponse:")
-    (ext-puts (to-str-safe (assoc response 'raw)))
-    (ext-puts (str-merge
+    (puts "\nResponse:")
+    (puts (to-str-safe (assoc response 'raw)))
+    (puts (str-merge
         "Request failed with:\n"
         (to-str-safe reason)
     ))
@@ -256,7 +272,7 @@
     (if dev-log-tcp-timings {
         (log-time "tcp-update-host" start)
     })
-        
+    
     (var start (systime))
     (if (not (ext-tcp-send-str request-str)) {
         ; (ext-tcp-close-connection)
@@ -275,33 +291,23 @@
         (log-time "ext-tcp-wait-for-recv" start)
     })
     
-    (var start (systime))
-    (var response (tcp-recv))
-    (if (not-eq (type-of response) 'type-array) {
-        ; (ext-tcp-close-connection)
-        (return 'error-recv)
-    })
-    (if dev-log-tcp-timings {
-        (log-time "tcp-recv" start)
-    })
-    
     ; (var start (systime))
-    ; (var result (ext-tcp-close-connection))
-    ; (if (not result) {
-    ;     (print "connection was somehow already closed!")
-    ; })
-    ; (if (eq result 'error) {
-    ;     (print "closing connection failed")
-    ;     (return false)
+    ; (var response (tcp-recv))
+    ; (if (not-eq (type-of response) 'type-array) {
+    ;     ; (ext-tcp-close-connection)
+    ;     (return 'error-recv)
     ; })
     ; (if dev-log-tcp-timings {
-    ;     (log-time "ext-tcp-close-connection" start)
+    ;     (log-time "tcp-recv" start)
     ; })
     
-    (if dev-log-request-contents {
-        (ext-puts "\nGot response:")
-        (ext-puts response)        
-    })
+    ; (if dev-log-request-contents {
+    ;     (puts "\nGot response:")
+    ;     (print (buflen response))
+    ;     (puts response)        
+    ; })
+    
+    (var response (tcp-recv-gen))
     
     (var start (systime))
     (var response (parse-response response))
@@ -318,6 +324,7 @@
     'error-wait-for-recv
     'error-recv
     'error-close-connection
+    'error-chunked-encoding
 ))
 
 ; TODO: add some way to have incremental reading of response, to not run out of memory...
@@ -333,8 +340,8 @@
     })
     
     (if dev-log-request-contents {
-        (ext-puts "\nSending request:")
-        (ext-puts request-str)        
+        (puts "\nSending request:")
+        (puts request-str)        
     })
     
     ; (var first-connect-error nil)
@@ -345,14 +352,14 @@
         (cond
             (success (return result))
             ((includes connection-errors result) {
-                (ext-puts (to-str-delim ""
+                (puts (to-str-delim ""
                     "connection failed with "
                     result
                     ". Retrying..."
                 ))
             })
             (t {
-                (ext-puts (to-str-delim ""
+                (puts (to-str-delim ""
                     "request response parsing failed with "
                     result
                 ))
@@ -361,7 +368,7 @@
         )
     })
     
-    (ext-puts (str-merge
+    (puts (str-merge
         "request timed out after "
         (str-from-n request-send-tries)
         " tries"
@@ -403,6 +410,8 @@
     (assoc response 'content)
 )
 
+(def http-ex-str "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\nDate: Thu, 17 Aug 2023 08:21:50 GMT\r\nServer: Kestrel\r\n\r\n")
+
 ; HTTP/1.1 200 OK
 ; Content-Length: 0
 ; Connection: close
@@ -421,28 +430,24 @@
 ; Content-Type: text/html
 ; 
 ; <!DOCTYPE html>… (here come the 29769 bytes of the requested web page)
-(defunret parse-response (response-str) {
-    (var headers-end-index (ext-str-index-of response-str "\r\n\r\n"))
-    (if (= headers-end-index -1) {
-        (return 'error-no-header-end)
+(defunret parse-response (gen) {
+    (if dev-log-response-value {
+        (puts "Parsing response:")
     })
-    
-    (var header (str-part response-str 0 headers-end-index))
-    
-    (var header-lines (str-split header "\r\n"))
-    (setq header nil)
-
-    ; parse first line
     (var version)
     (var status-code)
     (var status-msg)
-    {
-        (var dest-line (ix header-lines 0))
+    {        
+        (var dest-line (gen-read-until gen "\r\n"))
+        (if (not dest-line) {
+            (return nil)
+        })
+        (if dev-log-response-value {
+            (puts dest-line)
+        })
         
         (var result (parse-response-dest-line dest-line))
         (if (not-eq (type-of result) 'type-list) {
-            ; result contains an error
-            (print-vars '(result))
             (return result)
         })
         
@@ -450,100 +455,50 @@
         (setq status-code (assoc result 'status-code))
         (setq status-msg (assoc result 'status-msg))
     }
-    (var header-lines (cdr header-lines))
-    
-    ; parse headers
-    (var headers (parse-response-headers header-lines))
-    (if (and
-        (not-eq (type-of headers) 'type-list)
-        (not-eq headers nil)
-    ) {
-        ; headers contains an error
-        (return headers)
-    })
-    (setq header-lines nil)
     
     (var content-type nil)
-    {
-        (var header (find-first-with (fn (header) (eq
-            (car header)
-            "content-type"
-        )) headers))
-        
-        (if header {
-            (set 'content-type (parse-mime-type (cdr header)))
-            (if (eq content-type 'mime-unrecognized)
-                (set 'content-type (cdr header))
-            )
-        })
-    }
-    
-    (var chunked-encoding false)
-    {
-        (var header (find-first-with (fn (header) (eq
-            (car header)
-            "transfer-encoding"
-        )) headers))
-        
-        (if header
-            (setq chunked-encoding (ext-str-n-eq (cdr header) "chunked" 7))
-        )
-    }
-    
+    (var chunked-encoding nil)
     (var content-length nil)
-    (if (not chunked-encoding) {
-        (var header (find-first-with (fn (header) (eq
-            (car header)
-            "content-length"
-        )) headers))
-        
-        (if header {
-            (setq content-length (str-to-i (cdr header)))
-        })
+    
+    (var header-actions (list
+        (cons "content-type" (fn (value) (if value {
+            (setq content-type (parse-mime-type value))
+            (if (eq content-type 'mime-unrecognized)
+                (setq content-type value)
+            )
+        })))
+        (cons "transfer-encoding" (fn (value) (if value {
+            (setq chunked-encoding (ext-str-n-eq value "chunked" 7))        
+        })))
+        (cons "content-length" (fn (value) (if value {
+            (setq content-length (str-to-i value))
+        })))
+    ))
+    
+    (match (parse-response-headers gen header-actions)
+        (nil nil)
+        (true ())
+        ((? result) (return result))
+    )
+    
+    (if chunked-encoding {
+        (return 'error-chunked-encoding)
     })
     
-    ; get content
-    (var real-content-length (- (str-len response-str) headers-end-index 4))
-    (if (and
-        (not chunked-encoding)
-        (not-eq content-length nil)
-        (> content-length real-content-length)
-    ) {
-        (return 'error-invalid-content-length)
-    })
-    (var content (cond
-        (chunked-encoding {
-            (var content (str-part response-str (+ headers-end-index 4)))
-            (set 'response-str nil)
-            (var content (parse-chunked-content content))
-            (if (eq content nil)
-                (return 'error-invalid-chunk-len)
-            {
-                (setq content-length (str-len content))
-                content
-            })
-        })
-        ((not-eq content-length nil)
-            (if (> content-length 0)
-                (str-part response-str (+ headers-end-index 4))
-                ""
-            )
-        )
-        (_ {
-            (setq content-length 0)
-            ""
-        })
-    ))
+    ; TODO: Support chunked-encoding?
+    
+    ; Leads to running out of memory... 
+    ; (if dev-log-response-value 
+    ;     (puts (gen-collect gen))
+    ; )
     
     (list
         (cons 'version version)
         (cons 'status-code status-code)
         (cons 'status-msg status-msg)
-        (cons 'headers headers)
         (cons 'content-length content-length)
         (cons 'content-type content-type)
-        (cons 'content content)
-        (cons 'raw response-str)
+        (cons 'content gen)
     )
 })
 
@@ -594,21 +549,40 @@
 })
 
 ; helper function for `parse-response`
-; Parse list of lines containing headers.
-(defunret parse-response-headers (header-lines) 
-    (map (fn (line) {
-        ; (print line)
-        (ext-str-index-of line ":")
+; Parse response headers from generator, invoking the function found in
+; header-map when a match is found. If a header in header-map wasn't found, the
+; function is instead invoked with the symbol nil
+; Warning: header-map is destroyed in the process
+(defun parse-response-headers (gen header-map) {
+    (var result (loopwhile true {
+        (var line (gen-read-until gen "\r\n"))
+        (if (not line) 
+            (break nil)
+        )
+        (if (= (str-len line) 0) {
+            (break true)
+        })
+        
+        (if dev-log-response-value 
+            (puts line)
+        )
+        
         (if (= (ext-str-index-of line ":") -1) {
-            (return 'error-invalid-header)
+            (break 'error-invalid-header)
         })
         
         (var name (str-to-lower (ext-str-extract-until line ": \t\r\n" 0)))
-        (var value (ext-str-extract-until line "\r\n" ": \t\r\n" (str-len name)))
-        
-        (cons name value)
-    }) header-lines)
-)
+        (var func (assoc header-map name))
+        (if func {
+            (func (ext-str-extract-until line "\r\n" ": \t\r\n" (str-len name)))
+            (setassoc header-map name nil)
+        })
+    }))
+    (map (fn (pair) (if (cdr pair)
+        ((cdr pair) nil)
+    )) header-map)
+    result
+})
 
 ; Parse http content that is encoded using Transfer-Encoding: chunked.
 (defunret parse-chunked-content (chunked-content) {

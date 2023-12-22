@@ -168,6 +168,9 @@
     (_ nil)
 ))
 
+; Checks if value is a byte-array
+(defun is-str (value) (eq (type-of value) 'type-array))
+
 ; ! Warning: dangerous function that explodes
 ; example:
 ; (def value '((a . 5) (b . (any item values)) (c . (5 4.2 8))))
@@ -301,7 +304,7 @@
 }))
 
 (def benchmark (macro (times expr) `{
-    (ext-puts (str-merge
+    (puts (str-merge
         "running "
         (str-from-n ,times)
         " times..."
@@ -310,8 +313,12 @@
     (var start (systime))
     (var result (first (map (fn (i) ,expr) (range ,times))))
     (var ms (ms-since start))
-    (ext-puts (to-code-str ',expr) "=" (to-code-str result))
-    (ext-puts (str-merge
+    (puts (str-merge
+        (to-code-str ',expr)
+        "="
+        (to-code-str result)
+    ))
+    (puts (str-merge
         "total: "
         (str-from-n ms)
         "ms, avg: "
@@ -324,7 +331,7 @@
 ; supports printing really long string (> 400 characters)
 (defun puts-long (value)
     (loopwhile (!= (str-len value) 0) {
-        (ext-puts (str-part value 0 100))
+        (puts (str-part value 0 100))
         (if (<= (str-len value) 100)
             (set 'value "")
             (set 'value (str-part value 100))
@@ -366,7 +373,7 @@
     }) vars))
     `{
         ; (print ',vars ,(cons 'list vars))
-        (ext-puts (str-merge ,@pair-strings))
+        (puts (str-merge ,@pair-strings))
     }
 }))
 
@@ -390,12 +397,12 @@
     }) vars))
     `{
         ; (print ',vars ,(cons 'list vars))
-        (ext-puts (str-merge ,@pair-strings))
+        (puts (str-merge ,@pair-strings))
     }
 }))
 
 (defun log-time (operation timestamp) {
-    (ext-puts (str-merge
+    (puts (str-merge
         (if operation
             (str-merge operation " ")
             ""
@@ -420,7 +427,7 @@
     (if (eq value (to-str value))
         (str-merge
             "\""
-            (str-replace value "\"" "\\\"")
+            (str-replace (str-replace (str-replace value "\t" "\\\t") "\r" "\\\r") "\"" "\\\"")
             "\""
         )
         (to-str value)

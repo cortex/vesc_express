@@ -1,26 +1,20 @@
-@const-start
+@const-end
 
-; Source: https://notes.eatonphil.com/writing-a-simple-json-parser.html
-(defunret json-parse (str) {
-    (var tokens (json-tokenize str))
-    (if (json-is-error tokens) {
-        (ext-puts (str-merge
+; General structure from: https://notes.eatonphil.com/writing-a-simple-json-parser.html
+
+(defunret json-parse (gen) {
+    (var tokenizer (json-tokenizer gen))
+    
+    (var result (json-parse-tokens tokenizer))
+    (if (json-is-error result) {
+        (puts (str-merge
             "JSON error: "
-            (json-stringify-error tokens)
+            (json-stringify-error result)
         ))
         (return 'error)
     })
-    
-    (var result (json-parse-tokens tokens))
-    (if (json-is-error result) {
-        ext-puts (str-merge
-            "JSON error: "
-            (json-stringify-error result)
-        )
-        (return 'error)
-    })
-    
-    (car result)
+  
+    result
 })
 
 ;;; JSON token parser
@@ -44,26 +38,6 @@
             ) nil false)))
         )
     )
-    
-    ; this seems broken
-    ; (match token
-    ;     (tok-true t)
-    ;     (tok-false nil)
-    ;     (tok-null 'null)
-    ;     ( (? str) (eq (type-of str) 'type-array)
-    ;         (ext-json-unescape-str str)
-    ;     )
-    ;     ((? n) (is-number n) n)
-    ;     ; ( (? n) true n)
-    ;     (_
-    ;         ; Don't feel like dealing with the consequences of returning an
-    ;         ; error value here...
-    ;         (exit-error (json-stringify-error (json-create-error "parsing" (str-merge
-    ;             "unexpected token "
-    ;             (to-str token)
-    ;         ) nil false)))
-    ;     )
-    ; )
 })
 
 ; The behavior of calling this function is different when calling the same
@@ -75,70 +49,65 @@
        ( (? y) (= y 0) 'equal-to-zero))
 )
 
-(defun json-parse-tokens (tokens) {
-    (var token (ix tokens 0))
-    
-    (match token
+
+; tokenizer should have been created by json-tokenizer
+(defun json-parse-tokens (tokenizer) {
+    (match (tokenizer-get tokenizer)
         (tok-left-bracket
-            (json-parse-list (rest tokens))
+            (json-parse-list tokenizer)
         )
         (tok-left-brace
-            (json-parse-object (rest tokens))
+            (json-parse-object tokenizer)
         )
-        (_
-            (cons
-                (json-token-value token)
-                (rest tokens)
-            )
+        ((? token)
+            (json-token-value token)
         )
     )
 })
 
-(defunret json-parse-list (tokens) {
+; tokenizer should have been created by json-tokenizer
+(defunret json-parse-list (tokenizer) {
     (var values (list))
     
-    (if (eq (ix tokens 0) 'tok-right-bracket)
-        (cons values (cdr tokens))
-        {
-            (loopwhile (not-eq tokens nil) {
-                (var result (json-parse-tokens tokens))
-                (if (json-is-error result)
-                    (return result)
-                )
-                (set 'values (cons (car result) values))
-                (set 'tokens (cdr result))
-                
-                (var token (ix tokens 0))
-                (match token
-                    (tok-right-bracket
-                        (return (cons (reverse values) (cdr tokens)))
-                    )
-                    (tok-comma
-                        (set 'tokens (cdr tokens))
-                    )
-                    (_
-                        (return (json-create-error "parsing" (str-merge
-                            "expected comma after object in array"
-                        ) nil false))
-                    )
-                )
-            })
+    (if (eq (tokenizer-peak tokenizer) 'tok-right-bracket)
+        (tokenizer-get tokenizer) ; throw away value
+    {
+        (loopwhile (tokenizer-peak tokenizer) {
+            (var result (json-parse-tokens tokenizer))
+            (if (json-is-error result)
+                (return result)
+            )
+            (setq values (cons result values))
             
-            (json-create-error "parsing" "expected end-of-array bracket" nil false)
-        }
-    )
+            (match (tokenizer-get tokenizer)
+                (tok-right-bracket
+                    (return (reverse values))
+                )
+                (tok-comma
+                    ()
+                )
+                ((? token)
+                    (return (json-create-error "parsing" (str-merge
+                        "expected comma after object in array, found: "
+                        (to-str token)
+                    ) nil false))
+                )
+            )
+        })
+        (json-create-error "parsing" "expected end-of-array bracket" nil false)
+    })
 })
 
-(defunret json-parse-object (tokens) {
+; tokenizer should have been created by json-tokenizer
+(defunret json-parse-object (tokenizer) {
     (var object (list))
-    (if (eq (ix tokens 0) 'tok-right-brace)
-        (cons object (cdr tokens))
-        {
-            (loopwhile (not-eq tokens nil) {
-                (var key (ix tokens 0))
-                (if (eq (type-of key) 'type-array) {
-                    (set 'tokens (cdr tokens))
-                } {
+    (if (eq (tokenizer-peak tokenizer) 'tok-right-brace) {
+            (tokenizer-get tokenizer)
+            object
+        } {
+            (loopwhile (tokenizer-peak tokenizer) {
+                (var key (tokenizer-get tokenizer))
+                (if (not-eq (type-of key) 'type-array) {
                     (return (json-create-error
                         "parsing"
                         (str-merge
@@ -151,35 +120,37 @@
                 })
                 (setq key (ext-json-unescape-str key))
                 
-                (if (not-eq (ix tokens 0) 'tok-colon) {
-                    (return (json-create-error
-                        "parsing"
-                        (str-merge
-                            "expected colon after key in object, found: "
-                            (to-str (ix tokens 0))
-                        )
-                        nil
-                        false
-                    ))
-                })
+                (match (tokenizer-get tokenizer)
+                    (tok-colon ())
+                    ((? token) {
+                        (return (json-create-error
+                            "parsing"
+                            (str-merge
+                                "expected colon after key in object, found: "
+                                (to-str token)
+                            )
+                            nil
+                            false
+                        ))
+                    })
+                )
                 
-                (var result (json-parse-tokens (cdr tokens)))
+                (var result (json-parse-tokens tokenizer))
                 (if (json-is-error result)
                     (return result)
                 )
-                (var value (car result))
-                (set 'tokens (cdr result))
+                (var value result)
                 
-                (set 'object (cons (cons key value) object))
+                (setq object (cons (cons key value) object))
                 
-                (match (ix tokens 0)
-                    (tok-right-brace
-                        (return (cons (reverse object) (cdr tokens)))
+                (match (tokenizer-get tokenizer)
+                    (tok-right-brace 
+                        (return (reverse object))
                     )
                     (tok-comma
-                        (set 'tokens (cdr tokens))
+                        () ; move onto next
                     )
-                    (_
+                    ((? token)
                         (return (json-create-error "parsing" (str-merge
                             "expected comma after pair in object, found: "
                             (to-str token)
@@ -192,7 +163,7 @@
     )
 })
 
-
+@const-start
 
 (defun json-create-error (part reason index index-exact)
     (list 
@@ -292,27 +263,29 @@
 ; (lex "{\"a-prop\":5,\"str-prop\":\"\\\"escaped\\\"\",\"list-prop\":[true,false,null]}")
 ; (lex "{\"foo\": [1, 2, {\"bar\": 2}]}")
 
-(defunret json-tokenize (str) {
-    (var len (str-len str))
-    (var current-index 0)
-    (var tokens (list))
-    (loopwhile (> len 0) {
-        (var result (ext-json-tokenize-step str tokens))
-        (match result
-            (error-unclosed-quote
-                (return (json-create-error "tokenizer" "unmatched quote" current-index false))
-            )
-            (error-invalid-char
-                (return (json-create-error "tokenizer" "invalid-char" current-index false))
-            )
-            (_ ())
+(defun -json-tokenize-step (str) {
+    ; TODO: Check for 'undetermined
+    (match (ext-json-tokenize-step str ())
+        (error-unclosed-quote
+            'more-data
         )
-        
-        (set 'tokens (ix result 0))
-        (set 'str (ix result 1))
-        (set 'current-index (+ current-index (ix result 2)))
-        (set 'len (- len (ix result 2)))
-    })
+        (error-invalid-char
+            'more-data
+        )
+        (((undetermined . (? tokens)) _ (? used-len)) 
+            (cons 'undetermined (cons tokens used-len))
+        )
+        (((? tokens) _ (? used-len))
+            (cons tokens used-len)
+        )
+        (_ (inspect 'unreachable))
+    )
     
-    (reverse tokens)
 })
+
+(defun json-tokenizer (generator)
+    (tokenizer-create generator -json-tokenize-step)
+)
+
+@const-end
+(def json-ex-str "{\"a-prop-hi\":5456778,\"str-prop\":\"\\\"escaped\\\"\",\"list-prop\":[true,false,null]}")

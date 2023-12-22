@@ -1,68 +1,90 @@
 @const-end
 
-; Should be set dynamically during registration with bluetooth.
-; This is a valid GUID for developing before we set up bluetooth communication
-; between the battery and app.
-(def registration-id (str-to-lower "712D6A50-349F-4A59-9791-8E8033B8C428"))
+(def api-address "postman-echo.com")
+(def api-endpoint "/post")
 
-(def num-failed-status-requests 0)
-(def num-malformed-action-responses 0)
-
-; @const-start
-
-(def charging-status-map '(
-    (0 . disconnected)
-    (1 . connected)
-    (2 . charging)
+(def json-payload '(
+    +assoc
+    ("field-a" . 5)
+    ("field-b" . 'null)
+    ("status" . "active")
+    ("samples" . (
+        0.45417 2.45687 3.12345 42.44565 25.45646 24.87896
+    ))
+    ("devices" . (
+        +assoc
+        ("serial-number-a" . "A1111111")
+        ("serial-number-b" . "B1111111")
+        ("serial-number-c" . "C1111111")
+        ("serial-number-d" . "D1111111")
+    ))
 ))
 
-(defun charging-status-from-int (int)
-    (assoc charging-status-map (to-i int))
-)
-
-(defun charging-status-to-int (status)
-    (cossa charging-status-map status)
-)
-
-(def hw-action-map '(
-    (1 . hw-action-start-charging)
-    (2 . hw-action-stop-charging)
-    (3 . hw-action-change-charge-limit)
-    (4 . hw-action-apply-firmware) ; unused at the moment
+(defun build-api-request-ret-struct (
+    is-successfull
+    total-ms
+    json-stringify-ms
+    request-build-ms
+    request-send-ms
+    request-handle-ms
+    json-parse-ms
+    response
+    json-data
+) (list
+    (cons 'success is-successfull)
+    (cons 'total-ms json-parse-ms)
+    (cons 'json-stringify-ms json-stringify-ms )
+    (cons 'request-build-ms request-build-ms)
+    (cons 'request-send-ms request-send-ms)
+    (cons 'request-handle-ms request-handle-ms)
+    (cons 'json-parse-ms json-parse-ms)
+    (cons 'response response)
+    (cons 'json-data json-data)
 ))
 
-(defun hw-action-from-int (int)
-    (assoc hw-action-map (to-i int))
-)
 
-(defun hw-action-to-int (action)
-    (cossa hw-action-map action)
-)
-
-; Perform POST request to the lindboard API.
+; Perform POST request to the API.
 ; `json-data` should be a valid json value
 ; Returns a response object, with an additional 'data field, containing the
 ; parsed json value.
-(defunret api-post-request (path json-data expect-response-data) {
+(defunret api-post-request (json-data) {
     (var start (systime))
     
     (var start-part (systime))
     (var data-str (ext-json-stringify json-data))
+    (var time-json-stringify-ms (ms-since start-part))
     (if dev-log-request-build-timings {
         (log-time "stringifying json" start-part)
     })
     
-    (var request (create-request 'POST (str-merge "/api/esp" path) "lindboard-staging.azurewebsites.net"))
+    (var start-part (systime))
+    
+    (var request (create-request 'POST api-endpoint api-address))
     (request-add-headers request (list
         '("Connection" . "keep-alive")
     ))
     (request-add-content request "application/json" data-str)
     
+    (def time-request-build-ms (ms-since start-part))
+    
+    (var start-part (systime))
     (var response (send-request request))
+    (def time-request-send-ms (ms-since start-part))
+    
+    (var start-part (systime))
     
     (if (not response) {
-        (+set num-failed-status-requests 1)
-        (return nil)
+        (return (build-api-request-ret-struct
+            false
+            (ms-since start)
+            time-json-stringify-ms
+            time-request-build-ms
+            time-request-send-ms
+            nil
+            nil
+            nil
+            nil
+        ))
     })
     
     (if (not-eq (http-status-type (response-get-status-code response)) 'successful) {
@@ -70,22 +92,17 @@
             "invalid status code "
             (str-from-n (response-get-status-code response))
         ))
-        (return nil)
-    })
-    
-    (if (not expect-response-data) {
-        (if dev-log-response-value {
-            (if (= (response-get-content-length response) 0) {
-                (ext-puts "Response contained no data")
-            } {
-                (ext-puts (str-merge
-                    "Ignored response of length "
-                    (str-from-n (response-get-content-length response))
-                ))
-            })
-        })
-    
-        (return true)
+        (return (build-api-request-ret-struct
+            false
+            (ms-since start)
+            time-json-stringify-ms
+            time-request-build-ms
+            time-request-send-ms
+            nil
+            nil
+            response
+            nil
+        ))
     })
     
     (if (= (response-get-content-length response) 0) {
@@ -93,9 +110,19 @@
         (if dev-log-request-build-timings {
             (log-time nil start)
         })
-        (return nil)
+        (return (build-api-request-ret-struct
+            false
+            (ms-since start)
+            time-json-stringify-ms
+            time-request-build-ms
+            time-request-send-ms
+            nil
+            nil
+            response
+            nil
+        ))
     })
-    
+        
     (if (not-eq (response-get-content-type response) 'mime-json) {
         (log-response-error response (str-merge
             "got invalid mime type '"
@@ -107,144 +134,69 @@
         (if dev-log-request-build-timings {
             (log-time nil start)
         })
-        (return nil)
+        (return (build-api-request-ret-struct
+            false
+            (ms-since start)
+            time-json-stringify-ms
+            time-request-build-ms
+            time-request-send-ms
+            nil
+            nil
+            response
+            nil
+        ))
     })
+    
+    (def time-request-handle-ms (ms-since start-part))
     
     (var start-part (systime))
     (var data (json-parse (response-get-content response)))
     (if dev-log-request-build-timings {
         (log-time "parsing json" start-part)
     })
-
+    (def time-json-parse-ms (ms-since start-part))
     
     (if (eq data 'error) {
         (log-response-error response (str-merge
             "parsing json failed, json:\n"
             (response-get-content response)
         ))
-        (ext-puts )
-        (return nil)
+        (return (build-api-request-ret-struct
+            false
+            (ms-since start)
+            time-json-stringify-ms
+            time-request-build-ms
+            time-request-send-ms
+            time-request-handle-ms
+            time-json-parse-ms
+            response
+            nil
+        ))
     })
     
     (if dev-log-response-value {
-        (ext-puts "\nResponse:")
-        (ext-puts (to-str data))
-        (ext-puts "\n")
+        (puts "\nResponse:")
+        (puts (to-str data))
+        (puts "\n")
     })
     
     (if dev-log-request-build-timings {
         (log-time nil start)
     })
     
-    (cons (cons 'data data) response)
-})
-
-(defunret api-status-update (batt-charge-level batt-charge-remaining-mins batt-charge-status batt-charge-limit long lat) {
-    (var batt-charge-status 
-        (charging-status-to-int batt-charge-status)
+    (build-api-request-ret-struct
+        true
+        (ms-since start)
+        time-json-stringify-ms
+        time-request-build-ms
+        time-request-send-ms
+        time-request-handle-ms
+        time-json-parse-ms
+        response
+        data
     )
-    
-    (var data (list
-        '+assoc
-        (cons "registrationId" registration-id)
-        (cons "units" (list
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-batt))
-                (cons "firmwareId" (env-get 'firmware-id-batt))
-                (cons "chargeLevel" (to-i (* batt-charge-level 100.0)))
-                (cons "chargeMinutesRemaining" (to-i batt-charge-remaining-mins))
-                (cons "chargeStatus" batt-charge-status)
-                (cons "chargeLimit" (to-i (* batt-charge-limit 100.0)))
-                (cons "longitude" long)
-                (cons "latitude" lat)
-            )
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-board))
-            )
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-jet))
-            )
-            (list '+assoc
-                (cons "serialNumber" (env-get 'serial-number-remote))
-            )
-        ))
-    ))
-    
-    (var response (api-post-request "/batteryStatusUpdate" data true))
-    
-    (if (eq response nil) {
-        (return nil)
-    })
-    
-    (var data (assoc response 'data))
-    
-    (if (not (is-list data)) {
-        (+set num-malformed-action-responses 1)
-        (log-response-error response (str-merge
-            "invalid JSON value (expected list):"
-            (to-str data)
-        ))
-        (return nil)
-    })
-    
-    ; TODO: fix `is-structure`
-    ; (if (not (is-structure response '(
-    ;     (
-    ;         ("registrationId" . type-str)
-    ;         ("hardwareActionId" . type-int)
-    ;         ("hardwareActionTypeId" . type-int)
-    ;         ("date" . type-str)
-    ;         ("data" . type-any)
-    ;     )
-    ; ))) {
-    ;     (+set num-malformed-action-responses 1)
-    ;     (ext-puts (str-merge
-    ;         "Invalid JSON value:"
-    ;         (to-str response)
-    ;     ))
-    ;     (return nil)
-    ; })
-    
-    (var actions (map
-        (fn (object) {
-            (list
-                (cons 'hw-action-id (assoc object "hardwareActionId"))
-                (cons 'hw-action (hw-action-from-int
-                    (assoc object "hardwareActionTypeId")
-                ))
-                (cons 'data (assoc object "data"))
-            )
-        })
-        (filter (fn (object) {
-            (if (not-eq
-                (str-to-lower (assoc object "registrationId"))
-                registration-id
-            ) {
-                (+set num-malformed-action-responses 1)
-                false
-            }
-                true
-            )
-        }) data)
-    ))
-    
-    actions
 })
 
-(defun api-confirm-action (hw-action-id) {
-    (var data (list '+assoc
-        (cons "registrationId" registration-id)
-        (cons "hardwareActionId" hw-action-id)
-    ))
-    
-    (var response (api-post-request "/confirmAction" data false))
-    
-    (if (eq response nil) {
-        (return nil)
-    })
-    true
-})
-
-(defun api-test () {
-    (print (api-status-update 0.5 10 'disconnected 0.8 0.0 0.0))
+(defun do-request () {
+    (api-post-request json-payload)
 })

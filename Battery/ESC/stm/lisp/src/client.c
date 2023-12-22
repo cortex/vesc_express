@@ -151,6 +151,8 @@ typedef struct {
     lbm_uint symbol_null;
     lbm_uint symbol_plus_assoc;
 
+    lbm_uint symbol_undetermined;
+    
     lbm_uint symbol_tok_true;
     lbm_uint symbol_tok_false;
     lbm_uint symbol_tok_null;
@@ -192,6 +194,7 @@ static bool register_symbols() {
         && VESC_IF->lbm_add_symbol_const("false_v", &d->symbol_false_v)
         && VESC_IF->lbm_add_symbol_const("null", &d->symbol_null)
         && VESC_IF->lbm_add_symbol_const("+assoc", &d->symbol_plus_assoc)
+        && VESC_IF->lbm_add_symbol_const("undetermined", &d->symbol_undetermined)
         && VESC_IF->lbm_add_symbol_const("tok-true", &d->symbol_tok_true)
         && VESC_IF->lbm_add_symbol_const("tok-false", &d->symbol_tok_false)
         && VESC_IF->lbm_add_symbol_const("tok-null", &d->symbol_tok_null)
@@ -318,10 +321,14 @@ static bool str_contains_delim(const char *str, const char *delims) {
  */
 static ssize_t str_index_of(const char *str, const char *search) {
     size_t search_len = strlen(search);
+    size_t len = strlen(str);
     if (search_len == 0) {
+        return 0;
+    }
+    if (len < search_len) {
         return -1;
     }
-    for (size_t i = 0; i < strlen(str) - (search_len - 1); i++) {
+    for (size_t i = 0; i < len - (search_len - 1); i++) {
         if (strneq(&str[i], search, search_len)) {
             return i;
         }
@@ -798,10 +805,6 @@ static lbm_value lbm_create_str(const char *str) {
     return result;
 }
 
-static void lbm_free_flat_value(lbm_flat_value_t *flat_value) {
-    VESC_IF->free(flat_value->buf);
-}
-
 static bool lbm_flatten_str(lbm_flat_value_t *flat_value, const char *str) {
     size_t data_size = strlen(str) + 1;
 
@@ -813,12 +816,12 @@ static bool lbm_flatten_str(lbm_flat_value_t *flat_value, const char *str) {
     }
 
     if (!VESC_IF->f_lbm_array(flat_value, data_size, (uint8_t *)str)) {
-        lbm_free_flat_value(flat_value);
+        VESC_IF->free(flat_value->buf);
         return false;
     }
 
     if (!VESC_IF->lbm_finish_flatten(flat_value)) {
-        lbm_free_flat_value(flat_value);
+        VESC_IF->free(flat_value->buf);
         return false;
     }
 
@@ -839,12 +842,12 @@ static bool lbm_flatten_sym(lbm_flat_value_t *flat_value, const lbm_uint sym) {
     }
 
     if (!VESC_IF->f_sym(flat_value, sym)) {
-        lbm_free_flat_value(flat_value);
+        VESC_IF->free(flat_value->buf);
         return false;
     }
 
     if (!VESC_IF->lbm_finish_flatten(flat_value)) {
-        lbm_free_flat_value(flat_value);
+        VESC_IF->free(flat_value->buf);
         return false;
     }
 
@@ -2128,6 +2131,7 @@ typedef enum {
     JSON_OK,
     JSON_UNCLOSED_QUOTE,
     JSON_INVALID_CHAR,
+    JSON_UNDETERMINED,
 } json_result_t;
 
 typedef struct {
@@ -2413,10 +2417,22 @@ static size_t json_unescape_str(char *dest, const char *str) {
     return dest_i;
 }
 
+static size_t str_whitespace_len(const char *str) {
+    ssize_t count =  first_not_of(str, JSON_WHITESPACE_CHARS);
+    if (count == -1) {
+        count = strlen(str);
+    }
+    
+    return count;
+}
+
 /**
  * \param str Must have a length >= 1.
  */
 static json_lex_unit_t json_lex_str(const char *str) {
+    size_t count = str_whitespace_len(str);
+    str += count;
+    
     if (str[0] != JSON_QUOTE) {
         return (json_lex_unit_t){
             .token = VESC_IF->lbm_enc_sym_nil,
@@ -2427,14 +2443,14 @@ static json_lex_unit_t json_lex_str(const char *str) {
         size_t len = strlen(str);
 
         for (size_t i = 1; i < len; i++) {
-            if (str[i] == JSON_QUOTE) {
+            if (str[i] == JSON_QUOTE && str[i - 1] != '\\') {
                 size_t buff_len = i - 1;
                 char buff[buff_len + 1];
                 str_extract_n_from(buff, str, 1, buff_len);
 
                 return (json_lex_unit_t){
                     .token = lbm_create_str(buff),
-                    .len = buff_len + 2,
+                    .len = count + buff_len + 2,
                     .error = JSON_OK,
                 };
             }
@@ -2446,8 +2462,17 @@ static json_lex_unit_t json_lex_str(const char *str) {
     }
 }
 
+/**
+ * @return If the tokenizer was not able to determine the result with 100%
+ * certainty, i.e. it encountered a value that could have been cut in half, then
+ * the error field is set to JSON_UNDETERMINED and the found value is set in the
+ * value field.
+*/
 static json_lex_unit_t json_lex_number(const char *str) {
     size_t len = strlen(str);
+    
+    size_t count = str_whitespace_len(str);
+    str += count;
 
     ssize_t result = first_not_of(str, JSON_NUMERIC_CHARS);
     size_t number_len;
@@ -2477,35 +2502,46 @@ static json_lex_unit_t json_lex_number(const char *str) {
         int value = ascii_to_int(number_str);
         value_lbm = VESC_IF->lbm_enc_i32(value);
     }
+    
+    if (number_len == len) {
+        return (json_lex_unit_t){
+            .token = value_lbm,
+            .len = count + number_len,
+            .error = JSON_UNDETERMINED,
+        };
+    }
 
     return (json_lex_unit_t){
         .token = value_lbm,
-        .len = number_len,
+        .len = count + number_len,
         .error = JSON_OK,
     };
 }
 
 static json_lex_unit_t json_lex_bool_null(const char *str) {
     data *d = use_state();
+    
+    size_t count = str_whitespace_len(str);
+    str += count;
 
     size_t len = strlen(str);
 
     if (len >= JSON_TRUE_LEN && strneq(str, JSON_TRUE, JSON_TRUE_LEN)) {
         return (json_lex_unit_t){
             .token = VESC_IF->lbm_enc_sym(d->symbol_tok_true),
-            .len = JSON_TRUE_LEN,
+            .len = count + JSON_TRUE_LEN,
             .error = JSON_OK,
         };
     } else if (len >= JSON_FALSE_LEN && strneq(str, JSON_FALSE, JSON_FALSE_LEN)) {
         return (json_lex_unit_t){
             .token = VESC_IF->lbm_enc_sym(d->symbol_tok_false),
-            .len = JSON_FALSE_LEN,
+            .len = count + JSON_FALSE_LEN,
             .error = JSON_OK,
         };
     } else if (len >= JSON_NULL_LEN && strneq(str, JSON_NULL, JSON_NULL_LEN)) {
         return (json_lex_unit_t){
             .token = VESC_IF->lbm_enc_sym(d->symbol_tok_null),
-            .len = JSON_NULL_LEN,
+            .len = count + JSON_NULL_LEN,
             .error = JSON_OK,
         };
     } else {
@@ -2522,6 +2558,8 @@ static json_lex_unit_t json_lex_bool_null(const char *str) {
  */
 static json_lex_unit_t json_lex_syntax(const char *str) {
     data *d = use_state();
+    
+    size_t len = str_whitespace_len(str);
 
     // if (!one_of(str[0], JSON_SYNTAX_CHARS)) {
     //     return (json_lex_unit_t){
@@ -2569,14 +2607,15 @@ static json_lex_unit_t json_lex_syntax(const char *str) {
 
     return (json_lex_unit_t){
         .token = VESC_IF->lbm_enc_sym(sym),
-        .len = 1,
+        .len = len + 1,
         .error = JSON_OK,
     };
 }
 
 /**
- * \param tokens a reference to a lbm linked lists containing the extracted
- * tokens. \return struct with the amount of characters consumed. Error field is
+ * @param tokens a reference to a lbm linked lists containing the extracted
+ * tokens.
+ * @return struct with the amount of characters consumed. Error field is
  * set to some other value than JSON_OK in case of an error. The token field is
  * set to nil except when an memory error has occurred, in which case the
  * 'out_of_memory symbol is returned (this is totally not convoluted).
@@ -2596,6 +2635,9 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
 
         if (result.token != VESC_IF->lbm_enc_sym_nil) {
             *tokens = VESC_IF->lbm_cons(result.token, *tokens);
+            // if (*tokens == VESC_IF->lbm_enc_sym_merror) {
+            //     return *tokens;
+            // }
         }
         str = str + result.len;
         consumed += result.len;
@@ -2603,6 +2645,12 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
 
     {
         json_lex_unit_t result = json_lex_number(str);
+        if (result.error == JSON_UNDETERMINED) {
+            consumed += result.len;
+            *tokens = VESC_IF->lbm_cons(result.token, *tokens);
+            result.token = VESC_IF->lbm_enc_sym_nil;
+            return result;
+        }
         if (result.error != JSON_OK) {
             result.token = VESC_IF->lbm_enc_sym_nil;
             return result;
@@ -2610,6 +2658,7 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
 
         if (result.token != VESC_IF->lbm_enc_sym_nil) {
             *tokens = VESC_IF->lbm_cons(result.token, *tokens);
+            // TODO: Check for lbm_enc_sym_merror here!!!
         }
         str = str + result.len;
         consumed += result.len;
@@ -2625,31 +2674,23 @@ static json_lex_unit_t json_tokenize_step(const char *str, lbm_value *tokens) {
         consumed += result.len;
     }
 
-    bool char_valid = false;
     {
         json_lex_unit_t result = json_lex_syntax(str);
 
         if (result.token != VESC_IF->lbm_enc_sym_nil) {
             *tokens = VESC_IF->lbm_cons(result.token, *tokens);
-            char_valid = true;
         }
         str = str + result.len;
         consumed += result.len;
     }
 
     {
-        ssize_t count = first_not_of(str, JSON_WHITESPACE_CHARS);
-        if (count == -1) {
-            count = (ssize_t)strlen(str);
-        }
-        if (count > 0) {
-            char_valid = true;
-        }
-        str = str + count;
-        consumed += (size_t)count;
+        size_t count = str_whitespace_len(str);
+        str += count;
+        consumed += count;
     }
 
-    if (consumed == 0 && !char_valid) {
+    if (consumed == 0) {
         return (json_lex_unit_t){
             .token = VESC_IF->lbm_enc_sym_nil,
             .error = JSON_INVALID_CHAR,
@@ -2690,11 +2731,14 @@ static lbm_value ext_str_index_of(lbm_value *args, lbm_uint argn) {
     const char *str = VESC_IF->lbm_dec_str(args[0]);
     const char *search = VESC_IF->lbm_dec_str(args[1]);
 
-    if (from_index >= strlen(str)) {
-        return VESC_IF->lbm_enc_sym_eerror;
+    if (from_index > strlen(str)) {
+        return VESC_IF->lbm_enc_i(-1);
     }
 
     ssize_t index = str_index_of(str + from_index, search);
+    if (index != -1) {
+        index += from_index;
+    }
 
     return VESC_IF->lbm_enc_i(index);
 }
@@ -2857,6 +2901,7 @@ static lbm_value ext_str_join(lbm_value *args, lbm_uint argn) {
     return lbm_create_str(dest);
 }
 
+// Very broken for long results...
 /* signature: (ext-puts ...values) */
 static lbm_value ext_puts(lbm_value *args, lbm_uint argn) {
     if (argn == 0) {
@@ -3442,10 +3487,11 @@ static lbm_value ext_json_tokenize_step(lbm_value *args, lbm_uint argn) {
 
     const char *str = VESC_IF->lbm_dec_str(args[0]);
     lbm_value tokens = args[1];
+    bool undetermined = false;
 
     json_lex_unit_t result = json_tokenize_step(str, &tokens);
     if (result.error != JSON_OK) {
-        lbm_uint error_sym;
+        lbm_uint error_sym = 0;
         switch (result.error) {
             case JSON_UNCLOSED_QUOTE: {
                 error_sym = d->symbol_error_unclosed_quote;
@@ -3455,14 +3501,27 @@ static lbm_value ext_json_tokenize_step(lbm_value *args, lbm_uint argn) {
                 error_sym = d->symbol_error_invalid_char;
                 break;
             }
+            case JSON_UNDETERMINED: {
+                undetermined = true;
+                break;
+            }
             default: {
                 return VESC_IF->lbm_enc_sym_eerror;
             }
         }
-        return VESC_IF->lbm_enc_sym(error_sym);
+        if (error_sym != 0) {
+            return VESC_IF->lbm_enc_sym(error_sym);            
+        }
     }
     if (result.token == VESC_IF->lbm_enc_sym_merror) {
         return VESC_IF->lbm_enc_sym_merror;
+    }
+    
+    if (undetermined) {
+        tokens = VESC_IF->lbm_cons(VESC_IF->lbm_enc_sym(d->symbol_undetermined), tokens);
+        if (tokens == VESC_IF->lbm_enc_sym_merror) {
+            return VESC_IF->lbm_enc_sym_merror;
+        }
     }
 
     lbm_value len = VESC_IF->lbm_enc_i(result.len);
@@ -3470,12 +3529,16 @@ static lbm_value ext_json_tokenize_step(lbm_value *args, lbm_uint argn) {
     if (result_str == VESC_IF->lbm_enc_sym_merror) {
         return VESC_IF->lbm_enc_sym_merror;
     }
-
-    return VESC_IF->lbm_cons(
-        tokens, VESC_IF->lbm_cons(
-                    result_str, VESC_IF->lbm_cons(len, VESC_IF->lbm_enc_sym_nil)
-                )
-    );
+    
+    lbm_value list = VESC_IF->lbm_cons(len, VESC_IF->lbm_enc_sym_nil);
+    if (list == VESC_IF->lbm_enc_sym_merror) {
+        return list;
+    }
+    list = VESC_IF->lbm_cons(result_str, list);
+    if (list == VESC_IF->lbm_enc_sym_merror) {
+        return list;
+    }
+    return VESC_IF->lbm_cons(tokens, list);
 }
 
 static lbm_value ext_json_unescape_str(lbm_value *args, lbm_uint argn) {
@@ -3538,7 +3601,7 @@ INIT_FUN(lib_info *info) {
     VESC_IF->lbm_add_extension("ext-at-ready", ext_at_ready);
     VESC_IF->lbm_add_extension("ext-at-init", ext_at_init);
     VESC_IF->lbm_add_extension("ext-tcp-status", ext_tcp_status);
-    VESC_IF->lbm_add_extension("ext-tcp-is-open ", ext_tcp_is_open);
+    VESC_IF->lbm_add_extension("ext-tcp-is-open", ext_tcp_is_open);
     VESC_IF->lbm_add_extension(
         "ext-tcp-wait-until-connected", ext_tcp_wait_until_connected
     );
