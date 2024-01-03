@@ -114,10 +114,10 @@
     ))
 ))
 
-; For every view, these functions tell you if it want's to be displayed
+; For every view, these functions tell you if it wants to be displayed
 ; currently. The order decide the priority, with the earlier views having higher
-; priority. For example, the main view always want's to be displayed, but is
-; last, so it's only displayed if no other view want's to.
+; priority. For example, the main view always wants to be displayed, but is
+; last, so it's only displayed if no other view wants to.
 (defun get-view-is-visible-functions () (list
     (cons 'low-battery view-is-visible-low-battery)
     (cons 'warning view-is-visible-warning)
@@ -170,7 +170,7 @@
     ) (get-view-is-visible-functions))
     
     (if (eq view nil)
-        (print "no view want's to be displayed :/")
+        (print "no view wants to be displayed :/")
     )
     
     view
@@ -278,31 +278,6 @@
     (def on-left-long-pressed (assoc handlers 'left-long))
     (def on-right-long-pressed (assoc handlers 'right-long))
 }))
-
-; Failed experiment
-; (defun cleanup-view-buffers () {
-;     (map (fn (pair)
-;         (set (cons pair) nil)
-;     ) view-buffers)
-;     (def view-buffers (list))
-; })
-
-; ; Register a list of buffers for the view. The list should contain variable
-; ; names that contain buffers. E.g. (register-view-buffers '(view-example1-buf view-example2-buf))
-; (def register-view-buffers (macro (buffer-names) `{
-;     (def view-buffers (cons
-;         (map (fn (name) 
-;             (cons ',name ,name)
-;         ) ,buffer-names)
-;         view-buffers
-;     ))
-; }))
-
-; (defun render-view-buffers ()
-;     (map (fn (pair)
-;         (sbuf-render-changes (cdr pair))
-;     ) view-buffers)
-; )
 
 ;;; Views
 

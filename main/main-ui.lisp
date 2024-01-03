@@ -8,10 +8,16 @@
 
 (init-hw)
 
-; disp size (accounting for inset): 190x350
-(set-disp-pwr 1)
-(disp-load-sh8501b 6 5 7 8 40)
+; remote v3
+(gpio-configure 3 'pin-mode-out)
+(gpio-write 3 1)
+; disp size (total): 240x320 (TODO: Might not be correct.)
+(disp-load-st7789 6 5 7 8 0 40) ; sd0 clk cs reset dc mhz
 (disp-reset)
+(ext-disp-orientation 0)
+(disp-clear)
+
+(gpio-write 3 0) ; enable display backlight (active when low)
 
 @const-start
 
@@ -43,12 +49,9 @@
 {
     (if (and (<= (get-remote-soc) 0.05) (not dev-disable-low-battery-msg)) { ; 5%
         (print "low battery!")
-        (var icon (img-buffer-from-bin icon-low-battery))
-        (var icon-buf (img-buffer 'indexed2 88 146))
-        (img-blit icon-buf icon 1 0 -1)
+        (var icon-buf (img-buffer-from-bin icon-low-battery))
         
-        (var text (img-buffer-from-bin text-remote-battery-low))
-        (var text-buf (img-buffer 'indexed2 144 72))
+        (var text-buf (img-buffer-from-bin text-remote-battery-low))
         (img-blit text-buf text 1 0 -1)
         
         (disp-render icon-buf 52 74 '(0x0 0xe65f5c))
@@ -71,14 +74,14 @@
     (var logo (img-buffer-from-bin icon-lind-logo))
     (var logo-buf (img-buffer 'indexed2 120 19))
     (img-blit logo-buf logo 2 0 -1)
-    (disp-render logo-buf 36 156 (list 0x0 0xffffff))
+    (disp-render logo-buf 36 (- 156 30) (list 0x0 0xffffff))
     
     (var w (* (bufget-u8 font-b3 0) (str-len version-str)))
     (var screen-w 194) ; this is the total width, including the screen inset
     (var x (/ (- screen-w w) 2))
     (var version-buf (img-buffer 'indexed2 w 16))
     (img-text version-buf 0 0 1 0 font-b3 version-str)
-    (disp-render version-buf x 319 (list 0x0 0x676767)) ; these colors don't automatically follow the theme
+    (disp-render version-buf x (- 319 30) (list 0x0 0x676767)) ; these colors don't automatically follow the theme
 }
 
 ; parse string containing unsigned binary integer
@@ -304,7 +307,6 @@
 (def bevel-small 13)
 
 
-
 ;;; Specific UI components
 
 @const-end
@@ -374,14 +376,15 @@
     )))
     (img-clear (sbuf-img status-buf) 3)
     (sbuf-blit status-buf status-icon 0 0 ())
-  
-    (sbuf-render connected-buf (list col-fg 0 0 col-bg))
-    (sbuf-render status-buf (list
-        (if is-connected col-accent col-error)
-        0
-        0
-        col-bg
-    ))
+
+    ; These would draw outside the bounds of the new display!
+    ; (sbuf-render connected-buf (list col-fg 0 0 col-bg))
+    ; (sbuf-render status-buf (list
+    ;     (if is-connected col-accent col-error)
+    ;     0
+    ;     0
+    ;     col-bg
+    ; ))
 })
 
 ;;; State management
@@ -396,34 +399,6 @@
 ;;; Specific view state management
 
 (read-eval-program code-ui-tick)
-
-; (let ((loop (lambda (res break) (if cond (loop body break) res)))) (call-cc (lambda (brk) (loop nil brk))))
-; (let (
-;     (loop (lambda (res break) (if cond
-;         (loop body break)
-;         res
-;     )))
-; )
-;     (call-cc (lambda (brk) (loop nil brk)))
-; )
-
-; (defun loopwhile-internal (cnd body)
-;     (let (
-;         (loop (lambda (res) (if cnd
-;             (loop body)
-;         )))
-;     ))
-;     (if cnd )
-; )
-
-; (def loopwhile (macro (cnd body) `(let (
-;     (loop (lambda (res) (if ,cnd
-;         (loop ,body)
-;         res
-;     )))
-; )
-;     (loop nil)
-; )))
 
 (def m-connection-tick-ms 0.0)
 ; Communication
