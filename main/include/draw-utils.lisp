@@ -12,10 +12,7 @@
 ;;; - 'y the y coordinate
 ;;; - 'w the width
 ;;; - 'h the height
-; ;;; - 'real-x the real x coordinate past on to `disp-render`
-; ;;; - 'x-offset
 ;;; - 'changed: if the buffer content has changed since rendering it last.
-; ;;; (the real width isn't stored as it's never needed)
 
 ;;; These were an abstraction that was previously necessary as the old display
 ;;; could only draw buffers at positions that were a multiple of four. This
@@ -165,19 +162,6 @@
 
     (list font-x x)
 })
-
-; (let (
-;     (buf-dims (img-dims (assoc sbuf 'buf)))
-;     (buf-w (ix buf-dims 0))
-;     (buf-h (ix buf-dims 1))
-;     (font-w (bufget-u8 font 0)) ; This function isn't documented anywhere...:/
-;     (font-h (bufget-u8 font 1))
-;     (y (+ (- (/ buf-h 2) font-baseline) (/ font-zero-h 2)))
-;     (x (- (/ buf-w 2) (/ (* font-w (str-len text)) 2)))
-; ) (progn
-;     (sbuf-exec img-rectangle sbuf 0 y (buff-w font-h bg '(filled)))
-;     (sbuf-exec img-text sbuf x y (fg bg font text))
-; )))
 
 ; y refers to the middle of the line
 (defun draw-horiz-line (sbuf x0 x1 y radius color) (let (
