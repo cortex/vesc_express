@@ -2,46 +2,40 @@
 
 @const-start
 
-;;; Smart draw buffer wrapper. This is defined as a struct that encapsulates a buffer,
-;;; whose x position does not have to align to the 4px multiple limit.
+;;; Smart draw buffer wrapper that keeps track of its position. This is defined
+;;; as a struct that encapsulates a buffer.
 ;;; A smart buffer also automatically adjusts the position to add the defined
 ;;; gui inset (see the comment for `screen-inset-x`).
 ;;; This struct is represented by an associative list containing the following keys:
 ;;; - 'buf
-;;; - 'x the virtual x coordinate
-;;; - 'y the real y coordinate
-;;; - 'w the virtual width
-;;; - 'h the real height
-;;; - 'real-x the real x coordinate past on to `disp-render`
-;;; - 'x-offset
+;;; - 'x the x coordinate
+;;; - 'y the y coordinate
+;;; - 'w the width
+;;; - 'h the height
+; ;;; - 'real-x the real x coordinate past on to `disp-render`
+; ;;; - 'x-offset
 ;;; - 'changed: if the buffer content has changed since rendering it last.
-;;; (the real width isn't stored as it's never needed)
+; ;;; (the real width isn't stored as it's never needed)
 
-; Create a smart buffer struct. Unlike normal buffers, the x position *and* width does not
-; need to be a multiple of 4.
+;;; These were an abstraction that was previously necessary as the old display
+;;; could only draw buffers at positions that were a multiple of four. This
+;;; structure would then abstract away this. It is questionable if the added
+;complexity is still worth it, but keeping track of changes is still a usefull
+;feature though. We might want to phase out the usage...
+
+; Create a smart buffer struct.
 (defun create-sbuf (color-fmt x y width height) (let (
-    ((real-x x-offset) (previous-multiple (+ x screen-inset-x) 4))
-    ((real-w w-offset) (next-multiple (+ width x-offset) 4))
-    (buff (img-buffer color-fmt real-w height))
+    (buf (img-buffer color-fmt width height))
 ) {
     (list
-        (cons 'buf buff)
+        (cons 'buf buf)
         (cons 'x x)
         (cons 'y y)
         (cons 'w width)
         (cons 'h height)
-        (cons 'real-x real-x)
-        (cons 'x-offset x-offset)
         (cons 'changed false)
     )
 }))
-
-; Get the real position on the internal buffer for a coordinate on the
-; virtual smart buffer.
-(defun sbuf-get-buf-coords (sbuf x y) (list
-    (+ x (assoc sbuf 'x-offset))
-    y
-))
 
 ; Get the internal buffer image of the smart buffer.
 (defun sbuf-img (sbuf) (assoc sbuf 'buf))
@@ -57,32 +51,21 @@
 (defun sbuf-flag-changed (sbuf) (setassoc sbuf 'changed true))
 
 (def sbuf-exec (macro (fun sbuf x y args) `{
-    (var coords (sbuf-get-buf-coords ,sbuf ,x ,y))
-    (,fun (assoc ,sbuf 'buf) (ix coords 0) (ix coords 1) ,@args)
+    (,fun (assoc ,sbuf 'buf) ,x ,y ,@args)
     (sbuf-flag-changed ,sbuf)
 }))
 
 ; ; Destructively set the position of the smart buffer.
 ; (defun sbuf-move (sbuf x y) {
-;     (setassoc sbuf 'real-x (- x (assoc sbuf 'x-offset)))
 ;     (setassoc sbuf 'x x)
 ;     (setassoc sbuf 'y y)
 ; })
 
 (def sbuf-blit (macro (sbuf src-img x y attrs)
-    ; TODO: is `tc` important?
+    ; TODO: add support for `tc` (transparent color)
     ; https://github.com/vedderb/vesc_express/blob/main/main/display/README.md#img-blit
     `{
-        (apply img-blit (append (list (assoc ,sbuf 'buf) ,src-img) (sbuf-get-buf-coords ,sbuf ,x ,y) (list -1) ',attrs))
-        (sbuf-flag-changed ,sbuf)
-    }
-))
-
-(def sbuf-blit-test (macro (sbuf src-img x y tc attrs)
-    ; TODO: is `tc` important?
-    ; https://github.com/vedderb/vesc_express/blob/main/main/display/README.md#img-blit
-    `{
-        (apply img-blit (append (list (assoc ,sbuf 'buf) ,src-img) (sbuf-get-buf-coords ,sbuf ,x ,y) (list ,tc) ',attrs))
+        (apply img-blit (append (list (assoc ,sbuf 'buf) ,src-img ,x ,y -1) ',attrs))
         (sbuf-flag-changed ,sbuf)
     }
 ))
@@ -91,7 +74,7 @@
     (setassoc sbuf 'changed false)
     (disp-render
         (assoc sbuf 'buf)
-        (assoc sbuf 'real-x)
+        (assoc sbuf 'x)
         (assoc sbuf 'y)
         colors
     )
