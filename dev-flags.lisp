@@ -4,8 +4,8 @@
 (def dev-disable-charging-msg true)
 (def dev-short-thr-activation false)
 (def dev-disable-inactivity-check false) ; Disables the check that deactivates the thrust upon 30 seconds of inactivity.
-(def dev-disable-connection-check true) ; Disables the check that deactivates the thrust when connection has been lost.
-(def dev-disable-connection-lost-msg true)
+(def dev-disable-connection-check false) ; Disables the check that deactivates the thrust when connection has been lost.
+(def dev-disable-connection-lost-msg false)
 ; (dev disable-sleep-button true)
 
 (def dev-force-view false) ; Always show a specific view.
