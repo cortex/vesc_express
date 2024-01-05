@@ -11,4 +11,7 @@ cd $SRCDIR
 # idf.py clean
 idf.py build
 mkdir -p build
-cp ./build/vesc_express.bin ../../$2
+
+cp ./build/vesc_express.bin ../../$2/firmware.bin
+cp ./build/bootloader/bootloader.bin ../../$2/bootloader.bin
+cp ./build/partition_table/partition-table.bin ../../$2/partition-table.bin

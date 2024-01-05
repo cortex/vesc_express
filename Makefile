@@ -32,14 +32,14 @@ build/conf_general.h.template:
 		sed -e 's/hw_xp_t.h/$$VESC_HW_HEADER/g' | \
 		sed -e 's/hw_xp_t.c/$$VESC_HW_SOURCE/g'  > build/conf_general.h.template
 
-build/bat-ant-esp/firmware.bin: \
+build/bat-ant-esp/firmware.bin build/bat-ant-esp/bootloader.bin build/bat-ant-esp/partition-table.bin &: \
 	build/conf_general.h.template \
 	Battery/ANT/esp/conf_express/hw_lb_ant.c \
 	Battery/ANT/esp/conf_express/hw_lb_ant.h
 
 	mkdir -p build/bat-ant-esp
 	cp Battery/ANT/esp/conf_express/* ./dependencies/vesc_express/main/
-	./build-vesc-express.sh lb_ant $@
+	./build-vesc-express.sh lb_ant build/bat-ant-esp
 
 build/bat-ant-stm/firmware.bin: \
 	Battery/ANT/stm/conf_gpstm/hw_lb_ant.c \
@@ -56,7 +56,7 @@ build/bat-bms-esp/firmware.bin: \
 	
 	mkdir -p build/bat-bms-esp
 	cp Battery/BMS/esp/conf_express/* ./dependencies/vesc_express/main 
-	./build-vesc-express.sh lb_bms_wifi $@
+	./build-vesc-express.sh lb_bms_wifi build/bat-bms-esp
 
 build/bat-bms-stm/firmware.bin: \
 	Battery/BMS/stm/conf_bms/hw_lb.c \
@@ -85,7 +85,7 @@ build/jet-if-esp/firmware.bin: \
 	
 	mkdir -p build/jet-if-esp
 	cp Jet/IF/esp/conf_express/* ./dependencies/vesc_express/main/
-	./build-vesc-express.sh lb_if $@
+	./build-vesc-express.sh lb_if build/jet-if-esp
 
 build/remote-disp-esp/firmware.bin: \
 	Remote/DISP/esp/conf_express/hw_lb_hc.c \
@@ -93,7 +93,7 @@ build/remote-disp-esp/firmware.bin: \
 
 	mkdir -p build/remote-disp-esp
 	cp ./Remote/DISP/esp/conf_express/* ./dependencies/vesc_express/main
-	./build-vesc-express.sh lb_hc $@
+	./build-vesc-express.sh lb_hc build/remote-disp-esp
 
 result/bin/vesc_tool_6.05:
 	nix-build vesc-tool.nix
