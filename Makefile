@@ -118,3 +118,13 @@ build/bat-bms-esp/main.lpkg: vesc-tool
 flash: firmware vesc-tool
 	$(VESC_TOOL) --canFwd 10 --uploadLisp  build/bat-esc-stm/main.lpkg --vescPort /dev/ttyACM0; true
 	$(VESC_TOOL) --canFwd 21 --uploadLisp  build/bat-bms-esp/main.lpkg --vescPort /dev/ttyACM0; true
+
+flash-ant:
+	$(VESC_TOOL) --uploadFirmware build/bat-ant-esp/firmware.bin --vescPort /dev/ttyACM1
+
+OPENOCD=openocd -f board/esp32c3-builtin.cfg
+
+flash-ant-first:
+	$(OPENOCD) -c "program_esp build/bat-ant-esp/partition-table.bin 0x8000 verify reset exit"
+	$(OPENOCD) -c "program_esp build/bat-ant-esp/bootloader.bin 0 verify reset exit"
+	$(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x20000 verify reset exit"
