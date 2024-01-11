@@ -128,3 +128,8 @@ flash-ant-first:
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/partition-table.bin 0x8000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/bootloader.bin 0 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x20000 verify reset exit"
+
+flash-jet-first:
+	$(OPENOCD) -c "program_esp build/jet-if-esp/bootloader.bin 0 verify reset exit"
+	$(OPENOCD) -c "program_esp build/jet-if-esp/partition-table.bin 0x8000 verify reset exit"
+	$(OPENOCD) -c "program_esp build/jet-if-esp/firmware.bin 0x20000 verify reset exit"
