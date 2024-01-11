@@ -1,193 +1,146 @@
+@const-symbol-strings
+
+@const-start
 (import "utils.lisp" 'utils)
 (read-eval-program utils)
 
-;; BLE Services specs
-(define services `(
-        (registration
-            (service           ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a0"))
-            (characteristics
-                (registration_id ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a1") (prop-read prop-write) 16)
-                (lte             ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a2") (prop-read) 16)
-                (battery         ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a3") (prop-read) 16)
-                (jet             ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a4") (prop-read) 16)
-                (board           ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a5") (prop-read) 16)
-                (remote          ,(uuid "beb5483e-36e1-4688-b7f5-ea07361b26a6") (prop-read) 16)
-        ))
-        (wifi
-            (service           ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319140"))
-            (characteristics
-                (credentials     ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319141") (prop-read prop-write) 64)
-                (status          ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319142") (prop-read) 1)
-                (available       ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319143") (prop-read) 512)
-                (mode            ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319144") (prop-read prop-write) 1)
-                (error-detail    ,(uuid "4fafc201-1fb5-459e-8fcc-c5c9c3319142") (prop-read) 64)
-        ))
+(import "lib/url.lisp" 'url)
+(read-eval-program url)
+
+(import "lib/http.lisp" 'http)
+(read-eval-program http)
+
+(import "ble.lisp" 'ble)
+(read-eval-program ble)
+
+@const-symbol-strings
+
+(def api-url "http://lindboard-staging.azurewebsites.net/api/esp")
+
+(defun http-post (url body)
+    (str-merge
+        "POST " (url-path url) " HTTP/1.1\n"
+        "Host: " (url-host url) "\n"
+        "Content-Type: application/json\n"
+        "Content-Length: " (str-from-n (buflen body)) "\n\n"
+    body "\n")
+)
+
+;JSON helpers
+(defun q (str) (str-merge "\"" str "\""))
+(defun kv (key value) (str-merge (q key) ":" value))
+(defun int (n) (str-from-n (round n)))
+
+(defun charge-status () (battery-status-str
+        (if (> (get-bms-val 'bms-v-charge) 20.0)
+            'connected
+'disconnected)))
+
+(defun battery-status-json () (cond
+        ((not registration-id) (print "no registration id set"))
+        (t (str-merge
+                "{" (kv "registrationId" (q registration-id)) ", "
+                    (q "units" ) ":["
+                    "{" (kv "serialNumber"           (q serial-number-battery)) ","
+                        (kv "firmwareId"             (q "test")) "," ; TODO: needs lispbm implementation
+                        (kv "chargeLevel"            (int (* (get-bms-val 'bms-soc) 100))) ","
+                        (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
+                        (kv "chargeStatus"           (charge-status)) ","
+                        (kv "chargeLimit"            "100") ","
+                        (kv "latitude"               (str-from-n 59.3293)) "," ; TODO: what to do in case of error
+                        (kv "longitude"              (str-from-n 18.0686)) "," ; TODO: what to do in case of error
+                        (kv "celcius"                (int (get-bms-val 'bms-temp-hum)))
+                    "}"
+                    ",{" (kv "serialNumber" (q serial-number-remote)) "}"
+                    ",{" (kv "serialNumber" (q serial-number-jet)) "}"
+                    ",{" (kv "serialNumber" (q serial-number-board)) "}"
+                "]}"
+            )
+        )
 ))
 
-(defun wifi-status-code (sym)
-    (match sym
-        (disconnected 0)
-        (connected 1)
-        (connecting 2)
-        (scanning 3)
-        (error 4)))
+(defun send-status (){
+        (var url (str-merge api-url "/batteryStatusUpdate"))
+        (var conn (tcp-connect (url-host url) (url-port url)))
+        (if (or (eq conn nil) (eq conn 'unknown-host))
+            (print (str-merge "error connecting to " (url-host url))) {
+                (var req (http-post url (battery-status-json)))
+                (var res (tcp-send conn req))
+                (var resp (tcp-recv conn 2048))
+                (var resp (http-parse-response resp))
+                (puts (http-status resp))
+                (tcp-close conn)
+        })
+})
 
-(defun wifi-mode (sym)
-    (match sym
-        (off 0)
-        (scan 1)
-        (autoconnect 2)))
+(defun battery-status-str (sym)
+    (str-from-n (match sym
+            (disconnected 0)
+            (connected 1)
+(charging 2))))
+
+@const-end
+
+(defun bt-name () 
+    (str-merge "LB " (str-part (apply str-merge (map (lambda (x) (str-from-n x "%X")) (get-mac-addr))) 0 5)))
 
 (defun start-ble () {
         (ble-set-name "L8") ; TODO: battery ID goes here
         (def adv-data `(
-               (flags . [0x06])
-               (name-complete . ,(buf-resize "Lind 123" -1)) 
-               (incomplete-uuid-128 . ,(buf-reverse (uuid "beb5483e-36e1-4688-b7f5-ea07361b26a0")))
+                (flags . [0x06])
+                (name-complete . ,(buf-resize (bt-name) -1))
+                (incomplete-uuid-128 . ,(buf-reverse (uuid "beb5483e-36e1-4688-b7f5-ea07361b26a0")))
         ))
         (def scan-rsp-data `(
                 (flags . [0x06])
                 (tx-power-level . [0x12])
                 (conn-interval-range . [0x06 0x00 0x03 0x00])
         ))
-        (ble-conf-adv true adv-data scan-rsp-data)        
+        (ble-conf-adv true adv-data scan-rsp-data)
         (ble-start-app)
 })
 
-(defun make-char (char-spec) 
-    (let ((addr (ix char-spec 1))
-          (prop (ix char-spec 2))
-          (max-len (ix char-spec 3))
-          ){
+@const-start
+(def serial-number-battery "BA3333333")
+(def serial-number-jet "JE3333333")
+(def serial-number-remote "RE3333333")
+(def serial-number-board "BO3333333")
+@const-end
 
-         `((uuid  . ,addr)
-           (prop  . ,prop) 
-           (max-len . ,max-len))}))
-
-(defun register-service (service-spec) 
-    (let ((service-addr (car (assoc service-spec 'service)))
-          (char-specs (assoc service-spec 'characteristics))
-          (chars (map make-char char-specs))
-          (handles (ble-add-service service-addr chars))
-          (service-handle (car handles)))
-         (list service-handle (zip (map car char-specs) (cdr handles)))))
-
-(defun reset-ble () {
-    (var handles (ble-get-services))
-    (if handles {(map ble-remove-service handles)})})
-
-;Build byte-array from c-string (null-terminated)
-(defun from-c-str (string)
-    (let ((newlen (str-len string)) 
-          (out (bufcreate newlen)))
-         {(bufcpy out 0 string 0 newlen) out }))
-
-;Build c-string (null-terminated) from byte array
-(defun to-c-str (string){
-    (var newlen (+ (buflen string) 1))
-    (var out (bufcreate newlen))
-    (bufcpy out 0 string 0 newlen)
-    (bufset-u8 out (buflen string) 0)
-    out
-})
-
-(start-ble)
 (reset-ble)
+(start-ble)
 
 (define registration-service (register-service (apath services '(registration))))
 (define wifi-service         (register-service (apath services '(wifi))))
 
-(defun ble-attr-set-str (handles path value-str) 
-    (ble-attr-set-value 
-        (apath (ix handles 1) path) 
-        (from-c-str value-str)))
+(ble-attr-set-str registration-service '(battery) serial-number-battery)
+(ble-attr-set-str registration-service '(jet)     serial-number-jet)
+(ble-attr-set-str registration-service '(remote)  serial-number-remote)
+(ble-attr-set-str registration-service '(board)   serial-number-board)
 
-(ble-attr-set-str registration-service '(battery) "BA3333333") 
-(ble-attr-set-str registration-service '(jet)     "JE3333333")
-(ble-attr-set-str registration-service '(remote)  "RE3333333") 
-(ble-attr-set-str registration-service '(board)   "BO3333333")
-
-(defun format-network (network){ 
-        (var name (ix network 0))
-        (var db (ix network 1))
-       (str-merge  name "|" (to-str db) ";")
+(defun event-handler (){
+        (print "Setting up bluetooth event handler")
+        (loopwhile t
+            (recv
+                ((event-ble-rx (? handle) (? data)) (proc-ble-data handle data))
+                (_ nil) ; Ignore other events
+        ))
 })
 
-(defun format-available-networks (networks){
-    (var netmap (map format-network networks))
-    (apply str-merge (map format-network networks))
-})
+(def registration-id nil)
+(defun handle-registration (data){
+        (print (str-merge "registered with id" data))
+        (set 'registration-id data)
+    }
+)
 
-(defun event-handler ()
-    (loopwhile t
-        (recv
-            ((event-ble-rx (? handle) (? data)) (proc-ble-data handle data))
-            (_ nil) ; Ignore other events
-)))
-
-(defun charid (service name) (assoc (ix service 1) name))
-
-(defun proc-ble-data (ble-handle data){
-      (if (eq ble-handle (charid registration-service 'registration-id))
-        (print "Registration id set to" data))
-      (if (eq ble-handle (charid wifi-service 'credentials))
-        (handle-connect-wifi data)
-        )
-      (if (eq ble-handle (charid wifi-service 'mode))
-        (handle-wifi-mode (bufget-u8 data 0))
-        
-      )
-})     
-                  
-(defun handle-wifi-mode (new-mode-code) {
-        (if (eq new-mode-code (wifi-mode 'scan)) {
-                (set-wifi-status 'scanning)
-                (spawn-trap
-                    (lambda ()
-                        (wifi-scan-networks 0.01)
-                ))
-                (recv
-                    ((exit-error (? tid) (? e)) {
-                            (print "trapped error" e)
-                            (set-wifi-status 'error)
-                    })
-                    ((exit-ok    (? tid) (? v)) {
-                            (print "ok" v)
-                            (var networks v)
-                            (var network-list-str (format-available-networks networks))
-                            (print (str-len network-list-str))
-                            (ble-attr-set-str wifi-service '(available) network-list-str)
-                            (print "set network list")
-                            (set-wifi-status 'disconnected)
-                    })
-                )
-            }
-            (print (to-str "unknown mode" newmode))
-        )
-})
+(event-register-handler (spawn event-handler))
+(event-enable 'event-ble-rx)
 
 (defun set-wifi-status (status) {
         (var buf (bufcreate 1))
         (bufset-u8 buf 0 (wifi-status-code status))
+        
         (print (to-str "Set wifi mode" status))
-        (ble-attr-set-value (charid wifi-service 'status) buf)
-})
-
-(defun handle-connect-wifi (data) {
-        (print "connect wifi")
-        (var parts (str-split (to-c-str data) "|"))
-        (if (not (eq (length parts)) 2)
-            (set-wifi-status 'error)
-            {
-                (var ssid (ix parts 0))
-                (var password (ix parts 1))
-                (set-wifi-status 'connecting)
-                (var result (wifi-connect ssid password))
-                (if result
-                    (set-wifi-status 'connected)
-                (set-wifi-status 'error))
-        })
-})
-
-(event-register-handler (spawn event-handler))
-(event-enable 'event-ble-rx)
+        
+(ble-attr-set-value (charid wifi-service 'status) buf)})

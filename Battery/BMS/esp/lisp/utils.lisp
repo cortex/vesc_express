@@ -1,3 +1,5 @@
+
+@const-start
 ;; Parse a UUID string to byte array
 (defun uuid (uuid-string)
     (let ((out (bufcreate 16))
@@ -30,3 +32,4 @@
     (print v)
     v
 })
+@const-end
