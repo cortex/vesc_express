@@ -1,3 +1,11 @@
+.PHONY: \
+	bat-ant-esp \
+	bat-ant-stm \
+	bat-bms-esp \
+	bat-esc-stm \
+	jet-if-esp \
+	remote-disp-esp \
+
 all: firmware lisp
 
 firmware: \
@@ -15,6 +23,27 @@ lisp: \
 
 clean:
 	rm -rf build
+	
+bat-ant-esp: \
+	build/bat-ant-esp/firmware.bin \
+	build/bat-ant-esp/main.lpkg
+
+bat-ant-stm: \
+	build/bat-ant-stm/firmware.bin
+
+bat-bms-esp: \
+	build/bat-bms-esp/firmware.bin \
+	build/bat-bms-esp/main.lpkg
+
+bat-esc-stm: \
+	build/bat-esc-stm/firmware.bin \
+	build/bat-esc-stm/main.lpkg
+
+jet-if-esp: \
+	build/jet-if-esp/firmware.bin
+
+remote-disp-esp: \
+	build/remote-disp-esp/firmware.bin
 
 reset:
 	git submodule foreach --recursive git clean -xfd
