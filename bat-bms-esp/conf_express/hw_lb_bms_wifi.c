@@ -1,10 +1,10 @@
 /*
-	Copyright 2022 Benjamin Vedder	benjamin@vedder.se
+        Copyright 2022 Benjamin Vedder	benjamin@vedder.se
 
-	This file is part of the VESC firmware.
+        This file is part of the VESC firmware.
 
-	The VESC firmware is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
+        The VESC firmware is free software: you can redistribute it and/or
+   modify it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
@@ -20,5 +20,7 @@
 #include "hw_lb_bms_wifi.h"
 
 void hw_init(void) {
-
+    gpio_reset_pin(CAN_EN_GPIO_NUM);
+    gpio_set_direction(CAN_EN_GPIO_NUM, GPIO_MODE_OUTPUT);
+    gpio_set_level(CAN_EN_GPIO_NUM, 0);
 }
