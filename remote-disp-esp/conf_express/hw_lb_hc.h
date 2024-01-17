@@ -17,17 +17,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     */
 
-#ifndef MAIN_HWCONF_OTHER_HW_LB_HC_H_
-#define MAIN_HWCONF_OTHER_HW_LB_HC_H_
+#ifndef MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
+#define MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
+
+/*
+ * TODO hw V3
+ * - GPIO2 high at boot
+ * - Display sleep power (test SLPIN cmd)
+ */
 
 #define HW_INIT_HOOK()				hw_init()
 #define HW_EARLY_LBM_INIT
 
 #include "adc.h"
 #include <math.h>
+#include <stdint.h>
 
-#define HW_NAME						"remote-disp-esp"
-#define HW_DEFAULT_ID				50
+#define HW_NAME						"LB HC V3"
 
 // I2C bus
 #define HW_OVERRIDE_UART
@@ -36,51 +42,47 @@
 
 #define I2C_ADDR_MAG1               0x60
 #define I2C_ADDR_MAG2               0x63
+#define I2C_ADDR_MAG3               0x6C
 #define I2C_ADDR_PWR                0x4B
 #define I2C_ADDR_IMU                0x6A
 #define I2C_ADDR_VIB                0x5A
 #define I2C_ADDR_GPIO_EXP           0x20
-
+#define I2C_ADDR_PN532				0x24
+#define I2C_ADDR_BME280				0x76
 
 // BUTTONS
 #define HW_HAS_ADC
 #define HW_ADC_CH0					ADC1_CHANNEL_2
 
-// PWM
-#define PWM_GPIO       	            10
-#define PWM_CHANNEL                 LEDC_CHANNEL_0
-
 // IO
-#define GPIO_OPAMP_ENABLE           GPIO_NUM_3
 #define GPIO_BUTTON					GPIO_NUM_2
-#define GPIO_DISP_RESET				GPIO_NUM_8
-#define GPIO_DISP_SPI_SD0 			GPIO_NUM_6
-#define GPIO_DISP_SPI_SD1			GPIO_NUM_4
-#define GPIO_DISP_SPI_SD2			GPIO_NUM_1
-#define GPIO_DISP_SPI_SD3			GPIO_NUM_0
-#define GPIO_DISP_SPI_CLK			GPIO_NUM_5
-#define GPIO_DISP_SPI_CS			GPIO_NUM_7
 
-#define GPIO_EXP_DISP_PWR_NEG       0
-#define GPIO_EXP_DISP_PWR_POS       1
+// NEAR FIELD
+#define GPIO_NF_TX_EN				GPIO_NUM_1
+#define GPIO_NF_SW_EN				GPIO_NUM_4
+#define GPIO_NF_SW_A				GPIO_NUM_10
 
 // UART
-#define UART_NUM					0
-#define UART_BAUDRATE				115200
-#define UART_TX						21
-#define UART_RX						20
+#define HW_NO_UART
 
-// Macros
-//#define NTC_TEMP(res)				(1.0 / ((logf((res) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
-//#define NTC_RES(ch)					(10.0e3 / (3.3 / adc_get_voltage(ch) - 1.0))
+// LBM Overrides
+#define LISP_MEM_SIZE				LBM_MEMORY_SIZE_32K
+#define LISP_MEM_BITMAP_SIZE		LBM_MEMORY_BITMAP_SIZE_32K
 
-// CAN Status Messages
-//#define HW_CAN_STATUS_ADC0			NTC_TEMP(NTC_RES(HW_ADC_CH0))
-//#define HW_CAN_STATUS_ADC1			NTC_TEMP(NTC_RES(HW_ADC_CH1))
-//#define HW_CAN_STATUS_ADC2			hw_hum_hum()
-//#define HW_CAN_STATUS_ADC3			hw_hum_temp()
+// Utilities
+#define SQUARE(a) (a)*(a)
+
+/**
+ * \param old_value The previous smoothed value.
+ * \param sample A new noisy sample.
+ * \param factor Responsiveness factor, lower values are smoother.
+ * From 0.0 to 1.0
+*/
+static inline float smooth_filter(const float old_value, const float sample, const float factor) {
+    return old_value - factor * (old_value - sample);
+}
 
 // Functions
 void hw_init(void);
 
-#endif /* MAIN_HWCONF_OTHER_HW_LB_HC_H_ */
+#endif /* MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_ */
