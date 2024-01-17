@@ -33,7 +33,10 @@
     (ix m 5))
 )))
 
-(defun calibrate-throttle () (map calibrate-value (iota 13)))
+(defun calibrate-throttle () {
+    (define values (map calibrate-value (iota 13)))
+    (map print values)
+    })
     
 (define button-values 
     '(0.990000f32 1.704000f32 1.952000f32 2.186000f32 2.445000f32 2.601000f32 2.648000f32 2.797000f32))
