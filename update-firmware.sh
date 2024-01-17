@@ -9,5 +9,5 @@ mkdir -p build/packed-lbm/
 $VESCTOOL --packFirmware build/$TARGET.bin:build/packed-firmware/$TARGET.bin
 $VESCTOOL --canFwd 31 --writeFileToSdCard  build/packed-firmware/$TARGET.bin:/firmware/
 
-$VESCTOOL --packLisp ./Battery/ANT/esp/lbm-update-test.lisp:build/packed-lbm/$TARGET.lpkg
+$VESCTOOL --packLisp ./bat-ant-esp/lbm-update-test.lisp:build/packed-lbm/$TARGET.lpkg
 $VESCTOOL --canFwd 31 --writeFileToSdCard  build/packed-lbm/$TARGET.lpkg:/lbm/
