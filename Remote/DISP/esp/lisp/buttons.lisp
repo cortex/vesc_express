@@ -1,28 +1,36 @@
-(defun calibrate () (map read-button-value '("left" "down" "right" "up")))
+(define buttons '(left down right up))
+(define buttons '(left down (left down) right (right down) up (up left) (up right)))
+
+(defun d (v) (progn (print v) v))
+
+(defun calibrate () 
+    (define button-values (d (map read-button-value buttons))))
     
 (defun read-button-value (name) {
-        (print (str-merge "push " name))
-        (var value 0)
-        (loopwhile (= value 0) {
-                (setq value (get-adc 0))
-                (sleep 0.1)
+        (print (str-merge "push " (to-str name)))             
+        ; wait until butttons start getting pressed
+        (loopwhile (< (get-adc 0) 0.1) (sleep 0.1))
+        (sleep 0.5)
+        (var value (get-adc 0))
+        (print "value stored, release buttons")
+        ; wait until buttons are released, return latest value
+        (loopwhile (> (get-adc 0) 0.1){
+            (sleep 0.1)
         })
-        (sleep 0.1)
         (print value)
         value
 })
 
+(defun match-nearest (v values targets)
+    (if (or (not (car (cdr values))) (nearer-first v (car values) (car (cdr values)))) 
+      (car targets)
+      (match-nearest v (cdr values) (cdr targets))))
 
-(defun zip (xs ys)
-  (if (or (eq xs nil) (eq ys nil)) nil
-      (cons (cons (first xs) (first ys)) (zip (rest xs) (rest ys)))))
+(defun nearer-first (v a b) (< (- v a) (- b v)))
 
-(define ts '(0 1.004000f32 1.734000f32 2.221000f32 2.634000f32))
+(defun match-button (v) (match-nearest v (cons 0 button-values) (cons nil buttons)))
 
-(define buttons (nil 'left 'down 'right 'up))
-
-(get-button-state (button-values) {
-        (var value (get-adc 0))
-        (if (and (> v a) (< v b) ))
-
-})
+(defun show-button () (loopwhile t {
+   (print (match-button (get-adc 0)))
+   (sleep 0.2)
+}))
