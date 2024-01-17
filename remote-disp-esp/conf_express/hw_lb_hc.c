@@ -37,7 +37,7 @@
 #include "soc/ledc_reg.h"
 
 #include "commands.h"
-#include "hw_lb_hc_v3.h"
+#include "hw_lb_hc.h"
 #include "lispif.h"
 #include "lispbm.h"
 #include "crc.h"
