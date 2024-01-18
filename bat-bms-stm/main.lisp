@@ -24,13 +24,13 @@
 (def log-gnss true)
 
 (defun run-m2 (code)
-    (let ((res 0.0)))
+    (let ((res 0.0))
     (atomic
         (select-motor 2)
         (setvar 'res (eval code))
         (select-motor 1)
         res
-))
+)))
 
 ; The currents are updated in one place as every sample is filtered
 ; by taking the average since the last sample. Therefore a consistent
