@@ -410,8 +410,8 @@ void hw_init(void) {
 	palSetPadMode(GPIOA, 1, PAL_MODE_ALTERNATE(1));
 	palSetPadMode(GPIOA, 2, PAL_MODE_ALTERNATE(1));
 
-	init_capture();
-	chThdCreateStatic(thd_decoder_wa, sizeof(thd_decoder_wa), NORMALPRIO, thd_decoder, NULL);
+	//init_capture();
+	//chThdCreateStatic(thd_decoder_wa, sizeof(thd_decoder_wa), NORMALPRIO, thd_decoder, NULL);
 
 	terminal_register_command_callback(
 			"decoder_info",
