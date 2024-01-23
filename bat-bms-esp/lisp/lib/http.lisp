@@ -9,14 +9,12 @@
 (defunret take-until (str delim) {
     (var pos (buf-find str delim))
     (if (eq pos -1) (return (list 'parse-error str)))
-    (print "take-until" str pos)
     (list (str-part str 0 pos) (str-part str (+ pos (str-len delim))))
 })
 
 (defunret take-exact (str x) {
     (var pos (buf-find str x))
     (if (eq pos -1) (return (list 'parse-error str)))
-    (print "take-exact" str pos)
     (list (str-part str 0 (str-len x)) (str-part str (+ (str-len x))))
 })
 
@@ -41,7 +39,6 @@
 
 (defun map-until (conn pred f) {
     (var line (http-read-line conn))
-    (puts (str-merge "map-until: " line "$"))
     (if (not (pred line)) (cons (f line) (map-until conn pred f)) nil)
 })
 
