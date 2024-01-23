@@ -10,7 +10,7 @@
 | Battery | ANT  | STM32-G431 | [bat-ant-stm](#bat-ant-stm)         | LB-ANT-STM  | 30     | vesc_gpstm   |
 | Battery | ANT  | ESP32-C3   | [bat-ant-esp](#bat-ant-esp)         | LB_ANT      | 31     | vesc_express |
 | Jet     | IF   | ESP32-C3   | [jet-if-esp](#jet-if-esp)           |             | 40     | vesc_express |
-| Remote  | DISP | ESP32-C3   | [remote-disp-esp](#remote-disp-esp) |             | 50     | vesc_express |
+| Remote  | DISP | ESP32-C3   | [remote-disp-esp](#remote-disp-esp) | HC          | 50     | vesc_express |
 
 ```mermaid
 flowchart LR
