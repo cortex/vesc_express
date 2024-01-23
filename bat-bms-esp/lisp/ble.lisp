@@ -147,3 +147,71 @@ out
             (set-wifi-status 'error))
     })
 })
+
+
+
+(defun bt-name () 
+    (str-merge "LB " (str-part (apply str-merge (map (lambda (x) (str-from-n x "%X")) (get-mac-addr))) 0 5)))
+
+(defun start-ble () {
+        (ble-set-name "L8") ; TODO: battery ID goes here
+        (def adv-data `(
+                (flags . [0x06])
+                (name-complete . ,(buf-resize (bt-name) -1))
+                (incomplete-uuid-128 . ,(buf-reverse (uuid "beb5483e-36e1-4688-b7f5-ea07361b26a0")))
+        ))
+        (def scan-rsp-data `(
+                (flags . [0x06])
+                (tx-power-level . [0x12])
+                (conn-interval-range . [0x06 0x00 0x03 0x00])
+        ))
+        (ble-conf-adv true adv-data scan-rsp-data)
+        (ble-start-app)
+})
+
+
+
+@const-start
+(def serial-number-battery "BA3333333")
+(def serial-number-jet "JE3333333")
+(def serial-number-remote "RE3333333")
+(def serial-number-board "BO3333333")
+@const-end
+
+(reset-ble)
+(start-ble)
+
+(define registration-service (register-service (apath services '(registration))))
+(define wifi-service         (register-service (apath services '(wifi))))
+
+(ble-attr-set-str registration-service '(battery) serial-number-battery)
+(ble-attr-set-str registration-service '(jet)     serial-number-jet)
+(ble-attr-set-str registration-service '(remote)  serial-number-remote)
+(ble-attr-set-str registration-service '(board)   serial-number-board)
+
+(defun event-handler (){
+        (print "Setting up bluetooth event handler")
+        (loopwhile t
+            (recv
+                ((event-ble-rx (? handle) (? data)) (proc-ble-data handle data))
+                (_ nil) ; Ignore other events
+        ))
+})
+
+(def registration-id nil)
+(defun handle-registration (data){
+        (print (str-merge "registered with id" data))
+        (set 'registration-id data)
+    }
+)
+
+(event-register-handler (spawn event-handler))
+(event-enable 'event-ble-rx)
+
+(defun set-wifi-status (status) {
+        (var buf (bufcreate 1))
+        (bufset-u8 buf 0 (wifi-status-code status))
+        
+        (print (to-str "Set wifi mode" status))
+        
+(ble-attr-set-value (charid wifi-service 'status) buf)})
