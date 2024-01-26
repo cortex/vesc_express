@@ -12,8 +12,8 @@
         'connected
 'disconnected)))
 
-(defun battery-status-json () (cond
-    ((not registration-id) (print "no registration id set"))
+(defunret battery-status-json () (cond
+    ((not registration-id) 'no-registration-id)
     (t (str-merge
             "{" (kv "registrationId" (q registration-id)) ", "
                 (q "units" ) ":["
@@ -38,23 +38,27 @@
     )
 ))
 
+(define registration-id nil)
 (define registration-id "dab20f85-4ea7-4b70-bb02-848f0e82f8db")
 
-(defun send-status (){
+(defunret send-status (){
     (var url (str-merge api-url "/batteryStatusUpdate"))
     (var conn (tcp-connect (url-host url) (url-port url)))
     (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) {
-            (var req (http-post-json url (battery-status-json)))
+        (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
+        {
+            (var status-json (battery-status-json))
+            (if (not (eq (type-of status-json) 'type-array)) {
+                (tcp-close conn)
+                (return status-json)
+            })
+            (var req (http-post-json url status-json))
             (var res (tcp-send conn req))
-            (print (http-parse-response conn))
-            ; read body
-            (print (tcp-recv conn 200))
-            (print (tcp-recv conn 200))
-            (print (tcp-recv conn 200))
-            (print (tcp-recv conn 200))
+            (var response (http-parse-response conn))
+            (var result (ix (ix response 0) 1))
             (tcp-close conn)
-    })
+            (if (eq "200" result) 'ok 'error)
+        })
 })
 
 (defun battery-status-str (sym)
@@ -62,3 +66,12 @@
         (disconnected 0)
         (connected 1)
 (charging 2))))
+
+(defun status-loop () {
+        (print (str-merge "Status ping: " (to-str (send-status))))
+        (gc)
+        (sleep 5)
+        (status-loop)
+})
+
+(status-loop)

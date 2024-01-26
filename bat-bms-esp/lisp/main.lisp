@@ -10,10 +10,10 @@
 (import "ble.lisp" 'ble)
 (read-eval-program ble)
 
-(import "status.lisp" 'status)
-(read-eval-program status)
-
 (import "lib/http.lisp" 'http)
 (read-eval-program http)
+
+(import "status.lisp" 'status)
+(read-eval-program status)
 
 @const-end
