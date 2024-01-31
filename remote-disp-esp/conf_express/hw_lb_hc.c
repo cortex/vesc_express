@@ -45,6 +45,7 @@
 #include "display/lispif_disp_extensions.h"
 #include "utils.h"
 #include "bme280_if.h"
+#include "imu.h"
 
 // LBM Utilities
 
@@ -233,33 +234,29 @@ static volatile float als3_mag_xyz[3] = {0.0};
 static volatile uint32_t als_update_time[3] = {0};
 
 static void als31300_init_reg(uint16_t addr) {
-	uint8_t txbuf[1] = {0x02};
-	uint8_t rxbuf[4];
-
-	i2c_tx_rx(addr, txbuf, 1, rxbuf, 4);
-
 	// Send access code
-	uint8_t txbuf2[5] = {0x35, 0x2c, 0x41, 0x35, 0x34};
-	i2c_tx_rx(addr, txbuf2, 5, 0, 0);
+	uint8_t txbuf[5] = {0x35, 0x2c, 0x41, 0x35, 0x34};
+	i2c_tx_rx(addr, txbuf, 5, 0, 0);
 
-	txbuf2[0] = 0x02;
+	memset(txbuf, 0, sizeof(txbuf));
 
-	rxbuf[1] |= (1 << 2); // Enable CRC
+	txbuf[0] = 0x02;
 
-	rxbuf[1] &= ~(1 << 3); // Single ended hall mode
-	rxbuf[1] &= ~(1 << 4); // Single ended hall mode
+	txbuf[2] |= (1 << 2); // Enable CRC
 
-	rxbuf[1] &= ~(1 << 5); // Lowest bandwidth
-	rxbuf[1] &= ~(1 << 6); // Lowest bandwidth
-	rxbuf[1] &= ~(1 << 7); // Lowest bandwidth
+	txbuf[2] &= ~(1 << 3); // Single ended hall mode
+	txbuf[2] &= ~(1 << 4); // Single ended hall mode
 
-	rxbuf[2] |= (1 << 0); // Enable CH_Z
-	rxbuf[2] |= (1 << 1); // 1.8V I2C Mode
-	rxbuf[3] |= (1 << 6); // Enable CH_X
-	rxbuf[3] |= (1 << 7); // Enable CH_Y
+	txbuf[2] &= ~(1 << 5); // Lowest bandwidth
+	txbuf[2] &= ~(1 << 6); // Lowest bandwidth
+	txbuf[2] &= ~(1 << 7); // Lowest bandwidth
 
-	memcpy(txbuf2 + 1, rxbuf, 4);
-	i2c_tx_rx(addr, txbuf2, 5, 0, 0);
+	txbuf[3] |= (1 << 0); // Enable CH_Z
+	txbuf[3] |= (1 << 1); // 1.8V I2C Mode
+	txbuf[4] |= (1 << 6); // Enable CH_X
+	txbuf[4] |= (1 << 7); // Enable CH_Y
+
+	i2c_tx_rx(addr, txbuf, 5, 0, 0);
 }
 
 bool als31300_read_mag_xyz(uint16_t addr, float *xyz) {
@@ -360,9 +357,11 @@ static void init_mag() {
 
 	als31300_init_reg(I2C_ADDR_MAG1);
 	als31300_init_reg(I2C_ADDR_MAG2);
+	als31300_init_reg(I2C_ADDR_MAG3);
 
 	als31300_sleep(I2C_ADDR_MAG1, 0);
 	als31300_sleep(I2C_ADDR_MAG2, 0);
+	als31300_sleep(I2C_ADDR_MAG3, 0);
 
 	xTaskCreatePinnedToCore(mag_task, "mag", 1024, NULL, 6, NULL, tskNO_AFFINITY);
 }
@@ -1462,13 +1461,10 @@ static lbm_value ext_go_to_sleep(lbm_value *args, lbm_uint argn) {
 
 	als31300_sleep(I2C_ADDR_MAG1, 1);
 	als31300_sleep(I2C_ADDR_MAG2, 1);
+	als31300_sleep(I2C_ADDR_MAG3, 1);
 
 	// Haptic
 	i2c_write_reg(I2C_ADDR_VIB, VIB_REG_MODE, 0x40);
-
-	// TODO: IMU
-	//	i2c_write_reg(I2C_ADDR_IMU, 0x10, 0x00);
-	//	i2c_write_reg(I2C_ADDR_IMU, 0x11, 0x00);
 
 	comm_wifi_disconnect();
 
@@ -1512,6 +1508,19 @@ static lbm_value ext_init_hw(lbm_value *args, lbm_uint argn) {
 	init_nf();
 
 	bme280_if_init_with_mutex(i2c_mutex);
+
+	static imu_config imu_cfg;
+	memset(&imu_cfg, 0, sizeof(imu_cfg));
+	imu_cfg.type = IMU_TYPE_EXTERNAL_LSM6DS3;
+	imu_cfg.sample_rate_hz = 1000;
+	imu_cfg.use_magnetometer = true;
+	imu_cfg.filter = IMU_FILTER_MEDIUM;
+	imu_cfg.accel_confidence_decay = 1.0;
+	imu_cfg.mahony_kp = 0.3;
+	imu_cfg.mahony_ki = 0.0;
+	imu_cfg.madgwick_beta = 0.1;
+
+	imu_init(&imu_cfg, i2c_mutex);
 
 	init_hw_done = true;
 
