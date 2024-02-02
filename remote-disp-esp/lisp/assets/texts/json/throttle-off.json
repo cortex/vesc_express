@@ -1,0 +1,11 @@
+{
+    "$schema": "../../../json-text-schema.json",
+    "text": "Throttle Off",
+    "width": 124,
+    "font-family": "Roboto mono",
+    "font-size": 17,
+    "line-height": "100%",
+    "font-weight": 700,
+    "align": "middle",
+    "baseline": "central"
+}

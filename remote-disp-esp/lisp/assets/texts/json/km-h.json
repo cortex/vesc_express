@@ -1,0 +1,9 @@
+{
+    "text": "km/h",
+    "width": 40,
+    "font-family": "Roboto mono",
+    "font-size": 16,
+    "line-height": "110%",
+    "font-weight": 400,
+    "align": "end"
+}

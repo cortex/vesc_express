@@ -1,0 +1,25 @@
+{
+    "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)",
+    "cSpell.words": [
+        "alist",
+        "alists",
+        "blit",
+        "bufget",
+        "cond",
+        "defunret",
+        "foldl",
+        "horiz",
+        "magn",
+        "nodist",
+        "println",
+        "progn",
+        "putc",
+        "rtpin",
+        "samp",
+        "sbuf",
+        "setix",
+        "setq",
+        "vmon"
+    ],
+    "editor.formatOnType": false
+}

@@ -1,0 +1,80 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "title": "JSON Text",
+    "description": "A text snippet to generate an image with using json-text2png.py.",
+    "type": "object",
+    "properties": {
+        "text": {
+            "description": "The text to render. Use `\\n` for line breaks.",
+            "type": "string"
+        },
+        "width": {
+            "description": "The output image width in pixels.",
+            "type": "integer"
+        },
+        "font-family": {
+            "description": "The CSS font family name to use. This needs to be installed on your system.",
+            "type": "string"
+        },
+        "font-size": {
+            "description": "The font size in pixels to use.",
+            "type": "integer"
+        },
+        "line-height": {
+            "description": "line height in pixels without unit, \"normal\", **or** percentage of font-size, with percentage unit, eg: `\"line-height\": 72` or `\"line-height\": \"120%\"`",
+            "anyOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "string",
+                    "pattern": "^[0-9]+%$"
+                },
+                {
+                    "enum": [
+                        "normal"
+                    ]
+                }
+            ]
+        },
+        "font-weight": {
+            "description": "[Optional]: CSS font weight number. Default is `400`.",
+            "type": "integer"
+        },
+        "align": {
+            "description": "How to horizontally justify the text (valid values: \"start\", \"middle\", \"end\").",
+            "enum": [
+                "start",
+                "middle",
+                "end"
+            ]
+        },
+        "baseline": {
+            "description": "[Optional]: In case the font has issues with vertical centering, you can try changing this to 'middle'. This corresponds to the 'dominant-baseline' svg property (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/dominant-baseline) Note that I don't really understand how this property works... Default is \"central\" (I recommend sticking to this unless you encounter vertical alignment problems).",
+            "enum": [
+                "central",
+                "middle",
+                "auto",
+                "ideographic",
+                "alphabetic",
+                "hanging",
+                "mathematical",
+                "text-after-edge",
+                "text-before-edge",
+                "text-top"
+            ]
+        },
+        "y-offset": {
+            "description": "[Optional]: An extra offset in pixels. The text will be shifted *down* by this amount. May be negative. This is useful for bad behaving fonts which are not properly vertically aligned.",
+            "type": "integer"
+        }
+    },
+    "required": [
+        "text",
+        "width",
+        "font-family",
+        "font-size",
+        "line-height",
+        "align"
+    ]
+}
