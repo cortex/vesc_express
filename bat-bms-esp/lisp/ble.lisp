@@ -149,9 +149,14 @@ out
 })
 
 
+(defun hex-mac-addr ()
+    (apply str-merge (map (lambda (x) (str-from-n x "%X")) (get-mac-addr))))
+
+(defun battery-serial-number () 
+    (str-merge "BA" (hex-mac-addr)))
 
 (defun bt-name () 
-    (str-merge "LB " (str-part (apply str-merge (map (lambda (x) (str-from-n x "%X")) (get-mac-addr))) 0 5)))
+    (str-merge "LB " (str-part (hex-mac-addr) 0 5)))
 
 (defun start-ble () {
         (ble-set-name "L8") ; TODO: battery ID goes here
@@ -172,7 +177,7 @@ out
 
 
 @const-start
-(def serial-number-battery "BA3333333")
+(def serial-number-battery (battery-serial-number) )
 (def serial-number-jet "JE3333333")
 (def serial-number-remote "RE3333333")
 (def serial-number-board "BO3333333")
