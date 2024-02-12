@@ -15,7 +15,7 @@
 (define mx2 0)
 (define my2 0)
 (define mz2 0)
-               
+(define pres 0)               
 (defun plot-samples () {
     (setq mx0 (mag-get-x 0))
     (setq my0 (mag-get-y 0))
@@ -28,6 +28,7 @@
     (setq mx2 (mag-get-x 2))
     (setq my2 (mag-get-y 2))
     (setq mz2 (mag-get-z 2))
+    (setq pres (bme-pres))
     (sleep 0.01)
 })
 
