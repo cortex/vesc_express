@@ -1,5 +1,4 @@
 (defun configure () {
-        
         (conf-set 'l-current-min -60)
         (conf-set 'l-current-max 290)
         (conf-set 'l-in-current-min -60)
@@ -14,7 +13,6 @@
         (conf-set 'l-erpm-start 0.8)
         
         (conf-set 'foc-sensor-mode 4)
-        
         
         (conf-set 'foc-motor-r 2.1)
         (conf-set 'foc-motor-l 4.0)
@@ -44,12 +42,20 @@
         
 })
 
-
 (defun apply-config ()
     (atomic
         (select-motor 1)
         (configure)
         (select-motor 2)
         (configure)
+        (select-motor 1)
+        
+        (print (list "DC Cal" (conf-dc-cal false)))
+        
+        (select-motor 1)
         (conf-store)
+        (select-motor 2)
+        (conf-store)
+        
+        (print "Done!")
 ))
