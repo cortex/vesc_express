@@ -158,7 +158,7 @@
 
 ; Calculate which view should be displayed according to the functions and
 ; priorities defined by `get-view-is-visible-functions`.
-(defun calc-displayed-view () (if (not-eq dev-force-view nil) dev-force-view {
+(defun calc-displayed-view () (if (not-eq dev-force-view nil) dev-view {
     (var view nil)
     (map (lambda (pair) 
         (if (and
