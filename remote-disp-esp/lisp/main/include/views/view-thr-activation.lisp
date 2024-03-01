@@ -9,10 +9,10 @@
 
 (defun view-init-thr-activation () {
     ; large center graphic
-    (def view-graphic-buf (create-sbuf 'indexed4 (- 120 90) 40 181 182))
+    (def view-graphic-buf (create-sbuf 'indexed4 (- 120 90) 46 181 182))
 
     ; status text
-    (def view-status-text-buf (create-sbuf 'indexed4 (- 120 90) 220 180 76))
+    (def view-status-text-buf (create-sbuf 'indexed4 (- 120 90) 226 180 76))
 })
 
 (defun view-draw-thr-activation () {
