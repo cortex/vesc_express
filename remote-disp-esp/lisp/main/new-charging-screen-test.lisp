@@ -40,7 +40,7 @@
 (read-eval-program code-ui-state)
 (read-eval-program code-state-management)
 
-(import "../assets/fonts/bin/B1.bin" 'font-b1)
+(import "../assets/fonts/bin/UbuntuMono14x22x1.0.bin" 'font-ubuntu-mono-22h)
 
 ;;; Charging
 (def soc-remote 0.1) ; TODO: Require as input
@@ -84,13 +84,13 @@
         ; Draw charge percentage message
         {
             (var percent-text (str-merge (str-from-n (to-i (* soc-remote 100.0))) "%"))
-            (var w (* (bufget-u8 font-b1 0) (str-len percent-text)))
+            (var w (* (bufget-u8 font-ubuntu-mono-22h 0) (str-len percent-text)))
             (var screen-w 240)
             (var x (/ (- screen-w w) 2))
             (var version-buf (img-buffer 'indexed2 w 26))
 
-            (img-text version-buf 0 0 1 0 font-b1 percent-text)
-            (disp-render version-buf x 230 (list 0x0 0xffffff))
+            (img-text version-buf 0 0 1 0 font-ubuntu-mono-22h percent-text)
+            (disp-render version-buf x 248 (list 0x0 0xffffff))
         }
 
         (sbuf-clear charge-buf)

@@ -54,13 +54,13 @@
 
 
 ; Large 16 Color Buffer Size
-(def buf-width 195)
-(def buf-height 195)
+(def buf-width-main 195)
+(def buf-height-main 195)
 ; Starting angle for arcs (pointing south)
 (def arc-start-angle 90)
 
 ; 16 Color buffer
-(def charge-buf (create-sbuf 'indexed16 (- 120 (/ buf-width 2)) 46 (+ buf-width 1) (+ buf-height 2)))
+(def view-main-buf (create-sbuf 'indexed16 (- 120 (/ buf-width-main 2)) 46 (+ buf-width-main 1) (+ buf-height-main 2)))
 
 {
     ; Using the first 4 colors on the largest indexed4 items
@@ -96,38 +96,26 @@
         (def angle-end (+ 90 (* 330 soc-remote)))
         (if (> angle-end 449) (setq angle-end 449))
 
-        (def arc-outer-rad (/ buf-width 2))
+        (def arc-outer-rad (/ buf-width-main 2))
         (def arc-innder-rad 67)
         ; Arc Outer BG
-        (sbuf-exec img-arc charge-buf (/ buf-width 2) (/ buf-height 2) (arc-outer-rad arc-start-angle 450 color-arc-outer-bg '(thickness 28)))
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-outer-rad arc-start-angle 450 color-arc-outer-bg '(thickness 28)))
         ; Arc Inner BG
-        (sbuf-exec img-arc charge-buf (/ buf-width 2) (/ buf-height 2) (arc-innder-rad arc-start-angle 450 color-arc-inner-bg '(thickness 21)))
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle 450 color-arc-inner-bg '(thickness 21)))
 
         ; Arc Green Power Remaining
-        (sbuf-exec img-arc charge-buf (/ buf-width 2) (/ buf-height 2) (arc-outer-rad arc-start-angle angle-end color-arc-outer-fg '(thickness 28)))
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-outer-rad arc-start-angle angle-end color-arc-outer-fg '(thickness 28) '(rounded)))
 
         ; Arc Blue Max Power
-        (sbuf-exec img-arc charge-buf (/ buf-width 2) (/ buf-height 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21)))
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21) '(rounded)))
 
-        ; Green Arc Rounded Bottom
-        (sbuf-exec img-circle charge-buf (/ buf-width 2) (- buf-height 16) (13 color-arc-outer-fg '(filled)))
-        ; Green Arc Rounded Top
-        (var angle 0.0)
-        (setq angle (- angle-end 45))
-        (var pos (rot-point-origin 59 59 angle))
-        (sbuf-exec img-circle charge-buf (+ (ix pos 0) (/ buf-width 2)) (+ (ix pos 1) (/ buf-height 2)) (13 color-arc-outer-fg '(filled)))
-
-        ; Blue Arc Rounded Bottom
-        (sbuf-exec img-circle charge-buf (/ buf-width 2) (- buf-height 42) (10 color-arc-inner-fg '(filled)))
         ; Blue Arc White Bottom
-        (sbuf-exec img-circle charge-buf (/ buf-width 2) (- buf-height 42) (7 color-white '(filled)))
-        ; Blue Arc Rounded Top
-        (var angle 0.0)
-        (setq angle (- arc-end-max-power 43))
-        (var pos (rot-point-origin 40 40 angle))
-        (sbuf-exec img-circle charge-buf (+ (ix pos 0) (/ buf-width 2)) (+ (ix pos 1) (/ buf-height 2)) (10 color-arc-inner-fg '(filled)))
+        (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (7 color-white '(filled)))
         ; Blue Arc White Top
-        (sbuf-exec img-circle charge-buf (+ (ix pos 0) (/ buf-width 2)) (+ (ix pos 1) (/ buf-height 2)) (7 color-white '(filled)))
+        (var angle 0.0)
+        (setq angle (- arc-end-max-power 46))
+        (var pos (rot-point-origin 40 40 angle))
+        (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (7 color-white '(filled)))
 
         ; Determine color for charge arc
         (def charge-arc-color 0x7f9a0d)
@@ -141,20 +129,20 @@
             (var speed-text (str-from-n fake-speed))
             (var w (* (bufget-u8 font-sfpro-bold-35h 0) (str-len speed-text)))
             (var screen-w 240)
-            (var x (/ (- buf-width w) 2))
+            (var x (/ (- buf-width-main w) 2))
 
-            (sbuf-exec img-text charge-buf x 70 (3 0 font-sfpro-bold-35h speed-text))
+            (sbuf-exec img-text view-main-buf x 70 (3 0 font-sfpro-bold-35h speed-text))
         }
 
         ; Draw speed units
         ; TODO: Adjust font
         (def speed-units-text "KM/H")
         (def w (* (bufget-u8 font-b3 0) (str-len speed-units-text)))
-        (sbuf-exec img-text charge-buf (- (/ buf-width 2) (/ w 2)) 110 (color-speed-units 0 font-b3 speed-units-text))
+        (sbuf-exec img-text view-main-buf (- (/ buf-width-main 2) (/ w 2)) 110 (color-speed-units 0 font-b3 speed-units-text))
 
         ; Charge Icon
         (def icon (img-buffer-from-bin icon-bolt-16color))
-        (sbuf-blit charge-buf icon (- (/ buf-width 2) 5) (- buf-height 24) ())
+        (sbuf-blit view-main-buf icon (- (/ buf-width-main 2) 5) (- buf-height-main 24) ())
 
         ; Adjust light and lighter colors for charge icon
         ; Light Green    0xc4d08e
@@ -180,7 +168,7 @@
         )
 
         ; Render
-        (sbuf-render charge-buf (list
+        (sbuf-render view-main-buf (list
             0x000000
             0x5f5f5f ; 1= dark grey
             0xb6b6b6 ; 2= lighter grey
@@ -252,7 +240,7 @@
             0x0000ff
         ))
 
-        (sbuf-clear charge-buf)
+        (sbuf-clear view-main-buf)
         (sleep 0.02)
     })
 

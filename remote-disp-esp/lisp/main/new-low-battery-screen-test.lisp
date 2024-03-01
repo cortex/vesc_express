@@ -40,7 +40,7 @@
 (read-eval-program code-ui-state)
 (read-eval-program code-state-management)
 
-(import "../assets/fonts/bin/B1.bin" 'font-b1)
+(import "../assets/fonts/bin/UbuntuMono14x22x1.0.bin" 'font-ubuntu-mono-22h)
 
 ;;; Low Battery
 {
@@ -73,21 +73,21 @@
     ; TODO: Fix Font
     {
         (def msg-str "Remote")
-        (var w (* (bufget-u8 font-b1 0) (str-len msg-str)))
+        (var w (* (bufget-u8 font-ubuntu-mono-22h 0) (str-len msg-str)))
         (var screen-w 240)
         (var x (/ (- screen-w w) 2))
         (var version-buf (img-buffer 'indexed2 w 26))
 
-        (img-text version-buf 0 0 1 0 font-b1 msg-str)
+        (img-text version-buf 0 0 1 0 font-ubuntu-mono-22h msg-str)
         (disp-render version-buf x 205 (list 0x0 0xffffff))
 
         (def msg-str "battery low")
-        (var w (* (bufget-u8 font-b1 0) (str-len msg-str)))
+        (var w (* (bufget-u8 font-ubuntu-mono-22h 0) (str-len msg-str)))
         (var screen-w 240)
         (var x (/ (- screen-w w) 2))
         (var version-buf (img-buffer 'indexed2 w 26))
 
-        (img-text version-buf 0 0 1 0 font-b1 msg-str)
+        (img-text version-buf 0 0 1 0 font-ubuntu-mono-22h msg-str)
         (disp-render version-buf x 230 (list 0x0 0xffffff))
     }
 
