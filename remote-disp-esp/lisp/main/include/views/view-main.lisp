@@ -53,8 +53,8 @@
     (var color-speed 11)
 
     ; End Angle of Max Power Arc
-    (var arc-end-max-power (* 270 (/ main-current-gear (- (to-float gear-max) 1))))
-    (setq arc-end-max-power (+ arc-end-max-power 90))
+    (var arc-end-max-power (* 260 (/ main-current-gear (to-float gear-max))))
+    (setq arc-end-max-power (+ arc-end-max-power 100))
 
     ; End Angle of Charging Arc
     (var angle-end (+ 90 (* 330 main-soc-bms)))
