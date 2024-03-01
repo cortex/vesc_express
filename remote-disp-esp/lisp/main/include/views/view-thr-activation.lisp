@@ -9,36 +9,32 @@
 
 (defun view-init-thr-activation () {
     ; large center graphic
-    (def view-graphic-buf (create-sbuf 'indexed4 29 83 132 132))
-    (def view-power-btn-buf (create-sbuf 'indexed4 73 166 44 44))
+    (def view-graphic-buf (create-sbuf 'indexed4 (- 120 90) 40 181 182))
 
     ; status text
-    (def view-status-text-buf (create-sbuf 'indexed2 25 240 140 78))
+    (def view-status-text-buf (create-sbuf 'indexed4 (- 120 90) 220 180 76))
 })
 
 (defun view-draw-thr-activation () {
     (state-with-changed '(thr-activation-state) (fn (thr-activation-state) {
-        (sbuf-exec img-circle view-graphic-buf 66 66 (66 1 '(filled)))
+        (sbuf-clear view-graphic-buf)
+        (sbuf-exec img-circle view-graphic-buf 90 90 (70 2 '(filled)))
 
         (if (or
             (eq thr-activation-state 'release-warning)
             (eq thr-activation-state 'countdown)
         ) {
             ; exclamation mark
-            (draw-vert-line view-graphic-buf 67 40 78 5 3)
-            (sbuf-exec img-circle view-graphic-buf 67 88 (5 3 '(filled)))
+            (draw-vert-line view-graphic-buf 89 60 98 5 3)
+            (sbuf-exec img-circle view-graphic-buf 89 108 (5 3 '(filled)))
         } {
-            (sbuf-exec img-circle view-graphic-buf 27 66 (18 2 '(filled)))
-            (sbuf-exec img-circle view-graphic-buf 66 27 (18 2 '(filled)))
-            (sbuf-exec img-circle view-graphic-buf 105 66 (18 2 '(filled)))
-        })
+            ; three empty circles
+            (sbuf-exec img-circle view-graphic-buf 91 52 (20 3 '(thickness 2)))
+            (sbuf-exec img-circle view-graphic-buf 51 91 (20 3 '(thickness 2)))
+            (sbuf-exec img-circle view-graphic-buf 129 91 (20 3 '(thickness 2)))
+            ; one full circle
+            (sbuf-exec img-circle view-graphic-buf 91 129 (20 1 '(filled)))
 
-        (if (eq thr-activation-state 'reminder) {
-            (img-clear (sbuf-img view-power-btn-buf) 1)
-            (sbuf-exec img-circle view-power-btn-buf 22 22 (22 2 '(filled)))
-            (sbuf-exec img-circle view-power-btn-buf 22 22 (18 3 '(filled)))
-            (var icon (img-buffer-from-bin icon-unlock-trigger-inverted))
-            (sbuf-blit view-power-btn-buf icon 12 8 ())
         })
         
         (sbuf-clear view-status-text-buf)
@@ -47,7 +43,9 @@
             (release-warning text-release-throttle-first)
             (countdown text-throttle-now-active)
         )))
-        (sbuf-blit view-status-text-buf text 0 0 ())
+        (var buf-width 180)
+        (var x-offset (/ (- buf-width (ix (img-dims text) 0)) 2))
+        (sbuf-blit view-status-text-buf text x-offset 0 ())
     }))
 
     (if (eq (state-get 'thr-activation-state) 'countdown) {
@@ -55,20 +53,16 @@
         (var value (/ secs thr-countdown-len-secs))
         (var angle (+ 90 (* value 360)))
         
-        (draw-rounded-circle-segment view-graphic-buf 66 66 57 8 90 angle 3)
+        (sbuf-exec img-arc view-graphic-buf 90 90 (90 90 angle 1 '(thickness 17)))
     })
 })
 
 (defun view-render-thr-activation () {
-    (sbuf-render-changes view-graphic-buf (list col-bg col-gray-3 col-menu-btn-bg col-accent))
-    (if (eq (state-get 'thr-activation-state) 'reminder)
-        (sbuf-render-changes view-power-btn-buf (list col-bg col-gray-3 col-accent-border col-accent))
-    )
-    (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
+    (sbuf-render-changes view-graphic-buf (list 0x0 0x7f9a0d 0x262626 0xffffff))
+    (sbuf-render-changes view-status-text-buf (list col-bg (lerp-color col-bg col-fg 0.75) (lerp-color col-bg col-fg 0.95) col-fg))
 })
 
 (defun view-cleanup-thr-activation () {
     (def view-graphic-buf nil)
-    (def view-power-btn-buf nil)
     (def view-status-text-buf nil)
 })

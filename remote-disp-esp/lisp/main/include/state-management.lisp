@@ -126,21 +126,21 @@
 ; Should only be called outside render thread
 (defun cycle-main-top-menu () {
     (var next (if (eq (state-get-live 'view-main-subview) 'gear) 'speed 'gear))
-    (main-subview-change next)
+    ; TODO: New subviews are not implemented:(main-subview-change next)
     ; (print (to-str "cycle-main-top-menu" next))
 })
 
 ; Should only be called outside render thread
 (defun cycle-main-dbg-menu () {
     (var next (if (eq (state-get-live 'view-main-subview) 'dbg) 'gear 'dbg))
-    (main-subview-change next)
+    ; TODO: New subviews are not implemented:(main-subview-change next)
     ; (print (to-str "cycle-main-dbg-menu" next))
 })
 
 ; Should only be called outside render thread
 (defun cycle-main-timer-menu () {
     (var next (if (eq (state-get-live 'view-main-subview) 'timer) 'gear 'timer))
-    (main-subview-change next)
+    ; TODO: New subviews are not implemented: (main-subview-change next)
     ; (print (to-str "cycle-main-timer-menu" next))
 })
 

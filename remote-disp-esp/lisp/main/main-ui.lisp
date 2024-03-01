@@ -64,24 +64,173 @@
     })
 }
 
-;;; Render loading screen
+;;; Startup Animation Includes
 
-(def version-str "v0.01")
+(import "include/utils.lisp" code-utils)
+(import "include/draw-utils.lisp" code-draw-utils)
 
-(import "../assets/icons/bin/icon-lind-logo.bin" 'icon-lind-logo) ; size: 116x84
+(import "include/ui-state.lisp" code-ui-state)
+(import "include/state-management.lisp" code-state-management)
+
+(read-eval-program code-utils)
+(read-eval-program code-draw-utils)
+
+;;; State management
+
+(read-eval-program code-ui-state)
+(read-eval-program code-state-management)
+
+(def version-str "v0.1")
+
+(import "../assets/icons/bin/icon-lind-logo.bin" 'icon-lind-logo) ; size: 115x19
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
+;;; Rising Sun Boot "Animation"
 {
+    (def sun-start-y 180)
+    (def sun-end-y 70)
+    (def sun-height-offset sun-start-y)
+    (def sun-gradient-shift 0)
+
+    (def vapor-0-thickness 1)
+    (def vapor-1-thickness 1)
+    (def vapor-2-thickness 2)
+    (def vapor-3-thickness 2)
+    (def vapor-4-thickness 3)
+    (def vapor-5-thickness 3)
+    (def vapor-start-y 120)
+    (def vapor-0-y vapor-start-y)
+    (def vapor-1-y (+ vapor-0-y 4))
+    (def vapor-2-y (+ vapor-1-y 4))
+    (def vapor-3-y (+ vapor-2-y 4))
+    (def vapor-4-y (+ vapor-3-y 4))
+    (def vapor-5-y (+ vapor-4-y 4))
+    (def vapor-1-start-y vapor-1-y)
+    (def vapor-2-start-y vapor-2-y)
+    (def vapor-3-start-y vapor-3-y)
+    (def vapor-4-start-y vapor-4-y)
+    (def vapor-5-start-y vapor-5-y)
+    (def rising-sun-buf (create-sbuf 'indexed2 50 59 141 142))
+
+    (def start (systime))
+    (def elapsed (secs-since start))
+
+    (def animation-time 4.5)
+    (if dev-fast-start-animation
+        (setq animation-time 1.0)
+    )
+    (def animation-percent 0.0)
+
+    ; Watch Sunrise
+    (loopwhile (< elapsed animation-time) {
+        ; Update Animation Time
+        (setq elapsed (secs-since start))
+        (setq animation-percent (/ elapsed animation-time))
+
+        ; Draw a sun in the buffer
+        (sbuf-exec img-circle rising-sun-buf 70 sun-height-offset (70 1 '(filled)))
+
+        ; Draw vapor lines
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-0-y (142 vapor-0-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-1-y (142 vapor-1-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-2-y (142 vapor-2-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-3-y (142 vapor-3-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-4-y (142 vapor-4-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-5-y (142 vapor-5-thickness 0 '(filled)))
+
+        ; Apply a gradient to the sun
+        (sbuf-render-changes rising-sun-buf (list
+            0x000000
+            (img-color 'gradient_y 0xffa500 (lerp-color 0xff5347 0xffa500 (* animation-percent 0.66)) 142 0)
+        ))
+
+        ; Sun height
+        (setq sun-height-offset (- sun-start-y (* (ease-in-out-sine animation-percent) (- sun-start-y sun-end-y))))
+
+        ; Vapor heights
+        (setq vapor-0-y (- vapor-start-y   (* (ease-in-out-sine animation-percent) (- vapor-start-y   70))))
+        (setq vapor-1-y (- vapor-1-start-y (* (ease-in-out-sine animation-percent) (- vapor-1-start-y 82))))
+        (setq vapor-2-y (- vapor-2-start-y (* (ease-in-out-sine animation-percent) (- vapor-2-start-y 94))))
+        (setq vapor-3-y (- vapor-3-start-y (* (ease-in-out-sine animation-percent) (- vapor-3-start-y 106))))
+        (setq vapor-4-y (- vapor-4-start-y (* (ease-in-out-sine animation-percent) (- vapor-4-start-y 118))))
+        (setq vapor-5-y (- vapor-5-start-y (* (ease-in-out-sine animation-percent) (- vapor-5-start-y 130))))
+
+        ; Vapor thickness
+        (setq vapor-0-thickness (to-i (- 1 (* (ease-in-out-sine animation-percent) (- 1 4)))))
+        (setq vapor-1-thickness (to-i (- 1 (* (ease-in-out-sine animation-percent) (- 1 5)))))
+        (setq vapor-2-thickness (to-i (- 2 (* (ease-in-out-sine animation-percent) (- 2 6)))))
+        (setq vapor-3-thickness (to-i (- 2 (* (ease-in-out-sine animation-percent) (- 2 7)))))
+        (setq vapor-4-thickness (to-i (- 3 (* (ease-in-out-sine animation-percent) (- 3 8)))))
+        (setq vapor-5-thickness (to-i (- 4 (* (ease-in-out-sine animation-percent) (- 3 9)))))
+
+        ; Repeat
+        (sbuf-clear rising-sun-buf)
+        (sleep 0.02)
+    })
+    ;(print (systime))
+
+    (setq start (systime))
+    (setq elapsed (secs-since start))
+
+
+    (setq animation-time 3.0)
+    (if dev-fast-start-animation
+        (setq animation-time 1.0)
+    )
+    (setq animation-percent 0.0)
+    ; Drop vapor lines before drawing logo
+    (loopwhile (< elapsed animation-time) {
+        (sbuf-clear rising-sun-buf)
+
+        ; Update Animation Time
+        (setq elapsed (secs-since start))
+        (setq animation-percent (/ elapsed animation-time))
+
+        ; Draw a sun in the buffer
+        (sbuf-exec img-circle rising-sun-buf 70 sun-height-offset (70 1'(filled)))
+        ; Draw vapor lines
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-0-y (142 vapor-0-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-1-y (142 vapor-1-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-2-y (142 vapor-2-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-3-y (142 vapor-3-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-4-y (142 vapor-4-thickness 0 '(filled)))
+        (sbuf-exec img-rectangle rising-sun-buf 0 vapor-5-y (142 vapor-5-thickness 0 '(filled)))
+
+        ; Vapor heights
+        (setq vapor-1-y (- 82 (* (ease-in-out-sine animation-percent) (- 82 200))))
+        (setq vapor-2-y (- 94 (* (ease-in-out-sine animation-percent) (- 94 200))))
+        (setq vapor-3-y (- 106 (* (ease-in-out-sine animation-percent) (- 106 200))))
+        (setq vapor-4-y (- 118 (* (ease-in-out-sine animation-percent) (- 118 200))))
+        (setq vapor-5-y (- 130 (* (ease-in-out-sine animation-percent) (- 130 200))))
+
+        ; Vapor thickness
+        (setq vapor-1-thickness (to-i (- 5 (* (ease-in-out-sine animation-percent) (- 5 10)))))
+        (setq vapor-2-thickness (to-i (- 6 (* (ease-in-out-sine animation-percent) (- 6 12)))))
+
+        ; Apply a gradient to the sun
+        (sbuf-render-changes rising-sun-buf (list
+            0x000000
+            (img-color 'gradient_y 0xffa500 (lerp-color 0xff5347 0xffa500 (+ 0.66 (* animation-percent (- 1 0.66)))) 142 0)
+        ))
+
+        ; Repeat
+        (sleep 0.02)
+    })
+
+    ; Draw Logo on Sun
     (var logo (img-buffer-from-bin icon-lind-logo))
-    (var logo-buf (img-buffer 'indexed2 120 19))
-    (img-blit logo-buf logo 2 0 -1)
-    (disp-render logo-buf 36 (- 156 30) (list 0x0 0xffffff))
-    
+    (var logo-buf (img-buffer 'indexed2 115 19))
+    (img-blit logo-buf logo 0 0 -1)
+    (disp-render logo-buf (- 120 57) 121 (list 0xffa500 0x0))
+
+    ; Draw version number
     (var w (* (bufget-u8 font-b3 0) (str-len version-str)))
-    (var screen-w 194) ; this is the total width, including the screen inset
+    (var screen-w 240) ; this is the total width, including the screen inset
     (var x (/ (- screen-w w) 2))
     (var version-buf (img-buffer 'indexed2 w 16))
     (img-text version-buf 0 0 1 0 font-b3 version-str)
-    (disp-render version-buf x (- 319 30) (list 0x0 0x676767)) ; these colors don't automatically follow the theme
+    (disp-render version-buf x 250 (list 0x0 0x676767))
+
+    (gc)
 }
 
 ; parse string containing unsigned binary integer
@@ -183,6 +332,7 @@
 (import "../assets/icons/bin/icon-battery-border.bin" 'icon-large-battery) ; 84x146 indexed4; bg: 0, fg: 1
 (import "../assets/icons/bin/icon-warning.bin" 'icon-warning) ; 113x94 indexed4; bg: 0, fg: 1
 ; icon-low-battery.bin was moved to top
+(import "../assets/icons/bin/icon-bolt-16color.bin" 'icon-bolt-16color)
 
 ;;; Texts
 
@@ -196,9 +346,9 @@
 (import "../assets/texts/bin/pairing-failed.bin" 'text-pairing-failed)
 (import "../assets/texts/bin/%.bin" 'text-percent)
 (import "../assets/texts/bin/throttle-off.bin" 'text-throttle-off)
-(import "../assets/texts/bin/press-to-activate.bin" 'text-press-to-activate)
-(import "../assets/texts/bin/release-throttle-first.bin" 'text-release-throttle-first)
-(import "../assets/texts/bin/throttle-now-active.bin" 'text-throttle-now-active)
+(import "../assets/texts/bin/press-to-activate2.bin" 'text-press-to-activate)
+(import "../assets/texts/bin/release-throttle-first2.bin" 'text-release-throttle-first)
+(import "../assets/texts/bin/throttle-now-active2.bin" 'text-throttle-now-active)
 (import "../assets/texts/bin/warning-msg.bin" 'text-warning-msg)
 (import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
 (import "../assets/texts/bin/timer.bin" 'text-timer)
@@ -210,6 +360,8 @@
 (import "../assets/fonts/bin/H3.bin" 'font-h3)
 (import "../assets/fonts/bin/B1.bin" 'font-b1)
 ; font B3 was moved to top
+(import "../assets/fonts/bin/SFProBold25x35x1.2.bin" 'font-sfpro-bold-35h)
+(import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
 
 ;;; Colors
 
@@ -311,8 +463,7 @@
 
 @const-end
 
-(def small-battery-buf (create-sbuf 'indexed2 76 13 8 14))
-(def small-soc-text-buf (create-sbuf 'indexed2 88 12 (* 10 4) 17))
+(def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
 
 @const-start
 
@@ -320,28 +471,20 @@
 ; Charge is from 0.0 to 1.0
 (defun render-status-battery (charge) {
     (if (state-get 'soc-bar-visible) {
-        (var icon (img-buffer-from-bin icon-small-battery))
-        (sbuf-blit small-battery-buf icon 0 0 ())
-    
-        (var bar-height (to-i (* 11 charge)))
-        (if (!= bar-height 0) {
-            (var y (- 13 bar-height))
-            (sbuf-exec img-rectangle small-battery-buf 1 y (6 bar-height 1 '(filled)))
-        })
-    
-        (var text (str-merge (str-from-n (to-i (* charge 100))) "%  "))
-        (sbuf-exec img-text small-soc-text-buf 0 0 (1 0 font-b3 text))        
+        (sbuf-exec img-rectangle small-battery-buf 0 0 (26 16 1 '(thickness 2)))
+        (sbuf-exec img-rectangle small-battery-buf 28 5 (2 6 1 '(filled)))
+
+        (sbuf-exec img-rectangle small-battery-buf 4 4 ((* 19 charge) 9 2 '(filled)))
     } {
         (sbuf-clear small-battery-buf)
-        (sbuf-clear small-soc-text-buf)
     })
 
-    (var color (if (< charge 0.15)
-        col-error
-        col-fg
+    (sbuf-render small-battery-buf (list
+        0x0
+        0x6a6a6a
+        (if (< charge 0.15) 0xff0000 0xffffff)
+        0x0000ff
     ))
-    (sbuf-render small-battery-buf (list col-bg color))
-    (sbuf-render small-soc-text-buf (list col-bg col-fg))
 })
 
 ; Draw the big soc circle. sbuf is the smart buffer to draw to, it should most
@@ -386,11 +529,6 @@
     ;     col-bg
     ; ))
 })
-
-;;; State management
-
-(read-eval-program code-ui-state)
-(read-eval-program code-state-management)
 
 ;;; Views
 
