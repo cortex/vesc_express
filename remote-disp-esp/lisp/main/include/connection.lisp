@@ -4,26 +4,23 @@
 
 (def esp-rx-cnt 0)
 (def batt-addr-rx false)
-(def batt-addr '(212 249 141 2 108 45))
+(def batt-addr '(212 249 141 2 108 137)) ; Bat3_08
 
 (def any-ping-has-failed false) ; If a ping has failed, but not enough to consider connection lost
 
 @const-start
 
 (esp-now-start)
+(esp-now-add-peer batt-addr)
+
 
 (defun proc-data (src des data) {
         ; Ignore broadcast, only handle data sent directly to us
-        (if (not-eq des '(255 255 255 255 255 255))
-            (progn
-                ; (print data)
-                (def batt-addr src)
-                (if (not batt-addr-rx) (esp-now-add-peer batt-addr))
+        (if (not-eq des '(255 255 255 255 255 255)){
                 (def batt-addr-rx true)
                 (eval (read data))
                 (def esp-rx-cnt (+ esp-rx-cnt 1))
-        ))
-        ; (print data)
+        })
         (free data)
 })
 
