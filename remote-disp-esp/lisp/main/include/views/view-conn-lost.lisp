@@ -9,35 +9,26 @@
 })
 
 (defun view-init-conn-lost () {
-    (def view-icon-buf (create-sbuf 'indexed4 73 65 (+ 45 18) 153))
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 90) 46 181 182))
+    (def view-text-buf (create-sbuf 'indexed2 (- 120 100) (+ 180 46) 200 55))
     
-    ; board icon
-    (var icon (img-buffer-from-bin icon-board))
-    (sbuf-blit view-icon-buf icon 0 0 ())
-    
-    ; pair icon
-    (sbuf-exec img-circle view-icon-buf 46 76 (20 0 '(filled)))
-    (sbuf-exec img-circle view-icon-buf 46 76 (17 3 '(filled)))
-    (var icon (img-buffer-from-bin icon-pair-inverted))
-    (sbuf-blit view-icon-buf icon (+ 26 8) (+ 56 9) ())
-    
-    (def view-gradient (img-color 'gradient_y_pre col-gray-4 col-gray-2 137 9))
-    
-    (def view-text-buf (create-sbuf 'indexed2 25 240 140 72))
-    (var text (img-buffer-from-bin text-connection-lost))
-    (sbuf-blit view-text-buf text 0 0 ())
+    (sbuf-exec img-circle view-icon-buf 90 90 (90 1 '(filled)))
+
+    (var icon (img-buffer-from-bin icon-not-powered))
+    (sbuf-blit view-icon-buf icon 52 10 ())
+
+    (draw-text-centered view-text-buf 0 0 200 0 0 4 font-ubuntu-mono-22h 1 0 "Lost")
+    (draw-text-centered view-text-buf 0 25 200 0 0 4 font-ubuntu-mono-22h 1 0 "connection")
 })
 
 (defun view-draw-conn-lost () {})
 
 (defun view-render-conn-lost () {
-    (sbuf-render-changes view-icon-buf (list col-bg view-gradient col-gray-1 col-error))
+    (sbuf-render-changes view-icon-buf (list col-bg 0xe23a26 0xf3aca3 col-white))
     (sbuf-render-changes view-text-buf (list col-bg col-fg))
 })
 
 (defun view-cleanup-conn-lost () {
     (def view-icon-buf nil)
     (def view-text-buf nil)
-    
-    (def view-gradient nil)
 })

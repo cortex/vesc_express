@@ -6,90 +6,118 @@
 })
 
 (defun view-init-board-info () {
-    ; Large board icon
-    (var icon (img-buffer-from-bin icon-board))
-    (def view-large-icon-buf (create-sbuf 'indexed4 73 65 45 153))
-    (sbuf-blit view-large-icon-buf icon 0 0 ())
+    ; The main circular icon
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 90) 46 181 182))
+    (def view-icon-color 0xf06bc3)
+    (def view-icon-accent-color 0xf8bfe5)
 
-    ; The small circular icon next to the board icon.
-    (def view-icon-buf (create-sbuf 'indexed4 99 121 40 40))
-    (sbuf-blit view-icon-buf icon -26 -56 ())
+    ; Sbuf optimization
+    (def state-previous (state-get 'board-info-msg))
 
-    (def view-icon-accent-col col-accent)
+    ; Firmware Update
+    (def view-last-angle 0.0)
 
     ; Status text
-    (def view-status-text-buf (create-sbuf 'indexed2 25 240 140 78))
+    (def view-status-text-buf (create-sbuf 'indexed2 (- 120 100) (+ 180 46) 200 55))
 })
 
 (defun view-draw-board-info () {
-    (state-with-changed '(board-info-msg) (fn (board-info-msg) {
-        ; Status text
-        ; 'initiate-pairing, 'pairing, 'board-not-powered,
-        ; 'pairing-failed, 'pairing-success
+
+    (var state (state-get 'board-info-msg))
+    (if (not-eq state state-previous) {
+        (sbuf-clear view-icon-buf)
         (sbuf-clear view-status-text-buf)
-        (var text (img-buffer-from-bin (match board-info-msg
-            (initiate-pairing text-initiate-pairing)
-            (pairing text-pairing)
-            (board-not-powered text-board-not-powered)
-            (pairing-failed text-pairing-failed)
-            ; (pairing-success nil) ; TODO: figure out the dynamic text
-        )))
-        (sbuf-blit view-status-text-buf text 0 0 ())
-
-        (def view-icon-accent-col (if (eq board-info-msg 'pairing-failed)
-            col-error
-            col-accent
-        ))
-        
-        ; Icon
-        (if (not-eq board-info-msg 'pairing) {
-            (sbuf-exec img-circle view-icon-buf 20 20 (20 0 '(filled)))
-            (sbuf-exec img-circle view-icon-buf 20 20 (17 3 '(filled)))
-            (var icon (img-buffer-from-bin (match board-info-msg
-                (initiate-pairing icon-pair-inverted)
-                (board-not-powered icon-bolt-inverted)
-                (pairing-failed icon-failed-inverted)
-                (pairing-success icon-check-mark-inverted)
-            )))
-            (var size (match board-info-msg
-                (initiate-pairing (list 24 23))
-                (board-not-powered (list 16 23))
-                (pairing-failed (list 18 18))
-                (pairing-success (list 24 18))
-            )) ; list of width and height
-            (var pos (bounds-centered-position 20 20 (ix size 0) (ix size 1)))
-            (sbuf-blit view-icon-buf icon (ix pos 0) (ix pos 1) ())
-        })
-    }))
-
-    (if (eq (state-get 'board-info-msg) 'pairing) {
-        (sbuf-exec img-circle view-icon-buf 20 20 (20 0 '(filled)))
-        (sbuf-exec img-circle view-icon-buf 20 20 (15 2 '(thickness 2)))
-        
-        (var anim-speed 0.75) ; rev per second
-        (var x (ease-in-out-sine (mod (* anim-speed (get-timestamp)) 1.0)))
-        (var angle (angle-normalize (* 360 x)))
-        (var pos (rot-point-origin 0 -15 angle))
-        ; (print pos)
-        (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 20) (+ (ix pos 1) 20) (3 3 '(filled)))
+        (setq state-previous state)
     })
 
-    ; (var y (* (state-get 'thr-input) -200.0))
-    ; (print y)
+    (if (eq state 'initiate-pairing) {
+        (setq view-icon-color 0xf06bc3)
+        (setq view-icon-accent-color 0xf8bfe5)
+        (sbuf-exec img-circle view-icon-buf 90 90 (70 1 '(filled)))
+
+        (var icon (img-buffer-from-bin icon-pairing))
+        (sbuf-blit view-icon-buf icon 59 59 ())
+
+        (draw-text-centered view-status-text-buf 0 0 200 0 0 4 font-ubuntu-mono-22h 1 0 "Tap icon on")
+        (draw-text-centered view-status-text-buf 0 25 200 0 0 4 font-ubuntu-mono-22h 1 0 "surfboard to pair")
+    })
+    (if (eq state 'pairing) {
+        (setq view-icon-color 0xf06bc3)
+        (setq view-icon-accent-color 0xf8bfe5)
+        (sbuf-exec img-circle view-icon-buf 90 90 (70 1 '(filled)))
+
+        (var icon (img-buffer-from-bin icon-pairing))
+        (sbuf-blit view-icon-buf icon 59 59 ())
+
+        (draw-text-centered view-status-text-buf 0 12 200 0 0 4 font-ubuntu-mono-22h 1 0 "Pairing")
+
+        ; TODO: Figma has specified an arc to show progress
+        ;(sbuf-exec img-arc view-icon-buf 90 90 (90 350 250 2 '(thickness 17)))
+        ; Draw animated "dot" instead
+        (var pos (rot-point-origin 80 0 view-last-angle))
+        (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 90) (+ (ix pos 1) 90) (6 0 '(filled)))
+
+        (var total-secs 6.0)
+        (var halfway 3.0)
+        (var secs (secs-since view-timeline-start))
+        (if (> secs total-secs) {
+            (setq secs (- secs total-secs))
+            (def view-timeline-start (systime))
+        })
+
+        (var easing (weighted-smooth-ease ease-in-cubic (construct-ease-out ease-in-cubic) 0.5))
+        (var angle 0.0)
+        (if (< secs halfway) {
+            (var anim-t (/ secs halfway))
+            (setq angle (to-i (lerp 0.0 540.0 (easing anim-t))))
+        } {
+            (var anim-t (/ (- secs halfway) halfway))
+            (setq angle (to-i (lerp 180.0 720.0 (easing anim-t))))
+        })
+        (var pos (rot-point-origin 80 0 angle))
+
+        (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 90) (+ (ix pos 1) 90) (6 1 '(filled)))
+
+        (def view-last-angle angle)
+    })
+    (if (eq state 'board-not-powered) {
+        (setq view-icon-color 0xe23a26)
+        (setq view-icon-accent-color 0xf3aca3)
+        (sbuf-exec img-circle view-icon-buf 90 90 (90 1 '(filled)))
+
+        (var icon (img-buffer-from-bin icon-not-powered))
+        (sbuf-blit view-icon-buf icon 52 10 ())
+
+        (draw-text-centered view-status-text-buf 0 0 200 0 0 4 font-ubuntu-mono-22h 1 0 "Board not")
+        (draw-text-centered view-status-text-buf 0 25 200 0 0 4 font-ubuntu-mono-22h 1 0 "powered")
+    })
+    (if (eq state 'pairing-failed) {
+        (setq view-icon-color 0xe23a26)
+        (setq view-icon-accent-color 0xf8bfe5)
+        (sbuf-exec img-circle view-icon-buf 90 90 (90 1 '(filled)))
+
+        (draw-text-centered view-status-text-buf 0 0 200 0 0 4 font-ubuntu-mono-22h 1 0 "Pairing")
+        (draw-text-centered view-status-text-buf 0 25 200 0 0 4 font-ubuntu-mono-22h 1 0 "failed")
+    })
+    (if (eq state 'pairing-success) {
+        (setq view-icon-color 0x7f9a0d)
+        (setq view-icon-accent-color 0xbecb83)
+        (sbuf-exec img-circle view-icon-buf 90 90 (90 1 '(filled)))
+
+        (var icon (img-buffer-from-bin icon-pair-ok))
+        (sbuf-blit view-icon-buf icon 52 10 ())
+
+        ; TODO: Get owner name from pairing process
+        (draw-text-centered view-status-text-buf 0 12 200 0 0 4 font-ubuntu-mono-22h 1 0 "Alex's board")
+    })
 })
 
 (defun view-render-board-info () {
-    (sbuf-render-changes view-large-icon-buf (list
-        col-bg
-        (img-color 'gradient_y col-gray-4 col-gray-2 137 9)
-        col-gray-1
-        col-accent
-    ))
     (sbuf-render-changes view-icon-buf (list
         col-bg
-        (img-color 'gradient_y col-gray-4 col-gray-2 137 -94) ; TODO: Figure out why this should be -94 specifically?? It should be -56 + 9 = -47
-        col-gray-2
-        view-icon-accent-col
+        view-icon-color
+        view-icon-accent-color
+        col-white
     ))
     (sbuf-render-changes view-status-text-buf (list col-bg col-fg))
 })
@@ -97,5 +125,8 @@
 (defun view-cleanup-board-info () {
     (def view-icon-buf nil)
     (def view-status-text-buf nil)
-    (def view-board-gradient nil)
+    (def view-icon-color nil)
+    (def view-icon-accent-color nil)
+    (def view-last-angle nil)
+    (def state-previous nil)
 })
