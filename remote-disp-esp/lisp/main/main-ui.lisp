@@ -168,6 +168,9 @@
 (import "../assets/icons/bin/icon-lind-logo.bin" 'icon-lind-logo) ; size: 115x19
 (import "../assets/icons/bin/icon-bolt-16color.bin" 'icon-bolt-16color)
 (import "../assets/icons/bin/icon-sync.bin" 'icon-sync)
+(import "../assets/icons/bin/icon-pairing.bin" 'icon-pairing)
+(import "../assets/icons/bin/icon-not-powered.bin" 'icon-not-powered)
+(import "../assets/icons/bin/icon-pair-ok.bin" 'icon-pair-ok)
 
 ;;; Texts
 
