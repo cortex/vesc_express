@@ -167,6 +167,7 @@
 ; icon-low-battery.bin was moved to top
 (import "../assets/icons/bin/icon-lind-logo.bin" 'icon-lind-logo) ; size: 115x19
 (import "../assets/icons/bin/icon-bolt-16color.bin" 'icon-bolt-16color)
+(import "../assets/icons/bin/icon-sync.bin" 'icon-sync)
 
 ;;; Texts
 

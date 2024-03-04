@@ -9,8 +9,6 @@
 
 (defun view-init-low-battery () {
     (def low-battery-buf (create-sbuf 'indexed4 50 59 141 142))
-
-    (def view-bar-visible-last false)
 })
 
 (defun view-draw-low-battery () {
@@ -39,8 +37,6 @@
     (if visible {
         (sbuf-exec img-rectangle low-battery-buf (- 70 13) 87 (26 5 2 '(filled)))
     })
-
-    (def view-bar-visible-last visible)
 })
 
 (defun view-render-low-battery () {
@@ -77,6 +73,4 @@
 
 (defun view-cleanup-low-battery () {
     (def low-battery-buf nil)
-    
-    (def view-bar-visible-last)
 })
