@@ -5,7 +5,7 @@
 })
 
 (defun view-init-firmware () {
-    (def view-icon-buf (create-sbuf 'indexed4 (- 120 79) 46 170 170))
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 85) 46 171 172))
     ; Blue Circle
     (sbuf-exec img-circle view-icon-buf 85 85 (65 1 '(filled)))
     ; Sync Arrows

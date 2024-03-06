@@ -8,7 +8,7 @@
     (def charge-soc-remote 0)
     (def charge-buf-w 180)
     (var buf-height 180)
-    (def charge-buf (create-sbuf 'indexed4 (- 120 90) 46 (+ charge-buf-w 1) (+ buf-height 2)))
+    (def charge-buf (create-sbuf 'indexed16 (- 120 90) 46 (+ charge-buf-w 1) (+ buf-height 2)))
     (def charge-msg-buf (create-sbuf 'indexed2 (- 120 50) 248 100 26))
 })
 
@@ -26,27 +26,35 @@
     (if (> angle-end 449) (setq angle-end 449))
 
     ; Arc
-    (sbuf-exec img-arc charge-buf 90 90 (90 90 angle-end 1 '(thickness 17)))
+    (sbuf-exec img-arc charge-buf 90 90 (90 90 angle-end 4 '(thickness 17)))
 
     ; Green Circle (Arc Fill)
-    (sbuf-exec img-circle charge-buf 90 90 (70 2 '(filled)))
+    (sbuf-exec img-circle charge-buf 90 90 (70 1 '(filled)))
 
     ; Icon
     ; Battery outline
     (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 23) 62 (46 60 3 '(filled) '(rounded 5)))
-    (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 17) 68 ((- 46 12) (- 60 12) 2 '(filled)))
+    (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 17) 68 ((- 46 12) (- 60 12) 1 '(filled)))
     ; Battery nub
     ; TODO: Nub does not match figma specification
     (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 10) 52 (20 7 3 '(filled)))
-    ; TODO: Add charge icon
+    ; Charge icon
+    (var icon (img-buffer-from-bin icon-charging))
+    (sbuf-blit charge-buf icon (- (/ charge-buf-w 2) 14) 70 ())
 })
 
 (defun view-render-charging () {
+    ; 0 = bg
+    ; 1 = green fg
+    ; 2 = light green fg
+    ; 3 = white
+    ; 4 = dark green
     (sbuf-render charge-buf (list
         0x000000
-        0x4f6300
         0x85a600
+        0xbfba65
         0xffffff
+        0x4f6300
     ))
     (sbuf-render charge-msg-buf (list
         0x000000
