@@ -9,28 +9,24 @@
     (def buf-width-main 195)
     (def buf-height-main 195)
     (def view-main-buf (create-sbuf 'indexed16 (- 120 (/ buf-width-main 2)) 46 (+ buf-width-main 1) (+ buf-height-main 2)))
-
+    (def show-time 0.0)
     (def gear-select-w 162)
     (def gear-select-h 32)
     (def gear-buf (create-sbuf 'indexed4 (- 120 (/ gear-select-w 2)) (- 320 64) gear-select-w (+ gear-select-h 3)))
-    (def main-current-gear 1)
-    (def main-speed-kph 0)
-    (def main-soc-bms 0.10)
+    (def main-previous-gear 1)
 })
 
 (defun view-draw-main () {
     (sbuf-clear view-main-buf)
     (sbuf-clear gear-buf)
 
-    ; TODO: Look into getting the state properly
-    (state-with-changed '(gear kmh dev-main-stats) (fn (gear kmh dev-main-stats) {
-        (setq main-current-gear gear)
-        (setq main-speed-kph (to-i kmh))
-
-    }))
-    (setq main-soc-bms (state-get 'soc-bms))
-    (if (< main-soc-bms 0.02)
-        (setq main-soc-bms 0.02)
+    ; Get live state information
+    (var main-current-gear (state-get 'gear))
+    (var main-speed-kph (to-i (state-get 'kmh)))
+    (var main-soc-bms (state-get 'soc-bms))
+    (if (< main-soc-bms 0.015)
+        ; Enforcing a minimum BMS value so the arc remains rounded
+        (setq main-soc-bms 0.015)
     )
 
     (var arc-start-angle 90)
@@ -74,12 +70,12 @@
     (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21) '(rounded)))
 
     ; Blue Arc White Bottom
-    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (7 color-white '(filled)))
+    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (6 color-white '(filled)))
     ; Blue Arc White Top
     (var angle 0.0)
     (setq angle (- arc-end-max-power 46))
-    (var pos (rot-point-origin 40 40 angle))
-    (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (7 color-white '(filled)))
+    (var pos (rot-point-origin 41 39 angle))
+    (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (6 color-white '(filled)))
 
     ; Determine color for charge arc
     (def charge-arc-color 0x7f9a0d)
@@ -87,18 +83,38 @@
         (setq charge-arc-color (lerp-color 0xe72a62 0xffa500 (ease-in-out-quint (* main-soc-bms 2))))
         (setq charge-arc-color (lerp-color 0xffa500 0x7f9a0d (ease-in-out-quint (* (- main-soc-bms 0.5) 2))))
     )
-    ; Draw current speed
-    (var speed-text (str-from-n main-speed-kph))
-    (var w (* (bufget-u8 font-sfpro-bold-35h 0) (str-len speed-text)))
-    (var screen-w 240)
-    (var x (/ (- buf-width-main w) 2))
-    (sbuf-exec img-text view-main-buf x 70 (3 0 font-sfpro-bold-35h speed-text))
 
-    ; Draw speed units
-    ; TODO: Adjust font
-    (var speed-units-text "KM/H")
-    (var w (* (bufget-u8 font-b3 0) (str-len speed-units-text)))
-    (sbuf-exec img-text view-main-buf (- (/ buf-width-main 2) (/ w 2)) 110 (color-speed-units 0 font-b3 speed-units-text))
+    ; Draw speed and units OR draw animal icon for short period after changing power level
+    (if (not-eq main-current-gear main-previous-gear){
+        (setq main-previous-gear main-current-gear)
+        (setq show-time (+ (secs-since view-timeline-start) 2.0))
+    })
+    (if (> show-time 0) {
+        (if (< show-time (secs-since view-timeline-start)) (setq show-time 0))
+        ; Draw animal icon for current gear level
+        (var icon-animal (img-buffer-from-bin 
+            (cond
+                ((< main-current-gear 3) icon-turtle-4c)
+                ((< main-current-gear 6) icon-fish-4c)
+                ((< main-current-gear 9) icon-pro-4c)
+                ((> main-current-gear 8) icon-shark-4c)
+            )
+        ))
+        (sbuf-blit view-main-buf icon-animal (- (/ buf-width-main 2) 25) 70 ())
+    } {
+        ; Draw current speed
+        (var speed-text (str-from-n main-speed-kph))
+        (var w (* (bufget-u8 font-sfpro-bold-35h 0) (str-len speed-text)))
+        (var screen-w 240)
+        (var x (/ (- buf-width-main w) 2))
+        (sbuf-exec img-text view-main-buf x 70 (3 0 font-sfpro-bold-35h speed-text))
+
+        ; Draw speed units
+        ; TODO: Adjust font
+        (var speed-units-text "KM/H")
+        (var w (* (bufget-u8 font-b3 0) (str-len speed-units-text)))
+        (sbuf-exec img-text view-main-buf (- (/ buf-width-main 2) (/ w 2)) 110 (color-speed-units 0 font-b3 speed-units-text))
+    })
 
     ; Charge Icon
     (var icon (img-buffer-from-bin icon-bolt-16color))
@@ -150,9 +166,8 @@
 
     ; Current Gear
     (var main-current-gear-text (to-str main-current-gear))
-    (setq w (* (bufget-u8 font-sfpro-bold-22h 0) (str-len main-current-gear-text)))
+    (var w (* (bufget-u8 font-sfpro-bold-22h 0) (str-len main-current-gear-text)))
     (sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) 6 (3 0 font-sfpro-bold-22h main-current-gear-text))
-
 })
 
 (defun view-render-main () {
@@ -186,4 +201,11 @@
 (defun view-cleanup-main () {
     (def view-main-buf nil)
     (def gear-buf nil)
+
+    (def buf-width-main nil)
+    (def buf-height-main nil)
+    (def show-time nil)
+    (def gear-select-w nil)
+    (def gear-select-h nil)
+    (def main-previous-gear nil)
 })

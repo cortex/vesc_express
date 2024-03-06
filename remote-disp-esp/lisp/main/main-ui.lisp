@@ -171,6 +171,11 @@
 (import "../assets/icons/bin/icon-pairing.bin" 'icon-pairing)
 (import "../assets/icons/bin/icon-not-powered.bin" 'icon-not-powered)
 (import "../assets/icons/bin/icon-pair-ok.bin" 'icon-pair-ok)
+(import "../assets/icons/bin/icon-charging.bin" 'icon-charging)
+(import "../assets/icons/bin/icon-turtle-4c.bin" 'icon-turtle-4c)
+(import "../assets/icons/bin/icon-fish-4c.bin" 'icon-fish-4c)
+(import "../assets/icons/bin/icon-pro-4c.bin" 'icon-pro-4c)
+(import "../assets/icons/bin/icon-shark-4c.bin" 'icon-shark-4c)
 
 ;;; Texts
 
