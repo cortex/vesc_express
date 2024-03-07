@@ -139,42 +139,38 @@
         (var new-down false)
         (var new-left false)
         (var new-right false)
-        (if (and (> btn-adc 0.17) (< btn-adc 0.4))
-            (set 'new-down t)
-        )
-        (if (and (> btn-adc 0.4) (< btn-adc 0.7))
-            (set 'new-right t)
-        )
-        (if (and (> btn-adc 0.7) (< btn-adc 1.25)) {
-            (set 'new-down t)
-            (set 'new-right t)
-        })
-        (if (and (> btn-adc 1.25) (< btn-adc 1.65))
+        (if (and (> btn-adc 0.9) (< btn-adc 1.1))
             (set 'new-left t)
         )
-        (if (and (> btn-adc 1.65) (< btn-adc 1.78)) {
+        (if (and (> btn-adc 1.65) (< btn-adc 1.85))
+            (set 'new-down t)
+        )
+        (if (and (> btn-adc 1.9) (< btn-adc 2.1)) {
             (set 'new-down t)
             (set 'new-left t)
         })
-        (if (and (> btn-adc 1.78) (< btn-adc 2.0)) {
+        (if (and (> btn-adc 2.15) (< btn-adc 2.35))
             (set 'new-right t)
-            (set 'new-left t)                                
-        })
-        (if (and (> btn-adc 2.0) (< btn-adc 2.36))
-            (set 'new-up t)
         )
-        (if (and (> btn-adc 2.36) (< btn-adc 2.43)) {
+        (if (and (> btn-adc 2.4) (< btn-adc 2.57)) {
+            (set 'new-down t)
             (set 'new-right t)
+        })
+        (if (and (> btn-adc 2.58) (< btn-adc 2.67)) {
             (set 'new-up t)
         })
-        (if (and (> btn-adc 2.43) (< btn-adc 3.0)) {
-            (set 'new-left t)
+        (if (and (> btn-adc 2.67) (< btn-adc 2.75)) {
             (set 'new-up t)
+            (set 'new-left t)
+        })
+        (if (and (> btn-adc 2.75) (< btn-adc 2.91)) {
+            (set 'new-up t)
+            (set 'new-right t)
         })
 
         ; (print (str-merge "left: " (to-str new-left) ", right: " (to-str
-        ; new-right) ", down: " (to-str new-down) ", up: " (to-str new-up)))
-        
+        ; new-right) ", down: " (to-str new-down) ", up: " (to-str new-up) ", adc: " (to-str btn-adc)))
+
         (if (or
             new-left
             new-right
