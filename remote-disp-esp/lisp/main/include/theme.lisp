@@ -14,6 +14,10 @@
 ; (def col-gray-4 0x1f1f1f)
 ; (def col-gray-4 0x151515)
 
+
+(def col-text-aa1 0x4f514f)
+(def col-text-aa2 0x929491)
+
 ;;; Semantic color definitions.
 
 ;;; Style A1

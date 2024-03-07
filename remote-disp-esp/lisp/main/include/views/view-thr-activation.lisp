@@ -12,7 +12,7 @@
     (def view-graphic-buf (create-sbuf 'indexed4 (- 120 90) 46 181 182))
 
     ; status text
-    (def view-status-text-buf (create-sbuf 'indexed4 (- 120 90) 226 180 76))
+    (def view-status-text-buf (create-sbuf 'indexed4 (- 120 90) 230 180 76))
 })
 
 (defun view-draw-thr-activation () {
@@ -24,9 +24,11 @@
             (eq thr-activation-state 'release-warning)
             (eq thr-activation-state 'countdown)
         ) {
-            ; exclamation mark
-            (draw-vert-line view-graphic-buf 89 60 98 5 3)
-            (sbuf-exec img-circle view-graphic-buf 89 108 (5 3 '(filled)))
+            ; White Circle
+            (sbuf-exec img-circle view-graphic-buf 90 90 (35 3 '(thickness 6)))
+            ; Exclamation
+            (sbuf-exec img-rectangle view-graphic-buf (- 90 3) 74 (6 20 3 '(filled)))
+            (sbuf-exec img-rectangle view-graphic-buf (- 90 3) 101 (6 6 3 '(filled)))
         } {
             ; three empty circles
             (sbuf-exec img-circle view-graphic-buf 91 52 (20 3 '(thickness 2)))
@@ -39,8 +41,8 @@
         
         (sbuf-clear view-status-text-buf)
         (var text (img-buffer-from-bin (match thr-activation-state
-            (reminder text-press-to-activate)
-            (release-warning text-release-throttle-first)
+            (reminder text-throttle-activate)
+            (release-warning text-throttle-release)
             (countdown text-throttle-now-active)
         )))
         (var buf-width 180)
@@ -59,7 +61,7 @@
 
 (defun view-render-thr-activation () {
     (sbuf-render-changes view-graphic-buf (list 0x0 0x7f9a0d 0x262626 0xffffff))
-    (sbuf-render-changes view-status-text-buf (list col-bg (lerp-color col-bg col-fg 0.75) (lerp-color col-bg col-fg 0.95) col-fg))
+    (sbuf-render-changes view-status-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
 })
 
 (defun view-cleanup-thr-activation () {

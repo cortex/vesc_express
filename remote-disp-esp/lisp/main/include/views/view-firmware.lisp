@@ -12,12 +12,11 @@
     (var icon (img-buffer-from-bin icon-sync))
     (sbuf-blit view-icon-buf icon 52 52 ())
     
+    ; Static Text
+    (def view-text-buf (create-sbuf 'indexed4 (- 120 70) 230 140 72))
+    (var text (img-buffer-from-bin text-firmware-update))
+    (sbuf-blit view-text-buf text (/ (- 140 (ix (img-dims text) 0)) 2) 0 ())
 
-    (def view-text-buf (create-sbuf 'indexed2 (- 120 70) 230 140 72))
-    ; TODO: Fix Font
-    (draw-text-centered view-text-buf 0 0 140 0 0 4 font-ubuntu-mono-22h 1 0 "Firmware")
-    (draw-text-centered view-text-buf 0 25 140 0 0 4 font-ubuntu-mono-22h 1 0 "update")
-    
     (def view-last-angle 0.0)
 })
 
@@ -52,7 +51,7 @@
 
 (defun view-render-firmware () {
     (sbuf-render-changes view-icon-buf (list col-bg 0x3f93d0 0xc5d6eb col-fg))
-    (sbuf-render-changes view-text-buf (list col-bg col-white))
+    (sbuf-render-changes view-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
 })
 
 (defun view-cleanup-firmware () {

@@ -27,10 +27,12 @@
     (var vapor-5-start-y vapor-5-y)
     (def rising-sun-buf (create-sbuf 'indexed2 50 59 141 142))
 
+    (var logo (img-buffer-from-bin icon-lind-logo))
+
     (var start (systime))
     (var elapsed (secs-since start))
 
-    (var animation-time 4.5)
+    (var animation-time 2.5)
     (if dev-fast-start-animation
         (setq animation-time 1.0)
     )
@@ -56,7 +58,7 @@
         ; Apply a gradient to the sun
         (sbuf-render-changes rising-sun-buf (list
             0x000000
-            (img-color 'gradient_y 0xffa500 (lerp-color 0xff5347 0xffa500 (* animation-percent 0.66)) 142 0)
+            (img-color 'gradient_y 0xffa500 (lerp-color 0xff5347 0xffa500 (* animation-percent 0.9)) 142 0)
         ))
 
         ; Sun height
@@ -71,7 +73,7 @@
         (setq vapor-5-y (- vapor-5-start-y (* (ease-in-out-sine animation-percent) (- vapor-5-start-y 130))))
 
         ; Vapor thickness
-        (setq vapor-0-thickness (to-i (- 1 (* (ease-in-out-sine animation-percent) (- 1 4)))))
+        (setq vapor-0-thickness (to-i (- 1 (* (ease-in-out-sine animation-percent) (- 1 5)))))
         (setq vapor-1-thickness (to-i (- 1 (* (ease-in-out-sine animation-percent) (- 1 5)))))
         (setq vapor-2-thickness (to-i (- 2 (* (ease-in-out-sine animation-percent) (- 2 6)))))
         (setq vapor-3-thickness (to-i (- 2 (* (ease-in-out-sine animation-percent) (- 2 7)))))
@@ -82,15 +84,14 @@
         (sbuf-clear rising-sun-buf)
         (sleep 0.02)
     })
-    ;(print (systime))
 
     (setq start (systime))
     (setq elapsed (secs-since start))
 
 
-    (setq animation-time 3.0)
+    (setq animation-time 2.0)
     (if dev-fast-start-animation
-        (setq animation-time 1.5)
+        (setq animation-time 0.5)
     )
     (setq animation-percent 0.0)
     ; Drop vapor lines before drawing logo
@@ -103,6 +104,10 @@
 
         ; Draw a sun in the buffer
         (sbuf-exec img-circle rising-sun-buf 70 sun-height-offset (70 1'(filled)))
+
+        ; Draw Logo on Sun
+        (sbuf-blit rising-sun-buf logo 12 62 -1)
+
         ; Draw vapor lines
         (sbuf-exec img-rectangle rising-sun-buf 0 vapor-0-y (142 vapor-0-thickness 0 '(filled)))
         (sbuf-exec img-rectangle rising-sun-buf 0 vapor-1-y (142 vapor-1-thickness 0 '(filled)))
@@ -122,25 +127,19 @@
         (setq vapor-1-thickness (to-i (- 5 (* (ease-in-out-sine animation-percent) (- 5 10)))))
         (setq vapor-2-thickness (to-i (- 6 (* (ease-in-out-sine animation-percent) (- 6 12)))))
 
-        ; Apply a gradient to the sun
+        ; Render buffer
         (sbuf-render-changes rising-sun-buf (list
             0x000000
-            (img-color 'gradient_y 0xffa500 (lerp-color 0xff5347 0xffa500 (+ 0.66 (* animation-percent (- 1 0.66)))) 142 0)
+            0xffa500
         ))
 
         ; Repeat
         (sleep 0.02)
     })
 
-    ; Draw Logo on Sun
-    (var logo (img-buffer-from-bin icon-lind-logo))
-    (var logo-buf (img-buffer 'indexed2 115 19))
-    (img-blit logo-buf logo 0 0 -1)
-    (disp-render logo-buf (- 120 57) 121 (list 0xffa500 0x0))
-
     ; Draw version number
     (var w (* (bufget-u8 font-b3 0) (str-len version-str)))
-    (var screen-w 240) ; this is the total width, including the screen inset
+    (var screen-w 240)
     (var x (/ (- screen-w w) 2))
     (var version-buf (img-buffer 'indexed2 w 16))
     (img-text version-buf 0 0 1 0 font-b3 version-str)

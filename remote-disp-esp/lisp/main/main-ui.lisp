@@ -44,19 +44,40 @@
 })
 
 (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
-(import "../assets/icons/bin/icon-low-battery.bin" 'icon-low-battery) ; 84x146 indexed4; bg: 0, fg: 1
 
 {
     (if (and (<= (get-remote-soc) 0.05) (not dev-disable-low-battery-msg)) { ; 5%
         (print "low battery!")
-        (var icon-buf (img-buffer-from-bin icon-low-battery))
-        
-        (var text-buf (img-buffer-from-bin text-remote-battery-low))
-        (img-blit text-buf text 1 0 -1)
-        
-        (disp-render icon-buf 52 74 '(0x0 0xe65f5c))
-        (disp-render text-buf 24 240 '(0x0 0xffffff))
-        
+        (import "include/draw-utils.lisp" code-draw-utils)
+        (read-eval-program code-draw-utils)
+        (def view-icon-buf (create-sbuf 'indexed4 50 59 141 142))
+        (def view-text-buf (create-sbuf 'indexed4 (- 120 100) 210 200 55))
+
+        ; Red Circle
+        (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(thickness 16)))
+
+        ; Battery outline
+        (sbuf-exec img-rectangle view-icon-buf 47 42 (46 60 2 '(filled) '(rounded 4)))
+        (sbuf-exec img-rectangle view-icon-buf 53 (+ 42 6) ((- 46 12) (- 60 12) 0 '(filled)))
+
+        ; Battery nub
+        (sbuf-exec img-rectangle view-icon-buf (+ 13 47) 32 (20 7 2 '(filled)))
+
+        ; Battery center
+        (sbuf-exec img-rectangle view-icon-buf (- 70 13) 87 (26 5 2 '(filled)))
+
+        ; Static Text
+        (var text (img-buffer-from-bin text-remote-battery-low))
+        (sbuf-blit view-text-buf text (/ (- 200 (ix (img-dims text) 0)) 2) 0 ())
+
+        (sbuf-render-changes view-icon-buf (list
+            0x000000
+            0xe23a26
+            0xffffff
+        ))
+
+        (sbuf-render-changes view-text-buf (list 0x000000 0x4f514f 0x929491 0xffffff))
+
         (sleep 10)
         (print "entering sleep (low power)...")
         (disp-clear)
@@ -153,19 +174,10 @@
 
 ;;; Icons
 
-(import "../assets/icons/bin/icon-small-battery-border.bin" 'icon-small-battery)
-(import "../assets/icons/bin/icon-bolt.bin" 'icon-bolt)
-(import "../assets/icons/bin/icon-bolt-colored.bin" 'icon-bolt-colored) ; indexed 4; bg: 0, fg: 2
-(import "../assets/icons/bin/icon-board.bin" 'icon-board)
 (import "../assets/icons/bin/icon-pair-inverted.bin" 'icon-pair-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-check-mark-inverted.bin" 'icon-check-mark-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-failed-inverted.bin" 'icon-failed-inverted) ; indexed4; bg: 3, fg: 0
-(import "../assets/icons/bin/icon-bolt-inverted.bin" 'icon-bolt-inverted) ; indexed4; bg: 3, fg: 0
-(import "../assets/icons/bin/icon-unlock-trigger-inverted.bin" 'icon-unlock-trigger-inverted) ; indexed4; bg: 3, fg: 0
-(import "../assets/icons/bin/icon-battery-border.bin" 'icon-large-battery) ; 84x146 indexed4; bg: 0, fg: 1
-(import "../assets/icons/bin/icon-warning.bin" 'icon-warning) ; 113x94 indexed4; bg: 0, fg: 1
-; icon-low-battery.bin was moved to top
-(import "../assets/icons/bin/icon-lind-logo.bin" 'icon-lind-logo) ; size: 115x19
+(import "../assets/icons/bin/icon-lind-logo-inverted.bin" 'icon-lind-logo) ; size: 115x19
 (import "../assets/icons/bin/icon-bolt-16color.bin" 'icon-bolt-16color)
 (import "../assets/icons/bin/icon-sync.bin" 'icon-sync)
 (import "../assets/icons/bin/icon-pairing.bin" 'icon-pairing)
@@ -179,29 +191,29 @@
 
 ;;; Texts
 
-(import "../assets/texts/bin/board-not-powered.bin" 'text-board-not-powered)
-(import "../assets/texts/bin/charging.bin" 'text-charging)
+(import "../assets/texts/bin/warning-msg.bin" 'text-warning-msg)
 (import "../assets/texts/bin/firmware-update.bin" 'text-firmware-update)
-(import "../assets/texts/bin/gear.bin" 'text-gear)
-(import "../assets/texts/bin/initiate-pairing.bin" 'text-initiate-pairing)
-(import "../assets/texts/bin/km-h.bin" 'text-km-h)
+
+(import "../assets/texts/bin/pairing-tap.bin" 'text-pairing-tap)
 (import "../assets/texts/bin/pairing.bin" 'text-pairing)
 (import "../assets/texts/bin/pairing-failed.bin" 'text-pairing-failed)
-(import "../assets/texts/bin/%.bin" 'text-percent)
-(import "../assets/texts/bin/throttle-off.bin" 'text-throttle-off)
-(import "../assets/texts/bin/press-to-activate2.bin" 'text-press-to-activate)
-(import "../assets/texts/bin/release-throttle-first2.bin" 'text-release-throttle-first)
-(import "../assets/texts/bin/throttle-now-active2.bin" 'text-throttle-now-active)
-(import "../assets/texts/bin/warning-msg.bin" 'text-warning-msg)
+(import "../assets/texts/bin/pairing-success.bin" 'text-pairing-success)
+
+(import "../assets/texts/bin/throttle-activate.bin" 'text-throttle-activate)
+(import "../assets/texts/bin/throttle-release.bin" 'text-throttle-release)
+(import "../assets/texts/bin/throttle-now-active.bin" 'text-throttle-now-active)
+
+(import "../assets/texts/bin/km-h.bin" 'text-km-h)
+(import "../assets/texts/bin/speed-slow.bin" 'text-speed-slow)
+(import "../assets/texts/bin/speed-medium.bin" 'text-speed-medium)
+(import "../assets/texts/bin/speed-fast.bin" 'text-speed-fast)
+(import "../assets/texts/bin/speed-pro.bin" 'text-speed-pro)
+
 (import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
-(import "../assets/texts/bin/timer.bin" 'text-timer)
 ; remote-battery-low.bin was moved to top
 
 ;;; Fonts
 
-(import "../assets/fonts/bin/H1.bin" 'font-h1)
-(import "../assets/fonts/bin/H3.bin" 'font-h3)
-(import "../assets/fonts/bin/B1.bin" 'font-b1)
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
 (import "../assets/fonts/bin/SFProBold25x35x1.2.bin" 'font-sfpro-bold-35h)
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
@@ -336,32 +348,14 @@
     ))
 })
 
-; Draw the big soc circle. sbuf is the smart buffer to draw to, it should most
-; likely be view-bms-soc-buf.
-; Charge is in range 0.0 to 1.0
-(defun draw-bms-soc (sbuf charge) {
-    ; ; Ensure that any old pixels from draw-circle-segment-meter are cleared,
-    ; ; as the arc algorithm isn't pixel consistent and old pixels won't
-    ; ; necessarily be overdrawn.
-    (draw-rounded-circle-segment sbuf 62 62 (+ 62 2) 14 120 60 0)
-
-    (draw-circle-segment-meter sbuf 62 62 62 10 120 60 charge 3 2)
-
-    (var text-y 40)
-    (var text (str-merge (str-from-n (to-i (* charge 100))) ""))
-    (var x-coords (draw-text-centered sbuf 0 text-y -1 0 20 3 font-h3 1 0 text))
-    (var percent (img-buffer-from-bin text-percent))
-    (sbuf-blit sbuf percent (ix x-coords 1) (+ text-y 15 -2) ())
-})
-
 ; Quick and dirty debug function.
 (defun render-is-connected (is-connected) {
-    (var connected-buf (create-sbuf 'indexed4 20 320 24 23))
+    (var connected-buf (create-sbuf 'indexed4 20 30 24 23))
     (var connected-icon (img-buffer-from-bin icon-pair-inverted))
     (img-clear (sbuf-img connected-buf) 3)
     (sbuf-blit connected-buf connected-icon 0 0 ())
 
-    (var status-buf (create-sbuf 'indexed4 48 324 24 18))
+    (var status-buf (create-sbuf 'indexed4 48 34 24 18))
     (var status-icon (img-buffer-from-bin (if is-connected
         icon-check-mark-inverted
         icon-failed-inverted
