@@ -1,6 +1,6 @@
 {
-    "text": "Remote\nbattery low",
-    "width": 140,
+    "text": "Press to activate\nthe throttle",
+    "width": 180,
     "font-file": "SF-Pro-Display-Regular.otf",
     "font-size": 22,
     "line-height": "110%",

@@ -1,8 +1,8 @@
 {
-    "text": "Remote\nbattery low",
-    "width": 140,
+    "text": "Fast",
+    "width": 40,
     "font-file": "SF-Pro-Display-Regular.otf",
-    "font-size": 22,
+    "font-size": 16,
     "line-height": "110%",
     "font-weight": 500,
     "align": "middle"
