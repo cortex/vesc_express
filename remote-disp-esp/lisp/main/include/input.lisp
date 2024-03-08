@@ -170,7 +170,7 @@
 
         ; (print (str-merge "left: " (to-str new-left) ", right: " (to-str
         ; new-right) ", down: " (to-str new-down) ", up: " (to-str new-up) ", adc: " (to-str btn-adc)))
-        
+
         (if (or
             new-left
             new-right

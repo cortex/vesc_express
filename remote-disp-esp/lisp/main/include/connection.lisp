@@ -3,27 +3,25 @@
 (def thr-active false)
 
 (def esp-rx-cnt 0)
-(def batt-addr-rx false)
-(def batt-addr '(212 249 141 2 108 45))
+(def batt-addr-rx true)
+;(def batt-addr '(212 249 141 2 108 137)) ; Bat3_08
+(def batt-addr '(212 249 141 10 179 105)) ; Bat3_06
 
 (def any-ping-has-failed false) ; If a ping has failed, but not enough to consider connection lost
 
 @const-start
 
 (esp-now-start)
+(esp-now-add-peer batt-addr)
+
 
 (defun proc-data (src des data) {
         ; Ignore broadcast, only handle data sent directly to us
-        (if (not-eq des '(255 255 255 255 255 255))
-            (progn
-                ; (print data)
-                (def batt-addr src)
-                (if (not batt-addr-rx) (esp-now-add-peer batt-addr))
+        (if (eq src batt-addr){
                 (def batt-addr-rx true)
                 (eval (read data))
                 (def esp-rx-cnt (+ esp-rx-cnt 1))
-        ))
-        ; (print data)
+        })
         (free data)
 })
 
@@ -158,25 +156,26 @@
 ; Pings the battery and returns a bool indicating if it was successfully
 ; received.
 ; Essentially checks if there is a connection.
-(defun ping-battery ()
-    (if batt-addr-rx {
-        (+set measure-ping-total-count 1)
-        
-        (if dbg-ping-should-fail {
-            (sleep 0.002) ; 2 ms
-            (if (>= dbg-failed-pings dbg-ping-fail-count)
-                (def dbg-ping-should-fail false)
-                (+set dbg-failed-pings 1)
-            )
-            
-            (not dbg-ping-should-fail)
-        } {    
-            (esp-now-send batt-addr "")
-        })
-    }
-        false
-    )
-)
+(defun ping-battery (){
+        (print "ping-battery")
+        (if batt-addr-rx {
+                (+set measure-ping-total-count 1)
+                
+                (if dbg-ping-should-fail {
+                        (sleep 0.002) ; 2 ms
+                        (if (>= dbg-failed-pings dbg-ping-fail-count)
+                            (def dbg-ping-should-fail false)
+                            (+set dbg-failed-pings 1)
+                        )
+                        
+                        (not dbg-ping-should-fail)
+                        } {
+                        (esp-now-send batt-addr "")
+                })
+            }
+            false
+        )
+})
 
 ; Thread whose only purpose is to check for a connection with the battery
 @const-end

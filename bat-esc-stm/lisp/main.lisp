@@ -5,6 +5,13 @@
 
 (def buf-can (array-create 8))
 
+; Load cell reading. Updated using code server when available.
+(def grams-load-cell 0.0)
+
+; Remote throttle and rx counters. Updated using code server.
+(def rem-thr 0.0)
+(def rem-cnt 0.0)
+
 (select-motor 1)
 
 (spawn (fn ()
@@ -61,7 +68,7 @@
         (setq i-in-m2 (run-m2 '(get-current-in 1)))
         (setq iq (get-iq 1))
         (setq iq-m2 (run-m2 '(get-iq 1)))
-        
+
         (setq power-bms (* (get-bms-val 'bms-i-in-ic) (get-bms-val 'bms-v-tot)))
         (setq rpm-impeller (/ (get-rpm) 2.0 gearing))
         (setq torque-impeller (calc-torque))
@@ -91,25 +98,32 @@
         ("cnt_wh" "Wh" "Watt Hours"     (get-wh))
         ("cnt_ah_chg" "Ah" "Ah Chg"     (get-ah-chg))
         ("cnt_wh_chg" "Wh" "Wh Chg"     (get-wh-chg))
-        
+
         ("M2 Current" "A"               (run-m2 '(get-current 1)))
         ("M2 Current In" "A"            (* 1 i-in-m2))
         ("M2 Duty"                      (run-m2 '(get-duty)))
         ("M2 ERPM"                      (run-m2 '(get-rpm)))
         ("M2 Temp Fet" "degC" 1         (run-m2 '(get-temp-fet)))
         ("M2 Temp Motor" "degC" 1       (run-m2 '(get-temp-mot)))
-        
+
         ("bms_soc" "%" "BMS SOC"        (* (get-bms-val 'bms-soc) 100.0))
         ("bms_hum" "%" "BMS Hum"        (get-bms-val 'bms-hum))
         ("bms_temp_hum" "degC" "BMS Temp Hum" (get-bms-val 'bms-temp-hum))
         ("bms_temp_max" "degC" "BMS Temp Max" (get-bms-val 'bms-temp-cell-max))
         ("bms_i_in_ic" "A" "BMS Current" (get-bms-val 'bms-i-in-ic))
-        
+
         ; Calculated values
         ("bms_power" "W" "BMS Power"     (* 1 power-bms))
         ("Power Impeller" "W"            (* 1 power-impeller))
         ("RPM Impeller"                  (* 1 rpm-impeller))
         ("Torque Impeller" "Nm"          (* 1 torque-impeller))
+
+        ; Load cell
+        ("Force Load Cell" "kg"          (/ grams-load-cell 1000.0))
+
+        ; Remote counters
+        ("Rem Thr"                       (* 1.0 rem-thr))
+        ("Rem Cnt"                       (* 1.0 rem-cnt))
 ))
 
 (defun init-logging ()
@@ -159,24 +173,23 @@
             (sleep (/ 1.0 rate-hz))
 )))
 
- 
+
 (defun start-logging () {
         (if log-running (stop-logging))
         (init-logging)
         (def log-running true)
-        
+
         (var append-time true)
         (var log-gnss true)
-        
+
         ; Disable GPS data if unavailable
         ; GPS is unavailable if gnss-date-time returns all -1 or 0
-        (if ((> 1 (foldl + 0 (gnss-date-time))))
-            { 
+        (if (> 1 (foldl + 0 (gnss-date-time))) {
                 (print "GPS not working, disabling")
                 (setq append-time false)
                 (setq log-gnss false)
-            }
-        )
+        })
+
         (log-start
             esp-can-id ; CAN id
             (length loglist) ; Field num
@@ -184,10 +197,10 @@
             append-time ; Append time
             log-gnss ; Append gnss
         )
+
         (spawn 100 log-sender)
 })
-        
-     
+
 (defun stop-logging () {
                     (def log-running false)
                     (log-stop esp-can-id)
