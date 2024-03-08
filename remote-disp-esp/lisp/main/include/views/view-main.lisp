@@ -20,8 +20,8 @@
         (sbuf-clear view-main-buf)
         (sbuf-clear gear-buf)
 
-        (var buf-width-main 195)
-        (var buf-height-main 195)
+        (var buf-width-main 196)
+        (var buf-height-main 196)
 
         (var gear-select-w 162)
         (var gear-select-h 32)
@@ -62,7 +62,7 @@
         (if (> angle-end 449) (setq angle-end 449))
 
         (var arc-outer-rad (/ buf-width-main 2))
-        (var arc-innder-rad 67)
+        (var arc-innder-rad 68)
         ; Arc Outer BG
         (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-outer-rad arc-start-angle 450 color-arc-outer-bg '(thickness 28)))
         ; Arc Inner BG
@@ -75,11 +75,11 @@
         (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21) '(rounded)))
 
         ; Blue Arc White Bottom
-        (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (6 color-white '(filled)))
+        (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 40) (6 color-white '(filled)))
         ; Blue Arc White Top
         (var angle 0.0)
         (setq angle (- arc-end-max-power 46))
-        (var pos (rot-point-origin 41 39 angle))
+        (var pos (rot-point-origin 41 41 angle))
         (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (6 color-white '(filled)))
 
         ; Determine color for charge arc
