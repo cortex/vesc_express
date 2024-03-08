@@ -10,8 +10,9 @@
     ; Currently open view (one of 'main, 'board-info, 'thr-activation, or 'status-msg)
     (cons 'view 'main)
     ; What is currently being displayed on the top menu of the main view.
-    ; Valid values are 'gear or 'speed
-    (cons 'view-main-subview 'gear)
+    ; Valid values are 'none
+    ; With dev-enable-connection-dbg-menu additional valid values are 'timer 'dbg
+    (cons 'view-main-subview 'none)
 
     ; Experiment to switch between different ways of displaying the gear number.
     ; 'leading-zero is the default
@@ -124,24 +125,24 @@
 ;;;; High-level actions
 
 ; Should only be called outside render thread
-(defun cycle-main-top-menu () {
-    (var next (if (eq (state-get-live 'view-main-subview) 'gear) 'speed 'gear))
-    ; TODO: New subviews are not implemented:(main-subview-change next)
-    ; (print (to-str "cycle-main-top-menu" next))
-})
+;(defun cycle-main-top-menu () {
+;    (var next (if (eq (state-get-live 'view-main-subview) 'gear) 'speed 'gear))
+;    (main-subview-change next)
+;    ; (print (to-str "cycle-main-top-menu" next))
+;})
 
 ; Should only be called outside render thread
 (defun cycle-main-dbg-menu () {
-    (var next (if (eq (state-get-live 'view-main-subview) 'dbg) 'gear 'dbg))
-    ; TODO: New subviews are not implemented:(main-subview-change next)
-    ; (print (to-str "cycle-main-dbg-menu" next))
+    (var next (if (eq (state-get-live 'view-main-subview) 'dbg) 'timer 'dbg))
+    (main-subview-change next)
+    (print (to-str "cycle-main-dbg-menu" next))
 })
 
 ; Should only be called outside render thread
 (defun cycle-main-timer-menu () {
-    (var next (if (eq (state-get-live 'view-main-subview) 'timer) 'gear 'timer))
-    ; TODO: New subviews are not implemented: (main-subview-change next)
-    ; (print (to-str "cycle-main-timer-menu" next))
+    (var next (if (eq (state-get-live 'view-main-subview) 'timer) 'none 'timer))
+    (main-subview-change next)
+    (print (to-str "cycle-main-timer-menu" next))
 })
 
 ; Should only be called outside render thread

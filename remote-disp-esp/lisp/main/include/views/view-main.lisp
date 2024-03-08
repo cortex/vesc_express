@@ -157,31 +157,41 @@
             (setq charge-icon-lighter (lerp-color 0xffe9c0 0xe0e7c4 (ease-in-out-quint (* (- main-soc-bms 0.5) 2))))
         )
 
-        ; Draw Gear Select Icons - / + and current Gear
-        ; TODO: Fix font
-        ;(var max-power-text "Max Power")
-        ;(var w (* (bufget-u8 font- 0) (str-len max-power-text)))
-        ;(sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) (- gear-select-h 12) (2 0 font-b3 max-power-text))
-
-        ; Minus Circle
-        (var circle-color 1)
-        (if (= main-current-gear gear-min) (setq circle-color 2))
-        (sbuf-exec img-circle gear-buf 16 (/ gear-select-h 2) (16 circle-color '(thickness 2)))
-        (sbuf-exec img-rectangle gear-buf 7 (/ gear-select-h 2) (18 2 circle-color '(filled)))
-
-        ; Plus Circle
-        (if (= main-current-gear gear-max)
-            (setq circle-color 2)
-            (setq circle-color 1)
+        ; Check if we should draw the debug view
+        (if (eq (state-get 'view-main-subview) 'dbg)
+            (subview-draw-dbg)
         )
-        (sbuf-exec img-circle gear-buf (- gear-select-w 16) (/ gear-select-h 2) (16 circle-color '(thickness 2)))
-        (sbuf-exec img-rectangle gear-buf (- gear-select-w 25) 15 (18 2 circle-color '(filled)))
-        (sbuf-exec img-rectangle gear-buf (- gear-select-w 17) 7 (2 18 circle-color '(filled)))
+        ; Check if we should draw the debug timer view
+        (if (eq (state-get 'view-main-subview) 'timer) {
+            (subview-draw-timer)
+        } {
+            ; Draw Gear Select Icons - / + and current Gear
 
-        ; Current Gear
-        (var main-current-gear-text (to-str main-current-gear))
-        (var w (* (bufget-u8 font-sfpro-bold-22h 0) (str-len main-current-gear-text)))
-        (sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) 6 (3 0 font-sfpro-bold-22h main-current-gear-text))
+            ; TODO: Draw Max Power when we are at the max? Screen is crowded. Revisit please
+            ;(var max-power-text "Max Power")
+            ;(var w (* (bufget-u8 font- 0) (str-len max-power-text)))
+            ;(sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) (- gear-select-h 12) (2 0 font-b3 max-power-text))
+
+            ; Minus Circle
+            (var circle-color 1)
+            (if (= main-current-gear gear-min) (setq circle-color 2))
+            (sbuf-exec img-circle gear-buf 16 (/ gear-select-h 2) (16 circle-color '(thickness 2)))
+            (sbuf-exec img-rectangle gear-buf 7 (/ gear-select-h 2) (18 2 circle-color '(filled)))
+
+            ; Plus Circle
+            (if (= main-current-gear gear-max)
+                (setq circle-color 2)
+                (setq circle-color 1)
+            )
+            (sbuf-exec img-circle gear-buf (- gear-select-w 16) (/ gear-select-h 2) (16 circle-color '(thickness 2)))
+            (sbuf-exec img-rectangle gear-buf (- gear-select-w 25) 15 (18 2 circle-color '(filled)))
+            (sbuf-exec img-rectangle gear-buf (- gear-select-w 17) 7 (2 18 circle-color '(filled)))
+
+            ; Current Gear
+            (var main-current-gear-text (to-str main-current-gear))
+            (var w (* (bufget-u8 font-sfpro-bold-22h 0) (str-len main-current-gear-text)))
+            (sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) 6 (3 0 font-sfpro-bold-22h main-current-gear-text))
+        })
     }))
 })
 
@@ -220,4 +230,54 @@
     (def show-time nil)
 
     (def main-previous-gear nil)
+})
+
+;;; Extra items to display (not in Figma spec)
+
+(defun main-subview-change (new-subview) {
+    (state-set 'view-main-subview new-subview)
+})
+
+(defun subview-draw-timer () {
+    (var thr-secs (state-get 'thr-timer-secs))
+    (var hours (to-i (/ thr-secs (* 60 60))))
+    (-set thr-secs (* hours 60 60))
+
+    (var minutes (to-i (/ thr-secs 60)))
+    (-set thr-secs (* minutes 60))
+
+    (var seconds (to-i thr-secs))
+
+    (var timer-str (str-merge
+        (str-left-pad (str-from-n hours) 2 "0")
+        ":"
+        (str-left-pad (str-from-n minutes) 2 "0")
+        ":"
+        (str-left-pad (str-from-n seconds) 2 "0")
+    ))
+
+    (sbuf-exec img-text gear-buf 20 0 (3 0 font-ubuntu-mono-22h timer-str))
+})
+
+(defun subview-draw-dbg () {
+    (sbuf-exec img-rectangle view-main-buf 0 0 (180 100 0 '(filled) `(rounded ,bevel-small)))
+
+    (var failed-pings m-failed-pings)
+    (var last-failed-pings m-last-fail-count)
+    ; (var max-ping-fails m-max-ping-fails)
+    (var total-pings m-total-pings)
+    (var connections-lost-count measure-connections-lost-count)
+
+    (var lines (list
+        (str-merge "ping /s:" (str-from-n total-pings))
+        (str-merge "fail /s:" (str-from-n failed-pings))
+        (str-merge "last fl:" (str-from-n last-failed-pings))
+        (str-merge "lost #:" (str-from-n connections-lost-count))
+    ))
+
+    (var y 0)
+    (map (fn (line) {
+        (sbuf-exec img-text view-main-buf 0 y (3 0 font-ubuntu-mono-22h line))
+        (setq y (+ y 26))
+    }) lines)
 })

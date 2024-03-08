@@ -4,8 +4,8 @@
 ;;; This is a function to avoid undefined dependencies at initial parse time
 (defun get-view-handlers () (list
     (cons 'main (list
-        (cons 'up cycle-main-top-menu)
-        (cons 'up-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu cycle-main-timer-menu))
+        (cons 'up (if dev-enable-connection-dbg-menu cycle-main-dbg-menu))
+        (cons 'up-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
         (cons 'down try-activate-thr)
         (cons 'down-long enter-sleep)
         (cons 'left decrease-gear)
