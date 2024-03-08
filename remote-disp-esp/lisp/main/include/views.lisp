@@ -4,10 +4,11 @@
 ;;; This is a function to avoid undefined dependencies at initial parse time
 (defun get-view-handlers () (list
     (cons 'main (list
-        (cons 'up cycle-main-top-menu)
-        (cons 'up-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu cycle-main-timer-menu))
-        (cons 'down try-activate-thr)
-        (cons 'down-long enter-sleep)
+        ;(cons 'up cycle-battery)
+        ;(cons 'up-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu cycle-main-timer-menu))
+        ;(cons 'down try-activate-thr)
+        ;(cons 'down-long enter-sleep)
+        (cons 'up cycle-battery)
         (cons 'left decrease-gear)
         (cons 'right increase-gear)
         ; (cons 'right cycle-main-top-menu)
@@ -17,7 +18,7 @@
         ; (cons 'down decrease-gear)
         ; (cons 'up increase-gear)
     ))
-    
+
     (cons 'board-info (list
         ; These are temporary for dev
         (cons 'up nil)
@@ -43,7 +44,7 @@
             ))
         }))
     ))
-    
+
     (cons 'thr-activation (list
         (cons 'up nil)
         (cons 'down try-activate-thr)
@@ -52,7 +53,7 @@
         (cons 'right nil)
         ; (cons 'left try-activate-thr)
         ; (cons 'left-long enter-sleep)
-        
+
         ; (cons 'left (fn () {
         ;     (match (state-get-live 'thr-activation-state)
         ;         (reminder (activate-thr))
@@ -68,16 +69,16 @@
         ;     )
         ; }))
     ))
-    
+
     (cons 'charging (list
         (cons 'up nil)
         (cons 'down nil)
         (cons 'down-long enter-sleep)
-        (cons 'left nil)
+        (cons 'left cycle-battery)
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
     ))
-    
+
     (cons 'low-battery (list
         (cons 'up nil)
         (cons 'down nil)
@@ -86,7 +87,7 @@
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
     ))
-    
+
     (cons 'warning (list
         (cons 'up nil)
         (cons 'down nil)
@@ -95,7 +96,7 @@
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
     ))
-    
+
     (cons 'firmware (list
         (cons 'up nil)
         (cons 'down nil)
@@ -103,30 +104,42 @@
         (cons 'left nil)
         (cons 'right nil)
     ))
-    
+
     (cons 'conn-lost (list
-        (cons 'up nil)
+        (cons 'up cycle-battery)
+;        (cons 'down nil)
         (cons 'down nil)
+
         (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
     ))
+    (cons 'set-battery (list
+        (cons 'up exit-set-batt)
+        (cons 'down exit-set-batt)
+        (cons 'down-long exit-set-batt)
+        (cons 'left exit-set-batt)
+        (cons 'right exit-set-batt)
+        ; (cons 'left-long enter-sleep)
+    ))
 ))
 
-; For every view, these functions tell you if it wants to be displayed
+; For every view, these functions tell you if it want's to be displayed
 ; currently. The order decide the priority, with the earlier views having higher
-; priority. For example, the main view always wants to be displayed, but is
-; last, so it's only displayed if no other view wants to.
+; priority. For example, the main view always want's to be displayed, but is
+; last, so it's only displayed if no other view want's to.
 (defun get-view-is-visible-functions () (list
     (cons 'low-battery view-is-visible-low-battery)
     (cons 'warning view-is-visible-warning)
     (cons 'firmware view-is-visible-firmware)
+    (cons 'set-battery view-is-visible-set-battery)
+
     (cons 'charging view-is-visible-charging)
-    
+
     (cons 'board-info view-is-visible-board-info)
     (cons 'thr-activation view-is-visible-thr-activation)
-    
+
     (cons 'conn-lost view-is-visible-conn-lost)
     (cons 'main view-is-visible-main)
 ))
@@ -160,7 +173,7 @@
 ; priorities defined by `get-view-is-visible-functions`.
 (defun calc-displayed-view () (if (not-eq dev-force-view nil) dev-force-view {
     (var view nil)
-    (map (lambda (pair) 
+    (map (lambda (pair)
         (if (and
             (eq view nil)
             ((cdr pair))
@@ -168,11 +181,11 @@
             (setq view (car pair))
         })
     ) (get-view-is-visible-functions))
-    
+
     (if (eq view nil)
         (print "no view wants to be displayed :/")
     )
-    
+
     view
 }))
 
@@ -180,7 +193,7 @@
 
 ; Request for which view is currently displayed to be recalculated.
 ; It's recalculated at the start of next frame according to the rules defined by
-; `calc-displayed-view` 
+; `calc-displayed-view`
 (defun request-view-change () {
     (def view-change-requested true)
 })
@@ -200,6 +213,7 @@
         (warning view-cleanup-warning)
         (firmware view-cleanup-firmware)
         (conn-lost view-cleanup-conn-lost)
+        (set-battery view-cleanup-set-battery)
         (_ (fn () ()))
     ))
 
@@ -214,15 +228,16 @@
         (warning view-init-warning)
         (firmware view-init-firmware)
         (conn-lost view-init-conn-lost)
+        (set-battery view-init-set-battery)
         (_ ())
     ))
 
     (cleanup)
     (init)
     (activate-current-view-listeners)
-    
+
     (tick-current-view)
-    
+
     (def view-timeline-start (systime))
 })
 
@@ -236,6 +251,7 @@
         (warning (view-draw-warning))
         (firmware (view-draw-firmware))
         (conn-lost (view-draw-conn-lost))
+        (set-battery (view-draw-set-battery))
         (_ (print "no active current view"))
     )
 })
@@ -250,6 +266,7 @@
         (warning (view-render-warning))
         (firmware (view-render-firmware))
         (conn-lost (view-render-conn-lost))
+        (set-battery (view-render-set-battery))
         (_ (print "no active current view"))
     )
 })
@@ -264,7 +281,7 @@
 })
 
 ; Set the on-<btn>-pressed variables with the appropriate input handles for the
-; current view. 
+; current view.
 (defun activate-current-view-listeners () (let (
     (view (state-get 'view))
     (handlers (assoc (get-view-handlers) view))
@@ -289,5 +306,6 @@
 (read-eval-program code-view-warning)
 (read-eval-program code-view-firmware)
 (read-eval-program code-view-conn-lost)
+(read-eval-program code-view-select-battery)
 
 @const-end

@@ -36,7 +36,7 @@
     (var map-range-01 (lambda (v min max)
         (clamp01 (/ (- (to-float v) min) (- max min)))
     ))
-    
+
     (if (not-eq dev-soc-remote nil)
         dev-soc-remote
         (map-range-01 (vib-vmon) 3.4 4.2)
@@ -50,13 +50,13 @@
     (if (and (<= (get-remote-soc) 0.05) (not dev-disable-low-battery-msg)) { ; 5%
         (print "low battery!")
         (var icon-buf (img-buffer-from-bin icon-low-battery))
-        
+
         (var text-buf (img-buffer-from-bin text-remote-battery-low))
         (img-blit text-buf text 1 0 -1)
-        
+
         (disp-render icon-buf 52 74 '(0x0 0xe65f5c))
         (disp-render text-buf 24 240 '(0x0 0xffffff))
-        
+
         (sleep 10)
         (print "entering sleep (low power)...")
         (disp-clear)
@@ -75,7 +75,7 @@
     (var logo-buf (img-buffer 'indexed2 120 19))
     (img-blit logo-buf logo 2 0 -1)
     (disp-render logo-buf 36 (- 156 30) (list 0x0 0xffffff))
-    
+
     (var w (* (bufget-u8 font-b3 0) (str-len version-str)))
     (var screen-w 194) ; this is the total width, including the screen inset
     (var x (/ (- screen-w w) 2))
@@ -91,9 +91,9 @@
     (var bin-str (str-replace bin-str "0b" ""))
     (var bits (str-len bin-str))
     (foldl
-        (fn (init char-pair) 
+        (fn (init char-pair)
             (bitwise-or init (shl (if (= (first char-pair) ascii-1) 1 0) (rest char-pair)))
-        
+
         )
         0
         (map (fn (i)
@@ -108,7 +108,7 @@
 {
     ; (def cal-result (vib-cal))
     ; (print (to-str "calibration result:" cal-result))
-    
+
     ; intersting bits are 6-4 and 3-2 (brake factor and loop gain)
     (var reg-feedback-control (bitwise-or
         (bitwise-and
@@ -168,6 +168,7 @@
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
 (import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
+(import "include/views/view-select-battery.lisp" 'code-view-select-battery)
 
 ;;; Icons
 
@@ -229,7 +230,7 @@
 
 (def start-tick (systime))
 
-; These are placed here so they don't use up binding slots. 
+; These are placed here so they don't use up binding slots.
 (def thread-connection-start (systime))
 (def thread-thr-start (systime))
 (def thread-input-start (systime))
@@ -322,15 +323,15 @@
     (if (state-get 'soc-bar-visible) {
         (var icon (img-buffer-from-bin icon-small-battery))
         (sbuf-blit small-battery-buf icon 0 0 ())
-    
+
         (var bar-height (to-i (* 11 charge)))
         (if (!= bar-height 0) {
             (var y (- 13 bar-height))
             (sbuf-exec img-rectangle small-battery-buf 1 y (6 bar-height 1 '(filled)))
         })
-    
+
         (var text (str-merge (str-from-n (to-i (* charge 100))) "%  "))
-        (sbuf-exec img-text small-soc-text-buf 0 0 (1 0 font-b3 text))        
+        (sbuf-exec img-text small-soc-text-buf 0 0 (1 0 font-b3 text))
     } {
         (sbuf-clear small-battery-buf)
         (sbuf-clear small-soc-text-buf)
@@ -413,9 +414,9 @@
             (ms-since thread-connection-start)
         ))
         (def thread-connection-start (systime))
-        
+
         (connection-tick)
-        ; this tick function handles its own sleep time            
+        ; this tick function handles its own sleep time
     })
 ))
 
@@ -434,9 +435,9 @@
             (ms-since thread-thr-start)
         ))
     (def thread-thr-start (systime))
-    
+
     (thr-tick)
-    
+
     (if any-ping-has-failed
         (sleep-ms-or-until 80 (not any-ping-has-failed))
         (sleep 0.05) ; 30 ms
@@ -456,9 +457,9 @@
             (ms-since thread-input-start)
         ))
         (def thread-input-start (systime))
-        
+
         (input-tick)
-        
+
         (def input-has-ran true)
         (if any-ping-has-failed
             (sleep-ms-or-until 80 (not any-ping-has-failed))
@@ -481,9 +482,9 @@
             (ms-since thread-vibration-start)
         ))
         (def thread-vibration-start (systime))
-        
+
         (vib-flush-sequences)
-        
+
 
         (sleep 0.08) ; 80 ms
     })
@@ -502,7 +503,7 @@
             (ms-since thread-slow-updates-start)
         ))
         (def thread-slow-updates-start (systime))
-        
+
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
         (state-set 'soc-bms soc-bms)
@@ -523,7 +524,7 @@
             (ms-since thread-main-start)
         ))
         (def thread-main-start (systime))
-        
+
         (var start (systime))
         (sleep-until input-has-ran)
         (tick)
