@@ -4,7 +4,7 @@
 ;(def remote-addr '(96   85 249 201 187 161)) ; Remote 1
 ;(def remote-addr '(220  84 117 137  75  53)) ; Remote 2 (black)
 ;(def remote-addr '(220  84 117  93  64  29)) ; Remote 3
-; (def remote-addr '(220  84 117 137 184 245)) ; Remote 4
+;(def remote-addr '(220  84 117 137 184 245)) ; Remote 4
 ;(def remote-addr '(212 249 141   2 108  69)) ; Remote 6 (turqouise trigger)
 ;(def remote-addr '(212 249 141   2 108 105)) ; Remote 7
 ;(def remote-addr '(220  84 117 137 202 129)) ; Remote ?
@@ -12,7 +12,9 @@
 
 
 ;(def remote-addr '(84 50 4 135 207 237)) ; REV A SN05
-(def remote-addr '(84 50 4 135 217 29)) ; REV A SN01
+;(def remote-addr '(84 50 4 135 217 29)) ; REV A SN01
+(def remote-addr '(255 255 255 255 255 255)) ; Broadcast
+
 
 (esp-now-start)
 (esp-now-add-peer remote-addr)
@@ -29,37 +31,52 @@
 
 (def throttle-rx-timestamp (- (systime) 100))
 (def log-running nil)
+
 (loopwhile-thd 100 t {
         (if log-running
             (if (> (secs-since throttle-rx-timestamp) 5.0) {
                     (print "Stopping logging")
                     (setq log-running nil)
-                    (rcode-run 10 1 '(stop-logging))
+                    (rcode-run-noret 10 '(stop-logging))
+                    (rcode-run-noret 10 '(stop-logging))
             })
             (if (< (secs-since throttle-rx-timestamp) 1.0) {
                     (print "Starting logging")
-                    (rcode-run 10 1 '(start-logging))
+                    (rcode-run-noret 10 '(start-logging))
                     (setq log-running t)
             })
         )
         (sleep 1)
 })
 
-(defun thr-rx (thr)
-    (progn
+(defun thr-rx (thr) {
         (setq throttle-rx-timestamp (systime))
         (def thr-val thr)
         (def rx-cnt (+ rx-cnt 1))
-        (canset-current-rel 10 thr) ; batt1: 6, batt2: 10
-        (canset-current-rel 11 thr) ; batt1: 7, batt2: 11
-))
+        (canset-current-rel 10 thr)
+        (canset-current-rel 11 thr)
+        (rcode-run-noret 10 `(setq rem-thr ,thr))
+        (rcode-run-noret 10 `(setq rem-cnt ,rx-cnt))
+})
 
-(defun proc-data (src des data) {
+(defun proc-data (src des data rssi) {
         ; Ignore broadcast, only handle data sent directly to us
-        (if (eq src remote-addr)
-            (progn
+        (if (not-eq des '(255 255 255 255 255 255))
+            {
+                (def remote-addr src)
+                (esp-now-add-peer src)
                 (eval (read data))
-        ))
+            }
+            {
+                ; Broadcast data
+                (var br-data (unflatten data))
+
+                ; Load cell grams
+                (if (eq (ix br-data 0) 'lc-grams) {
+                        (rcode-run-noret 10 `(setq grams-load-cell ,(ix br-data 1)))
+                })
+            }
+        )
         (free data)
 })
 
@@ -86,7 +103,7 @@
 (defun event-handler ()
     (loopwhile t
         (recv
-            ((event-esp-now-rx (? src) (? des) (? data) (? rssi)) (proc-data src des data))
+            ((event-esp-now-rx (? src) (? des) (? data) (? rssi)) (proc-data src des data rssi))
             ((event-can-sid . ((? id) . (? data))) (proc-sid id data))
             (_ nil)
 )))
