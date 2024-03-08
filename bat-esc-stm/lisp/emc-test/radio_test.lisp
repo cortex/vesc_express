@@ -1,7 +1,9 @@
+; Run on bat-esc-stm
+
 (import "vesc4g.bin" tcp)
 (load-native-lib tcp)
 
-(defun pwr-on () {
+(defun modem-pwr-on () {
         (ext-pwr-key 0)
         (sleep 1)
         (ext-pwr-key 1)
@@ -9,7 +11,7 @@
         (ext-pwr-key 0)
 })
 
-(defun pwr-off () {
+(defun modem-pwr-off () {
         (ext-pwr-key 0)
         (sleep 1)
         (ext-pwr-key 1)
@@ -79,16 +81,16 @@
 )))
 
 (def sim7070-init-commands
-    (list '(at-command "ATE0\r\n" "OK" 100)
-        '(at-command "AT+CPIN?\r\n" "+CPIN: READY" 100)
-        '(at-command "AT+CMGF=1\r\n" "OK" 100)
+    (list '(at-command "ATE0\r\n" "OK" 100) ; Disable echo
+        '(at-command "AT+CPIN?\r\n" "+CPIN: READY" 100) ; Enter pin
+        '(at-command "AT+CMGF=1\r\n" "OK" 100) ; Set SMS format to text
         '(at-command "AT+CNMP=38\r\n" "OK" 100) ; Set LTE mode
-        '(at-command "AT+CMNB=1\r\n" "OK" 100)  ; Set CAT1 mode
-        '(at-command "AT+CGATT?\r\n" "+CGATT: 1" 100) ; Attach
-        '(at-command-parse-result "AT+COPS?\r\n" print 100)
-        '(at-command-parse-result "AT+CGNAPN\r\n" print 100)
-        '(at-command-parse-result "AT+CNCFG=0,1,\"internet.telenor.se\"\r\n" print 100)
-        '(at-command "AT+CNACT=0,1\r\n" "OK" 100)
+        '(at-command "AT+CMNB=1\r\n" "OK" 100)  ; Set CAT-M mode
+        '(at-command "AT+CGATT?\r\n" "+CGATT: 1" 100) ; Attach GPRS
+        '(at-command-parse-result "AT+COPS?\r\n" print 100) ; List operators
+        '(at-command-parse-result "AT+CGNAPN\r\n" print 100) ; Print network APN
+        '(at-command-parse-result "AT+CNCFG=0,1,\"internet.telenor.se\"\r\n" print 100) ; Configure PDP APN, set active
+        '(at-command "AT+CNACT=0,1\r\n" "OK" 100); Set APP active
         ;'(check-response "+APP PDP: 0,ACTIVE" 100)
 ))
 
@@ -99,9 +101,25 @@
         'error)
 })
 
-(defun set-baud-rate ()
-    (at-command "AT+IPR=115200\r\n" "OK" 1000)
-)
+(defun set-baud-rate (){
+        (at-command "AT+IPR=115200\r\n" "OK" 1000)
+})
 
-(pwr-on)
-(sim7070-init)
+(defun lte-on () {
+        (modem-pwr-on)
+        (sim7070-init)
+})
+
+(defun lte-off () {
+        (modem-pwr-off)
+})
+
+(defun lte-gsm () {
+        (at-command "AT+CNMP=13r\n" "OK" 100) ; Set GSM mode
+})
+
+(defun lte-cat1 () {
+        (at-command "AT+CNMP=38\r\n" "OK" 100) ; Set LTE mode
+        (at-command "AT+CMNB=1\r\n" "OK" 100)  ; Set CAT-M mode
+})
+

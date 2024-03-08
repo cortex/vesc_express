@@ -1,4 +1,4 @@
-
+; Run on bat-bms-esp (CAN 21)
 (esp-now-start)
 (def peer '(255 255 255 255 255 255))
 (esp-now-add-peer peer)
