@@ -153,12 +153,18 @@ flash-ant:
 
 OPENOCD=openocd -f board/esp32c3-builtin.cfg
 
-flash-ant-first:
+flash-ant-openocd:
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/partition-table.bin 0x8000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/bootloader.bin 0 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x20000 verify reset exit"
 
-flash-jet-first:
+flash-jet-openocd:
 	$(OPENOCD) -c "program_esp build/jet-if-esp/bootloader.bin 0 verify reset exit"
 	$(OPENOCD) -c "program_esp build/jet-if-esp/partition-table.bin 0x8000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/jet-if-esp/firmware.bin 0x20000 verify reset exit"
+
+flash-remote-openocd:
+	$(OPENOCD) -c "program_esp build/remote-disp-esp/bootloader.bin 0 verify reset exit"
+	$(OPENOCD) -c "program_esp build/remote-disp-esp/partition-table.bin 0x8000 verify reset exit"
+	$(OPENOCD) -c "program_esp build/remote-disp-esp/firmware.bin 0x20000 verify reset exit"
+	$(OPENOCD) -c "program_esp build/remote-disp-esp/firmware.bin 0x1a000 verify reset exit"
