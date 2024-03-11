@@ -36,6 +36,14 @@ bat-bms-esp --logs--> bat-ant-esp
 
 ```
 
+## Dependencies
+
+Grab the dependencies by doing:
+
+```shell
+git submodule update --init --recursive
+```
+
 ## How to Build and Flash
 
 ```shell
