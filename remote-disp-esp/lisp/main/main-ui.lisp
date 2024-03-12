@@ -212,6 +212,8 @@
 (import "../assets/texts/bin/speed-pro.bin" 'text-speed-pro)
 
 (import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
+
+(import "../assets/texts/bin/percent.bin" 'text-percent)
 ; remote-battery-low.bin was moved to top
 
 ;;; Fonts
@@ -219,6 +221,7 @@
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
 (import "../assets/fonts/bin/SFProBold25x35x1.2.bin" 'font-sfpro-bold-35h)
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
+(import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)
 (import "../assets/fonts/bin/UbuntuMono14x22x1.0.bin" 'font-ubuntu-mono-22h)
 
 ;;; Colors

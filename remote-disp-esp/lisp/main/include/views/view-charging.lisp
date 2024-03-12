@@ -8,7 +8,7 @@
     (def charge-buf-w 180)
     (var buf-height 180)
     (def charge-buf (create-sbuf 'indexed16 (- 120 90) 46 (+ charge-buf-w 1) (+ buf-height 2)))
-    (def charge-msg-buf (create-sbuf 'indexed2 (- 120 50) 248 100 26))
+    (def charge-msg-buf (create-sbuf 'indexed4 (- 120 50) 248 100 26))
 })
 
 (defun view-draw-charging () {
@@ -29,7 +29,7 @@
 
         ; Icon
         ; Battery outline
-        (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 23) 62 (46 60 3 '(filled) '(rounded 5)))
+        (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 23) 62 (46 60 3 '(filled) '(rounded 4)))
         (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 17) 68 ((- 46 12) (- 60 12) 1 '(filled)))
         ; Battery nub
         (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 10) 52 (20 7 3 '(filled)))
@@ -37,10 +37,19 @@
         (var icon (img-buffer-from-bin icon-charging))
         (sbuf-blit charge-buf icon (- (/ charge-buf-w 2) 14) 70 ())
 
-        ; Draw charge percentage message
-        ; TODO: Use SF Pro Regular Font
-        (var percent-text (str-merge (str-from-n (to-i (* soc-remote 100.0))) "%"))
-        (draw-text-centered charge-msg-buf 0 0 100 0 0 4 font-ubuntu-mono-22h 1 0 percent-text)
+        ; Draw charge percentage text
+        (def text (str-from-n (to-i (* soc-remote 100.0))))
+        (def font-w (bufget-u8 font-sfpro-display-20h 0))
+        (var container-w 100)
+        (def font-x
+            (- (/ container-w 2)
+                (/ (* font-w (+ (str-len text) 1) ) 2)
+            )
+        )
+        (sbuf-exec img-text charge-msg-buf font-x 0 (1 0 font-sfpro-display-20h text))
+        ; Draw % from image
+        (var symbol (img-buffer-from-bin text-percent))
+        (sbuf-blit charge-msg-buf symbol (+ font-x (* font-w (str-len text))) 0 ())
 
     }))
 
@@ -62,6 +71,8 @@
     ))
     (sbuf-render-changes charge-msg-buf (list
         0x000000
+        col-text-aa1
+        col-text-aa2
         0xffffff
     ))
 })
