@@ -1,5 +1,5 @@
 (def batteries '(
-        ((212 249 141 10 179 137) "Bat3_05") 
+        ((212 249 141 10 179 137) "Bat3_05")
         ((212 249 141 10 179 105) "Bat3_06")
         ((212 249 141  2 108 137) "Bat3_08")
 ))
@@ -37,8 +37,8 @@
 (defun view-draw-set-battery () {})
 
 (defun view-render-set-battery () {
-    (draw-text-centered view-text-buf 0 0 140 0 0 4 font-b1 1 0 "Paired to")
-    (draw-text-centered view-text-buf 0 32 150 0 0 4 font-b1 1 0 (ix (car batteries) 1))
+    (draw-text-centered view-text-buf 0 0 140 0 0 4 font-b3 1 0 "Paired to")
+    (draw-text-centered view-text-buf 0 32 150 0 0 4 font-b3 1 0 (ix (car batteries) 1))
     (sbuf-render-changes view-text-buf (list col-bg col-fg))
 })
 
