@@ -119,7 +119,6 @@ static lbm_uint symbol_trickle = 0;
 static lbm_uint symbol_constant_current = 0;
 static lbm_uint symbol_complete = 0;
 
-
 static bool register_symbols_hc(void) {
 	bool res = true;
 	
@@ -1150,6 +1149,19 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 #define BAT_REG_ADC_CHARGE_C 0x12
 #define BAT_REG_ADC_IN_C 0x13
 #define BAT_REG_PWR_MANAGEMENT_STAT 0x14
+#define BAT_REG_FAULT 0x0D
+
+// (bat-fault)
+static lbm_value ext_bat_fault(lbm_value *args, lbm_uint argn) {
+	(void) args;
+	(void) argn;
+	uint8_t faults = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_FAULT);
+
+	if (faults == 0) {
+		return ENC_SYM_NIL;
+	}
+	return lbm_enc_i((int32_t)faults);
+}
 
 // signature: (bat-connection)
 static lbm_value ext_bat_connection(lbm_value *args, lbm_uint argn) {
@@ -1638,6 +1650,7 @@ static void load_extensions(void) {
 	lbm_add_extension("mag-get-z", ext_mag_get_z);
 	lbm_add_extension("mag-age", ext_mag_age);
 
+	lbm_add_extension("bat-fault", ext_bat_fault);
 	lbm_add_extension("bat-connection", ext_bat_connection);
 	lbm_add_extension("bat-charge-status", ext_bat_charge_status);
 	lbm_add_extension("bat-v", ext_bat_v);
