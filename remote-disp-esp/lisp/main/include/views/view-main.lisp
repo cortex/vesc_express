@@ -10,7 +10,7 @@
     (def view-main-buf (create-sbuf 'indexed16 (- 120 (/ 195 2)) 46 (+ 195 1) (+ 195 2)))
     (def show-time 0.0)
 
-    (def gear-buf (create-sbuf 'indexed4 (- 120 (/ 162 2)) (- 320 64) 162 (+ 32 3)))
+    (def gear-buf (create-sbuf 'indexed16 (- 120 (/ 162 2)) (- 320 64) 162 (+ 32 3)))
     (def main-previous-gear 1)
 })
 
@@ -49,13 +49,18 @@
 
         (var color-arc-inner-bg 8)
         (var color-arc-inner-fg 9)
+        (var color-arc-inner-hl 10)
 
-        (var color-speed-units 10)
-        (var color-speed 11)
+        (var color-speed-units 11)
+        (var color-speed 12)
+
+        ; End Angle of Throttle Input
+        (var arc-end-throttle (* 260 (* thr-input (/ main-current-gear (to-float gear-max)))))
+        (setq arc-end-throttle (+ arc-end-throttle 90))
 
         ; End Angle of Max Power Arc
         (var arc-end-max-power (* 260 (/ main-current-gear (to-float gear-max))))
-        (setq arc-end-max-power (+ arc-end-max-power 100))
+        (setq arc-end-max-power (+ arc-end-max-power 90))
 
         ; End Angle of Charging Arc
         (var angle-end (+ 90 (* 330 main-soc-bms)))
@@ -71,8 +76,11 @@
         ; Arc Green Power Remaining
         (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-outer-rad arc-start-angle angle-end color-arc-outer-fg '(thickness 28) '(rounded)))
 
-        ; Arc Blue Max Power
+        ; Arc Inner FG Max Power
         (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21) '(rounded)))
+
+        ; Arc Inner Highlight Throttle Input
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 21) '(rounded)))
 
         ; Blue Arc White Bottom
         (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 40) (6 color-white '(filled)))
@@ -173,15 +181,15 @@
             ;(sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) (- gear-select-h 12) (2 0 font-b3 max-power-text))
 
             ; Minus Circle
-            (var circle-color 1)
-            (if (= main-current-gear gear-min) (setq circle-color 2))
+            (var circle-color 4)
+            (if (= main-current-gear gear-min) (setq circle-color 5))
             (sbuf-exec img-circle gear-buf 16 (/ gear-select-h 2) (16 circle-color '(thickness 2)))
             (sbuf-exec img-rectangle gear-buf 7 (/ gear-select-h 2) (18 2 circle-color '(filled)))
 
             ; Plus Circle
             (if (= main-current-gear gear-max)
-                (setq circle-color 2)
-                (setq circle-color 1)
+                (setq circle-color 5)
+                (setq circle-color 4)
             )
             (sbuf-exec img-circle gear-buf (- gear-select-w 16) (/ gear-select-h 2) (16 circle-color '(thickness 2)))
             (sbuf-exec img-rectangle gear-buf (- gear-select-w 25) 15 (18 2 circle-color '(filled)))
@@ -209,17 +217,20 @@
         charge-icon-lighter ;0xe0e7c4 ; 7= Charge Arc FG Lighter
 
         0x262626 ; 8= Power Bar BG
-        0x3f93d0 ; 9= Power Bar Blue
+        0x474747 ; 9= Power Bar FG
+        0x3f93d0 ; 10= Power Bar Highlight
 
-        0x6c6c6c ; 10= Speed Units
-        0xefefef ; 11= Speed
+        0x6c6c6c ; 11= Speed Units
+        0xefefef ; 12= Speed
     ))
 
     (sbuf-render-changes gear-buf (list
         0x0
+        col-text-aa1 ; 2bbp text
+        col-text-aa2; 2bbp text
+        0xefefef ; Gear
         0xbebebe ; FG Active
         0x363636 ; FG Disabled
-        0xffffff ; Gear
     ))
 })
 
