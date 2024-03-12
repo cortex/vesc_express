@@ -1,7 +1,7 @@
 {
-    "text": "Lost\nconnection\nto board",
-    "width": 140,
-    "font-family": "Roboto mono",
+    "text": "Lost\nconnection",
+    "width": 200,
+    "font-file": "SF-Pro-Display-Regular.otf",
     "font-size": 22,
     "line-height": "110%",
     "font-weight": 500,

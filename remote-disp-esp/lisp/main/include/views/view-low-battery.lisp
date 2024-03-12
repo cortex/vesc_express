@@ -8,15 +8,22 @@
 )
 
 (defun view-init-low-battery () {
-    (def view-icon-buf (create-sbuf 'indexed2 54 74 84 146))
-    (var icon (img-buffer-from-bin icon-large-battery))
-    (sbuf-blit view-icon-buf icon 0 0 ())
+    (def view-icon-buf (create-sbuf 'indexed4 50 59 141 142))
+    (def view-text-buf (create-sbuf 'indexed4 (- 120 100) 210 200 55))
 
-    (def view-text-buf (create-sbuf 'indexed2 25 240 140 72))
+    ; Red Circle
+    (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(thickness 16)))
+
+    ; Battery outline
+    (sbuf-exec img-rectangle view-icon-buf 47 42 (46 60 2 '(filled) '(rounded 4)))
+    (sbuf-exec img-rectangle view-icon-buf 53 (+ 42 6) ((- 46 12) (- 60 12) 0 '(filled)))
+
+    ; Battery nub
+    (sbuf-exec img-rectangle view-icon-buf (+ 13 47) 32 (20 7 2 '(filled)))
+
+    ; Static Text
     (var text (img-buffer-from-bin text-remote-battery-low))
-    (sbuf-blit view-text-buf text 0 0 ())
-    
-    (def view-bar-visible-last false)
+    (sbuf-blit view-text-buf text (/ (- 200 (ix (img-dims text) 0)) 2) 0 ())
 })
 
 (defun view-draw-low-battery () {
@@ -28,29 +35,29 @@
         (def view-timeline-start (systime))
         (setq secs (- secs total-secs))
     })
-    
+
     (var visible (if (< secs visible-secs)
         true
         false
     ))
-    (if (not-eq visible view-bar-visible-last) {
-        (var color (if visible 1 0))
-        
-        ; (draw-horiz-line view-icon-buf _ _ 127+)
-        (sbuf-exec img-rectangle view-icon-buf 11 127 (62 7 color '(filled) '(rounded 3)))
-    })
-    
-    (def view-bar-visible-last visible)
+    (if visible
+        (sbuf-exec img-rectangle view-icon-buf (- 70 13) 87 (26 5 2 '(filled)))
+        (sbuf-exec img-rectangle view-icon-buf (- 70 13) 87 (26 5 0 '(filled)))
+    )
 })
 
 (defun view-render-low-battery () {
-    (sbuf-render-changes view-icon-buf (list col-bg col-error))
-    (sbuf-render-changes view-text-buf (list col-bg col-fg))    
+
+    (sbuf-render-changes view-icon-buf (list
+        0x000000
+        0xe23a26
+        0xffffff
+    ))
+
+    (sbuf-render-changes view-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
 })
 
 (defun view-cleanup-low-battery () {
     (def view-icon-buf nil)
     (def view-text-buf nil)
-    
-    (def view-bar-visible-last)
 })

@@ -5,20 +5,49 @@
 })
 
 (defun view-init-warning () {
-    (def view-icon-buf (create-sbuf 'indexed2 39 105 113 94))
-    (var icon (img-buffer-from-bin icon-warning))
-    (sbuf-blit view-icon-buf icon 0 0 ())
-    
-    (def view-text-buf (create-sbuf 'indexed2 25 240 140 78))
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 70) 60 141 141))
+    (def view-text-buf (create-sbuf 'indexed4 (- 120 70) 230 140 78))
+
+    ; Red Circle
+    (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(filled)))
+
+    ; White Circle
+    (sbuf-exec img-circle view-icon-buf 70 70 (35 2 '(thickness 6)))
+
+    ; Static Text
     (var text (img-buffer-from-bin text-warning-msg))
-    (sbuf-blit view-text-buf text 0 0 ())
+    (sbuf-blit view-text-buf text (/ (- 140 (ix (img-dims text) 0)) 2) 0 ())
 })
 
-(defun view-draw-warning () {})
+(defun view-draw-warning () {
+    (var total-secs 1.0)
+    (var visible-secs 0.5)
+    (var secs (secs-since view-timeline-start))
+
+    (if (> secs total-secs) {
+        (def view-timeline-start (systime))
+        (setq secs (- secs total-secs))
+    })
+
+    (var visible (if (< secs visible-secs)
+        true
+        false
+    ))
+    (if visible {
+        ; Exclamation
+        (sbuf-exec img-rectangle view-icon-buf (- 70 3) 54 (6 20 2 '(filled)))
+        (sbuf-exec img-rectangle view-icon-buf (- 70 3) 81 (6 6 2 '(filled)))
+    }
+    {
+        ; !Exclamation
+        (sbuf-exec img-rectangle view-icon-buf (- 70 3) 54 (6 20 1 '(filled)))
+        (sbuf-exec img-rectangle view-icon-buf (- 70 3) 81 (6 6 1 '(filled)))
+    })
+})
 
 (defun view-render-warning () {
-    (sbuf-render-changes view-icon-buf (list col-bg col-error))
-    (sbuf-render-changes view-text-buf (list col-bg col-fg))
+    (sbuf-render-changes view-icon-buf (list col-bg col-error col-fg))
+    (sbuf-render-changes view-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
 })
 
 (defun view-cleanup-warning () {

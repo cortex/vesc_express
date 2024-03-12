@@ -5,24 +5,26 @@
 })
 
 (defun view-init-firmware () {
-    (def view-icon-buf (create-sbuf 'indexed4 43 98 110 110))  
-    (sbuf-exec img-circle view-icon-buf 55 55 (52 2 '(thickness 10)))
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 85) 46 171 172))
+    ; Blue Circle
+    (sbuf-exec img-circle view-icon-buf 85 85 (65 1 '(filled)))
+    ; Sync Arrows
+    (var icon (img-buffer-from-bin icon-sync))
+    (sbuf-blit view-icon-buf icon 52 52 ())
     
-    (def view-text-buf (create-sbuf 'indexed2 25 240 140 72))
+    ; Static Text
+    (def view-text-buf (create-sbuf 'indexed4 (- 120 70) 230 140 72))
     (var text (img-buffer-from-bin text-firmware-update))
-    (sbuf-blit view-text-buf text 0 0 ())
-    
+    (sbuf-blit view-text-buf text (/ (- 140 (ix (img-dims text) 0)) 2) 0 ())
+
     (def view-last-angle 0.0)
 })
 
 (defun view-draw-firmware () {
     ; clear last circle
-    (var pos (rot-point-origin 47 0 view-last-angle))
-    (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 55) (+ (ix pos 1) 55) (8 0 '(filled)))
-    
-    (var angle-delta 14.0) ; This is quite arbitrary. It just needs to be enough to comfortably cover the arc obscured by the last circle.
-    (sbuf-exec img-arc view-icon-buf 55 55 (52 (- view-last-angle angle-delta) (+ view-last-angle angle-delta) 2 '(thickness 10)))
-    
+    (var pos (rot-point-origin 78 0 view-last-angle))
+    (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 85) (+ (ix pos 1) 85) (6 0 '(filled)))
+
     (var total-secs 6.0)
     (var halfway 3.0)
     (var secs (secs-since view-timeline-start))
@@ -40,16 +42,16 @@
         (var anim-t (/ (- secs halfway) halfway))
         (setq angle (to-i (lerp 180.0 720.0 (easing anim-t))))
     })
-    (var pos (rot-point-origin 47 0 angle))
+    (var pos (rot-point-origin 78 0 angle))
     
-    (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 55) (+ (ix pos 1) 55) (8 1 '(filled)))
+    (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 85) (+ (ix pos 1) 85) (6 1 '(filled)))
     
     (def view-last-angle angle)    
 })
 
 (defun view-render-firmware () {
-    (sbuf-render-changes view-icon-buf (list col-bg col-accent col-gray-2))
-    (sbuf-render-changes view-text-buf (list col-bg col-white))
+    (sbuf-render-changes view-icon-buf (list col-bg 0x3f93d0 0xc5d6eb col-fg))
+    (sbuf-render-changes view-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
 })
 
 (defun view-cleanup-firmware () {

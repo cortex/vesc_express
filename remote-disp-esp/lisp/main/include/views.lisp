@@ -4,11 +4,11 @@
 ;;; This is a function to avoid undefined dependencies at initial parse time
 (defun get-view-handlers () (list
     (cons 'main (list
-        ;(cons 'up cycle-battery)
-        ;(cons 'up-long (if dev-enable-connection-dbg-menu cycle-main-dbg-menu cycle-main-timer-menu))
-        ;(cons 'down try-activate-thr)
-        ;(cons 'down-long enter-sleep)
-        (cons 'up cycle-battery)
+        (cons 'up (if dev-enable-connection-dbg-menu cycle-main-dbg-menu))
+        (cons 'up-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
+        (cons 'down try-activate-thr)
+        (cons 'down-long enter-sleep)
+
         (cons 'left decrease-gear)
         (cons 'right increase-gear)
         ; (cons 'right cycle-main-top-menu)
@@ -171,7 +171,7 @@
 
 ; Calculate which view should be displayed according to the functions and
 ; priorities defined by `get-view-is-visible-functions`.
-(defun calc-displayed-view () (if (not-eq dev-force-view nil) dev-force-view {
+(defun calc-displayed-view () (if (not-eq dev-force-view nil) dev-view {
     (var view nil)
     (map (lambda (pair)
         (if (and

@@ -69,7 +69,7 @@ static void load_extensions(void) {
 void hw_init(void) {
 	xTaskCreatePinnedToCore(temp_task, "temp", 512, NULL, 6, NULL, tskNO_AFFINITY);
 
-	lispif_set_ext_load_callback(load_extensions);
+	lispif_add_ext_load_callback(load_extensions);
 	bme280_if_init(BME280_SDA, BME280_SCL);
 }
 
