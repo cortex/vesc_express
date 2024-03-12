@@ -1150,6 +1150,53 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 #define BAT_REG_ADC_IN_C 0x13
 #define BAT_REG_PWR_MANAGEMENT_STAT 0x14
 #define BAT_REG_FAULT 0x0D
+#define BAT_REG_SAFETY_TIMER 0x17
+#define BAT_REG_CHARGE_CONTROL 0x04
+#define BAT_REG_FET_CONTROL 0x0A
+
+static lbm_value ext_bat_set_charge(lbm_value *args, lbm_uint argn) {
+	lbm_value res = ENC_SYM_TERROR;
+	if (argn == 1) {
+
+		uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
+
+		config = config & ~(0x30); //Clear charge mode.
+		if (!lbm_is_symbol_nil(args[0])) {
+			config = config | 0x10; // Enable charge
+		}
+		i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work?
+		res = ENC_SYM_TRUE;
+	}
+	return res;
+}
+
+static lbm_value ext_bat_set_fet(lbm_value *args, lbm_uint argn) {
+	lbm_value res = ENC_SYM_TERROR;
+	if (argn == 1) {
+
+		uint8_t fet = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL);
+
+		fet = fet & ~(1 << 5); //CLEAR, FET ON
+		if (lbm_is_symbol_nil(args[0])) {
+			fet = fet | (1 << 5); // FORCE FET OFF
+		}
+		i2c_write_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL, fet); // what if this doesnt work?
+		res = ENC_SYM_TRUE;
+	}
+	return res;
+}
+
+
+static lbm_value ext_bat_safety_timer_expired(lbm_value *args, lbm_uint argn) {
+	(void) args;
+	(void) argn;
+	uint8_t safety = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_SAFETY_TIMER);
+
+	if (safety & (1 << 7)) {
+		return ENC_SYM_TRUE;
+	}
+	return ENC_SYM_NIL;
+}
 
 // (bat-fault)
 static lbm_value ext_bat_fault(lbm_value *args, lbm_uint argn) {
@@ -1260,22 +1307,6 @@ static lbm_value ext_bat_adc(lbm_value *args, lbm_uint argn) {
 	}
 
 	return res;
-}
-
-static lbm_value ext_bat_config(lbm_value *args, lbm_uint argn) {
-	(void) args; (void) argn;
-
-	uint8_t tx[2] = {0x04, 0};
-	uint8_t rx[1] = {0};
-
-	i2c_tx_rx(I2C_ADDR_PWR, tx, 1, rx, 1);
-
-	rx[0] = rx[0] & ~0x30; // clear charge mode
-	tx[1] = rx[0] | 0x30;  // set charge enabled and OTG
-
-	i2c_tx_rx(I2C_ADDR_PWR, tx, 2, 0, 0);
-
-	return ENC_SYM_TRUE;
 }
 
 #define VIB_REG_STATUS			0x00
@@ -1650,13 +1681,15 @@ static void load_extensions(void) {
 	lbm_add_extension("mag-get-z", ext_mag_get_z);
 	lbm_add_extension("mag-age", ext_mag_age);
 
+	lbm_add_extension("bat-set-fet", ext_bat_set_fet);
+	lbm_add_extension("bat-set-charge", ext_bat_set_charge);
+	lbm_add_extension("bat-safety-timer-expired", ext_bat_safety_timer_expired);
 	lbm_add_extension("bat-fault", ext_bat_fault);
 	lbm_add_extension("bat-connection", ext_bat_connection);
 	lbm_add_extension("bat-charge-status", ext_bat_charge_status);
 	lbm_add_extension("bat-v", ext_bat_v);
 	lbm_add_extension("in-v", ext_in_v);
 	lbm_add_extension("bat-adc", ext_bat_adc);
-	lbm_add_extension("bat-config", ext_bat_config);
 
 	lbm_add_extension("vib-cal", ext_vib_cal);
 	lbm_add_extension("vib-cal-set", ext_vib_cal_set);
