@@ -1154,15 +1154,22 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 #define BAT_REG_CHARGE_CONTROL 0x04
 #define BAT_REG_FET_CONTROL 0x0A
 
+void bat_init(void) {
+	uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
+	config = config & ~(3 << 4); //Clear charge mode.
+	config = config | (1 << 4); // Enable charge
+	i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work?
+}
+
 static lbm_value ext_bat_set_charge(lbm_value *args, lbm_uint argn) {
 	lbm_value res = ENC_SYM_TERROR;
 	if (argn == 1) {
 
 		uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
 
-		config = config & ~(0x30); //Clear charge mode.
+		config = config & ~(3 << 4); //Clear charge mode.
 		if (!lbm_is_symbol_nil(args[0])) {
-			config = config | 0x10; // Enable charge
+			config = config | (1 << 4); // Enable charge
 		}
 		i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work?
 		res = ENC_SYM_TRUE;
@@ -1731,12 +1738,13 @@ static void load_extensions(void) {
 	// Sample Interpolation
 	// lbm_add_extension("init-sample-space", ext_init_sample_space);
 	lbm_add_extension("interpolate-sample", ext_interpolate_sample);
-	// lbm_add_extension("inspect-sample-space", ext_inspect_sample_space);
+	// lbm_add_extension("inspect-sambple-space", ext_inspect_sample_space);
 
 	lispif_load_disp_extensions();
 }
 
 void hw_init(void) {
 	i2c_mutex = xSemaphoreCreateMutex();
+	bat_init();
 	lispif_set_ext_load_callback(load_extensions);
 }
