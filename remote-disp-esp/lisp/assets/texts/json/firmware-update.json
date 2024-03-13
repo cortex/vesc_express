@@ -1,7 +1,7 @@
 {
-    "text": "Firmware\nupdate in\nprogress",
+    "text": "Firmware\nupdate",
     "width": 140,
-    "font-family": "Roboto mono",
+    "font-file": "SF-Pro-Display-Regular.otf",
     "font-size": 22,
     "line-height": "110%",
     "font-weight": 500,

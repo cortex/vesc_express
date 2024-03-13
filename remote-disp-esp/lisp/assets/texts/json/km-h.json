@@ -1,9 +1,9 @@
 {
     "text": "km/h",
     "width": 40,
-    "font-family": "Roboto mono",
+    "font-file": "SF-Pro-Display-Regular.otf",
     "font-size": 16,
     "line-height": "110%",
-    "font-weight": 400,
-    "align": "end"
+    "font-weight": 500,
+    "align": "middle"
 }

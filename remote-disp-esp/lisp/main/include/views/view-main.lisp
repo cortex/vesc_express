@@ -6,439 +6,289 @@
 )
 
 (defun view-init-main () {
-    ; top menu
-    (def view-top-menu-bg-buf (create-sbuf 'indexed2 15 41 160 100))
-    (sbuf-exec img-rectangle view-top-menu-bg-buf 0 0 (160 100 1 '(filled) `(rounded ,bevel-medium)))
 
-    ; thrust slider
-    (def view-thr-bg-buf (create-sbuf 'indexed2 15 149 160 26))
-    (sbuf-exec img-rectangle view-thr-bg-buf 0 0 (160 26 1 '(filled) `(rounded ,bevel-small)))
+    (def view-main-buf (create-sbuf 'indexed16 (- 120 (/ 195 2)) 46 (+ 195 1) (+ 195 2)))
+    (def show-time 0.0)
 
-    (def view-thr-buf (create-sbuf 'indexed4 24 158 142 8))
-    (def view-thr-gradient (img-color 'gradient_x col-fg col-accent 142 0 'mirrored))
-
-    (var text (img-buffer-from-bin text-throttle-off))
-    (def view-inactive-buf (create-sbuf 'indexed2 33 153 124 17)) ; ~~this is one pixel lower than in the design...~~
-    (sbuf-blit view-inactive-buf text 0 0 ())
-
-    ; subview init
-    (match (state-get 'view-main-subview)
-        (gear (subview-init-gear))
-        (speed (subview-init-speed))
-    )
-
-    ; bms soc
-    (def view-bms-soc-buf (create-sbuf 'indexed4 34 185 123 123))
-    ; (def view-bms-soc-marker-buf (create-sbuf 'indexed2 93 199 4 8))
-    ; (sbuf-exec img-rectangle view-bms-soc-marker-buf 0 0 (4 8 1 '(filled) '(rounded 2)))
-    (sbuf-exec img-rectangle view-bms-soc-buf 59 14 (4 8 1 '(filled) '(rounded 2)))
-    (var icon (img-buffer-from-bin icon-bolt-colored))
-    (sbuf-blit view-bms-soc-buf icon 53 100 ())
+    (def gear-buf (create-sbuf 'indexed16 (- 120 (/ 162 2)) (- 320 64) 162 (+ 32 3)))
+    (def main-previous-gear 1)
 })
 
 (defun view-draw-main () {
-    ; (print (state-value-changed 'view-main-subview))
-    (state-with-changed '(view-main-subview) (lambda (view) (main-update-displayed-subview)))
-    ; (if (not-eq view-main-displayed-subview view-main-subview)
-    ;     (main-update-displayed-subview)
-    ; )
-    ; (state-set-current 'kmh (* (state-get 'thr-input) 100.0))
-    ; Gear or speed menu
-    (match (state-get 'view-main-subview)
-        (gear (subview-draw-gear))
-        (speed (subview-draw-speed))
-        (timer (subview-draw-timer))
-        (dbg (subview-draw-dbg))
-    )
+    ; Watch for state change
+    (state-with-changed '(gear kmh soc-bms thr-input) (fn (gear kmh soc-bms thr-input) {
+        (sbuf-clear view-main-buf)
+        (sbuf-clear gear-buf)
 
-    ; thrust slider rendering
-    (var gear-end 142)
-    (var dots-end 140)
-    (var dots-interval 10)
-    
-    (var gear-width (to-i (* 142 (current-gear-ratio))))
-    (var thr-width (to-i (* gear-width (state-get 'thr-input))))
-    (img-color-set view-thr-gradient 'width thr-width)
-    
-    (state-with-changed '(gear thr-active) (fn (gear thr-active) {
-        (sbuf-clear view-thr-buf)
-        
-        (if thr-active {
-            (var dots-x (regularly-place-points dots-end (- gear-width 2) dots-interval))
-            (loopforeach x dots-x {
-                (sbuf-exec img-circle view-thr-buf x 4 (2 1 '(filled)))
-            })
+        (var buf-width-main 196)
+        (var buf-height-main 196)
+
+        (var gear-select-w 162)
+        (var gear-select-h 32)
+
+        (var main-current-gear gear)
+        (var main-speed-kph (to-i kmh))
+        (var main-soc-bms soc-bms)
+        (if (< main-soc-bms 0.015)
+            ; Enforcing a minimum BMS value so the arc remains rounded
+            (setq main-soc-bms 0.015)
+        )
+
+        (var arc-start-angle 90)
+
+        ; Using the first 4 colors on the largest indexed4 items
+        (var color-bg 0)
+        (var color-bg-dim 1)
+        (var color-bg-light 2)
+        (var color-white 3) ; Use as FG color for icon-bolt-16color
+
+        (var color-arc-outer-bg 4)
+        (var color-arc-outer-fg 5) ; Use as BG color for icon-bolt-16color
+        (var color-arc-outer-fg-light 6) ; Used with icon-bolt-16color
+        (var color-arc-outer-fg-lighter 7) ; Used with icon-bolt-16color
+
+        (var color-arc-inner-bg 8)
+        (var color-arc-inner-fg 9)
+        (var color-arc-inner-hl 10)
+
+        (var color-speed-units 11)
+        (var color-speed 12)
+
+        ; End Angle of Throttle Input
+        (var arc-end-throttle (* 260 (* thr-input (/ main-current-gear (to-float gear-max)))))
+        (setq arc-end-throttle (+ arc-end-throttle 90))
+
+        ; End Angle of Max Power Arc
+        (var arc-end-max-power (* 260 (/ main-current-gear (to-float gear-max))))
+        (setq arc-end-max-power (+ arc-end-max-power 90))
+
+        ; End Angle of Charging Arc
+        (var angle-end (+ 90 (* 330 main-soc-bms)))
+        (if (> angle-end 449) (setq angle-end 449))
+
+        (var arc-outer-rad (/ buf-width-main 2))
+        (var arc-innder-rad 68)
+        ; Arc Outer BG
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-outer-rad arc-start-angle 450 color-arc-outer-bg '(thickness 28)))
+        ; Arc Inner BG
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle 450 color-arc-inner-bg '(thickness 21)))
+
+        ; Arc Green Power Remaining
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-outer-rad arc-start-angle angle-end color-arc-outer-fg '(thickness 28) '(rounded)))
+
+        ; Arc Inner FG Max Power
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21) '(rounded)))
+
+        ; Arc Inner Highlight Throttle Input
+        (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 21) '(rounded)))
+
+        ; Blue Arc White Bottom
+        (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 40) (6 color-white '(filled)))
+        ; Blue Arc White Top
+        (var angle 0.0)
+        (setq angle (- arc-end-max-power 46))
+        (var pos (rot-point-origin 41 41 angle))
+        (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (6 color-white '(filled)))
+
+        ; Determine color for charge arc
+        (def charge-arc-color 0x7f9a0d)
+        (if (< main-soc-bms 0.5)
+            (setq charge-arc-color (lerp-color 0xe72a62 0xffa500 (ease-in-out-quint (* main-soc-bms 2))))
+            (setq charge-arc-color (lerp-color 0xffa500 0x7f9a0d (ease-in-out-quint (* (- main-soc-bms 0.5) 2))))
+        )
+
+        ; Draw speed and units OR draw animal icon for short period after changing power level
+        (if (not-eq main-current-gear main-previous-gear){
+            (setq main-previous-gear main-current-gear)
+            (setq show-time (+ (secs-since view-timeline-start) 2.0))
         })
-    }))
+        (if (> show-time 0) {
+            (if (< show-time (secs-since view-timeline-start)) (setq show-time 0))
+            ; Draw animal icon for current gear level
+            (var icon-animal (img-buffer-from-bin
+                (cond
+                    ((< main-current-gear 3) icon-turtle-4c)
+                    ((< main-current-gear 6) icon-fish-4c)
+                    ((< main-current-gear 9) icon-pro-4c)
+                    ((> main-current-gear 8) icon-shark-4c)
+                )
+            ))
+            (sbuf-blit view-main-buf icon-animal (- (/ buf-width-main 2) 25) 70 ())
 
-    (state-with-changed '(gear thr-input thr-active down-pressed) (fn (gear thr-input thr-active down-pressed) {
-        (if thr-active {
-            (draw-horiz-line view-thr-buf 0 gear-width 4 4 1)
-            (draw-horiz-line view-thr-buf 0 thr-width 4 4 2)
+            ; Draw speed label
+            (var text (img-buffer-from-bin
+                (cond
+                    ((< main-current-gear 3) text-speed-slow)
+                    ((< main-current-gear 6) text-speed-medium)
+                    ((< main-current-gear 9) text-speed-pro)
+                    ((> main-current-gear 8) text-speed-fast)
+                )
+            ))
+            (sbuf-blit view-main-buf text (/ (- buf-width-main (first (img-dims text))) 2) 110 ())
+        } {
+            ; Draw current speed
+            (var speed-text (str-from-n main-speed-kph))
+            (var w (* (bufget-u8 font-sfpro-bold-35h 0) (str-len speed-text)))
+            (var screen-w 240)
+            (var x (/ (- buf-width-main w) 2))
+            (sbuf-exec img-text view-main-buf x 70 (3 0 font-sfpro-bold-35h speed-text))
+
+            ; Draw speed units
+            (var text (img-buffer-from-bin text-km-h))
+            (sbuf-blit view-main-buf text (/ (- buf-width-main (first (img-dims text))) 2) 110 ())
         })
-    }))
 
-    ; bms soc rendering
-    (state-with-changed '(soc-bms) (lambda (soc-bms) {
-        ; (print soc-bms)
-        ; the angle of the circle arc is 60 degrees from the x-axis
-        (draw-bms-soc view-bms-soc-buf soc-bms)
+        ; Charge Icon
+        (var icon (img-buffer-from-bin icon-bolt-16color))
+        (sbuf-blit view-main-buf icon (- (/ buf-width-main 2) 5) (- buf-height-main 24) ())
+
+        ; Adjust light and lighter colors for charge icon
+        ; Light Green    0xc4d08e
+        ; Lighter Green  0xe0e7c4
+        ; Light Orange   0xffca69
+        ; Lighter Orange 0xffe9c0
+        ; Light Red      0xef7498
+        ; Lighter Red    0xfad4df
+        (def charge-icon-light 0)
+        (if (< main-soc-bms 0.5)
+            ; Red to Orange
+            (setq charge-icon-light (lerp-color 0xef7498 0xffca69 (ease-in-out-quint (* main-soc-bms 2))))
+            ; Orange to Green
+            (setq charge-icon-light (lerp-color 0xffca69 0xc4d08e (ease-in-out-quint (* (- main-soc-bms 0.5) 2))))
+        )
+
+        (def charge-icon-lighter 0)
+        (if (< main-soc-bms 0.5)
+            ; Red to Orange
+            (setq charge-icon-lighter (lerp-color 0xfad4df 0xffe9c0 (ease-in-out-quint (* main-soc-bms 2))))
+            ; Orange to Green
+            (setq charge-icon-lighter (lerp-color 0xffe9c0 0xe0e7c4 (ease-in-out-quint (* (- main-soc-bms 0.5) 2))))
+        )
+
+        ; Check if we should draw the debug view
+        (if (eq (state-get 'view-main-subview) 'dbg)
+            (subview-draw-dbg)
+        )
+        ; Check if we should draw the debug timer view
+        (if (eq (state-get 'view-main-subview) 'timer) {
+            (subview-draw-timer)
+        } {
+            ; Draw Gear Select Icons - / + and current Gear
+
+            ; TODO: Draw Max Power when we are at the max? Screen is crowded. Revisit please
+            ;(var max-power-text "Max Power")
+            ;(var w (* (bufget-u8 font- 0) (str-len max-power-text)))
+            ;(sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) (- gear-select-h 12) (2 0 font-b3 max-power-text))
+
+            ; Minus Circle
+            (var circle-color 4)
+            (if (= main-current-gear gear-min) (setq circle-color 5))
+            (sbuf-exec img-circle gear-buf 16 (/ gear-select-h 2) (16 circle-color '(thickness 2)))
+            (sbuf-exec img-rectangle gear-buf 7 (/ gear-select-h 2) (18 2 circle-color '(filled)))
+
+            ; Plus Circle
+            (if (= main-current-gear gear-max)
+                (setq circle-color 5)
+                (setq circle-color 4)
+            )
+            (sbuf-exec img-circle gear-buf (- gear-select-w 16) (/ gear-select-h 2) (16 circle-color '(thickness 2)))
+            (sbuf-exec img-rectangle gear-buf (- gear-select-w 25) 15 (18 2 circle-color '(filled)))
+            (sbuf-exec img-rectangle gear-buf (- gear-select-w 17) 7 (2 18 circle-color '(filled)))
+
+            ; Current Gear
+            (var main-current-gear-text (to-str main-current-gear))
+            (var w (* (bufget-u8 font-sfpro-bold-22h 0) (str-len main-current-gear-text)))
+            (sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) 6 (3 0 font-sfpro-bold-22h main-current-gear-text))
+        })
     }))
 })
 
 (defun view-render-main () {
-    (state-with-changed '(view-main-subview) (fn (view-main-subview) {
-        (sbuf-render view-top-menu-bg-buf (list col-bg col-menu))
-        (match view-main-subview
-            (gear
-                (sbuf-render subview-gear-text-buf (list col-menu col-menu-btn-fg))
-            )
-            (speed
-                (sbuf-render subview-speed-text-buf (list col-menu col-menu-btn-fg))
-            )
-        )
-    }))
 
-    (match (state-get 'view-main-subview)
-        (gear {
-            (sbuf-render-changes subview-gear-num-buf (list col-menu col-fg))
-            ; (sbuf-render-changes subview-gear-num-buf (list col-gray-3 col-fg))
-            
-            (var render (if (eq subview-left-bg-col nil)
-                sbuf-render-changes
-                sbuf-render
-            ))
-            (render subview-gear-left-buf (list col-menu col-menu-btn-fg subview-left-bg-col col-menu-btn-disabled-fg))
-            
-            (var render (if (eq subview-right-bg-col nil)
-                sbuf-render-changes
-                sbuf-render
-            ))
-            (render subview-gear-right-buf (list col-menu col-menu-btn-fg subview-right-bg-col col-menu-btn-disabled-fg))
-        })
-        (speed 
-            (sbuf-render-changes subview-speed-num-buf (list col-menu col-fg))
-        )
-        (timer {
-            (sbuf-render-changes subview-title-buf (list col-menu col-fg))
-            (sbuf-render-changes subview-timer-buf (list col-menu col-fg))
-        })
-        (dbg {
-            (sbuf-render-changes subview-text-buf (list col-menu col-fg))
-            (var color (if (state-get 'is-connected) col-accent col-error))
-            (sbuf-render subview-update-buf (list col-bg color))
-        })
-    )
+    (sbuf-render-changes view-main-buf (list
+        0x000000
+        col-text-aa1 ; 1= dark grey
+        col-text-aa2 ; 2= lighter grey
+        0xffffff ; 3= white
 
-    (state-with-changed '(thr-active) (fn (thr-active) {
-        (sbuf-render view-thr-bg-buf (list col-bg (if thr-active
-            col-menu
-            col-white
-        )))
-        (if (not thr-active)
-            (sbuf-render view-inactive-buf (list col-white col-black))
-        )
-    }))
+        0x1c1c1c ; 4= Charge BG
+        charge-arc-color ; 5= Charge Arc FG
+        charge-icon-light ;0xc4d08e ; 6= Charge Arc FG Light
+        charge-icon-lighter ;0xe0e7c4 ; 7= Charge Arc FG Lighter
 
-    (if (state-get 'thr-active) {
-        (sbuf-render-changes view-thr-buf (list col-menu col-menu-btn-bg view-thr-gradient col-error))
-    })
-    
-    (var soc-color (if (> (state-get 'soc-bms) 0.2) col-accent col-error))
-    (sbuf-render-changes view-bms-soc-buf (list col-bg col-fg soc-color col-menu))    
+        0x262626 ; 8= Power Bar BG
+        0x474747 ; 9= Power Bar FG
+        0x3f93d0 ; 10= Power Bar Highlight
+
+        0x6c6c6c ; 11= Speed Units
+        0xefefef ; 12= Speed
+    ))
+
+    (sbuf-render-changes gear-buf (list
+        0x0
+        col-text-aa1 ; 2bbp text
+        col-text-aa2; 2bbp text
+        0xefefef ; Gear
+        0xbebebe ; FG Active
+        0x363636 ; FG Disabled
+    ))
 })
 
 (defun view-cleanup-main () {
-    (def view-thr-buf nil)
-    (def view-inactive-buf nil)
-    (def view-bms-soc-buf nil)
-    ; (def view-bms-soc-marker-buf nil)
-    ; (undefine 'view-thr-buf)
-    (def view-top-menu-bg-buf nil)
-    (def view-thr-bg-buf nil)
-    
-    (def view-thr-gradient nil)
+    (def view-main-buf nil)
+    (def gear-buf nil)
 
-    (subview-cleanup-gear)
-    (subview-cleanup-speed)
-    (subview-cleanup-timer)
-    (subview-cleanup-dbg)
+    (def show-time nil)
+
+    (def main-previous-gear nil)
 })
 
-(defun main-subview-change (new-subview)
+;;; Extra items to display (not in Figma spec)
+
+(defun main-subview-change (new-subview) {
     (state-set 'view-main-subview new-subview)
-    ; (def view-main-subview new-subview)
-)
-
-(defun main-update-displayed-subview () {
-    (var old-view (state-last-get 'view-main-subview))
-    (var new-view (state-get 'view-main-subview))
-    
-    (var cleanup (match old-view
-        (gear subview-cleanup-gear)
-        (speed subview-cleanup-speed)
-        (timer subview-cleanup-timer)
-        (dbg subview-cleanup-dbg)
-        (_ (fn () ()))
-    ))
-
-    (var init (match new-view
-        (gear subview-init-gear)
-        (speed subview-init-speed)
-        (timer subview-init-timer)
-        (dbg subview-init-dbg)
-        (_ (fn () ()))
-    ))
-
-    ; (var render (match new-view
-    ;     (gear subview-draw-gear)
-    ;     (speed subview-draw-speed)
-    ;     (_ (fn () ()))
-    ; ))
-
-    ; (state-reset-all-last)
-
-    ; (subview-cleanup-gear)
-    (cleanup)
-    ; (stencil) ; these don't really do anything because I couldn't get it to work and gave up on them.
-    (init)
-})
-
-;;;; Main - gear
-
-(defun subview-init-gear () {
-    (def subview-gear-num-buf (create-sbuf 'indexed2 20 45 110 90))
-    (def subview-gear-left-buf (create-sbuf 'indexed4 139 (- 75 25) 25 25))
-    (def subview-gear-right-buf (create-sbuf 'indexed4 139 75 25 25))
-    
-    ; This won't draw a perfect sphere...
-    (sbuf-exec img-rectangle subview-gear-left-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
-    (sbuf-exec img-rectangle subview-gear-right-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
-
-    (def subview-left-bg-col col-menu)
-    (def subview-right-bg-col col-menu)
-
-    (var gear-text (img-buffer-from-bin text-gear))
-    (def subview-gear-text-buf (create-sbuf 'indexed2 125 108 44 17))
-    (sbuf-blit subview-gear-text-buf gear-text 0 0 ())
-
-    ; Reset dependencies
-    (state-reset-keys-last '(gear left-pressed right-pressed))
-})
-
-(defun subview-draw-gear () {
-    ; Gear number text
-    (state-with-changed '(gear dev-main-gear-justify) (fn (gear dev-main-gear-justify) {
-        (match dev-main-gear-justify
-            (leading-zero {
-                (var gear-str (if (< gear 10)
-                    (str-merge "0" (str-from-n gear))
-                    (str-from-n gear)
-                ))
-                (sbuf-exec img-text subview-gear-num-buf 0 0 (1 0 font-h1 gear-str))                
-            })
-            (justify-right {
-                ; (var gear-str (if (< gear 10)
-                ;     (str-merge " " (str-from-n gear))
-                ;     (str-from-n gear)
-                ; ))
-                ; (sbuf-exec img-text subview-gear-num-buf 0 0 (1 0 font-h1 gear-str))                
-                (var gear-str (str-from-n gear))
-                (draw-text-right-aligned subview-gear-num-buf 110 0 0 0 2 font-h1 1 0 gear-str)
-            })
-            (justify-center {
-                (var gear-str (str-from-n gear))
-                (draw-text-centered subview-gear-num-buf 0 0 110 0 0 2 font-h1 1 0 gear-str)
-            })
-        )
-    }))
-    
-    ; left button
-    (state-with-changed '(main-left-fadeout-t left-pressed gear) (fn (main-left-fadeout-t left-pressed gear) {
-        (def subview-left-bg-col
-            (if (not-eq main-left-fadeout-t nil) {
-                (lerp-color col-menu-btn-bg col-menu (ease-out-quint main-left-fadeout-t))
-            } (if (and left-pressed (!= gear gear-min))
-                col-menu-btn-bg
-                col-menu
-            ))
-        )
-        
-        (state-with-changed '(left-pressed gear) (fn (left-pressed gear) {
-            (var clr (if (= gear gear-min) 3 1))
-            (sbuf-exec img-rectangle subview-gear-left-buf 4 11 (17 3 clr '(filled)))
-        }))
-    }))
-    
-    ; right button
-    (state-with-changed '(main-right-fadeout-t right-pressed gear) (fn (main-right-fadeout-t right-pressed gear) {
-        (def subview-right-bg-col
-            (if (not-eq main-right-fadeout-t nil) {
-                (lerp-color col-menu-btn-bg col-menu (ease-out-quint main-right-fadeout-t))
-            } (if (and right-pressed (!= gear gear-max))
-                col-menu-btn-bg
-                col-menu
-            ))
-        )
-        
-        (state-with-changed '(right-pressed gear) (fn (right-pressed gear) {
-            ; (img-clear (sbuf-img subview-gear-right-buf) 0)
-            ; (if (and right-pressed (!= gear gear-max))
-            ;     ; Unsure if this will draw a perfect sphere...
-            ;     (sbuf-exec img-rectangle subview-gear-right-buf 0 0 (25 25 2 '(filled) '(rounded 12)))
-            ; )
-            (var clr (if (= gear gear-max) 3 1))
-            (sbuf-exec img-rectangle subview-gear-right-buf 4 11 (17 3 clr '(filled)))
-            (sbuf-exec img-rectangle subview-gear-right-buf 11 4 (3 17 clr '(filled)))
-        }))
-    }))
-    
-})
-
-(defun subview-cleanup-gear () {
-    (def subview-gear-num-buf nil)
-    ; (undefine 'subview-gear-num-buf)
-    (def subview-gear-left-buf nil)
-    ; (undefine 'subview-gear-left-buf)
-    (def subview-gear-right-buf nil)
-    ; (undefine 'subview-gear-right-buf)
-    (def subview-gear-text-buf nil)
-})
-
-;;;; Main - Speed
-
-(defun subview-init-speed () {
-    (def subview-speed-num-buf (create-sbuf 'indexed2 23 46 100 90))
-  
-    (var text (img-buffer-from-bin text-km-h))
-    (def subview-speed-text-buf (create-sbuf 'indexed2 127 108 40 19))
-    (sbuf-blit subview-speed-text-buf text 0 0 ())
-
-    ; Reset dependencies
-    (state-reset-keys-last '(kmh))
-})
-
-(defun subview-draw-speed () {
-    (state-with-changed '(kmh) (fn (kmh) {
-        ; (print kmh)
-        (var too-large (>= kmh 100.0))
-        (var font (if too-large font-h3 font-h1))
-        (if (< kmh 1000.0) { ; This safeguard is probably unnecessary...
-            (sbuf-clear subview-speed-num-buf)
-            (draw-text-right-aligned subview-speed-num-buf 100 0 0 0 (if too-large 3 2) font 1 0 (str-from-n (to-i kmh)))    
-        }
-            ; (sbuf-clear subview-speed-num-buf)
-            ; (sbuf-exec img-text subview-speed-num-buf 0 0 (1 0 font-h1 ))
-        )
-    }))
-})
-
-(defun subview-cleanup-speed () {
-    (def subview-speed-num-buf nil)
-    (def subview-speed-text-buf nil)
-    ; (undefine 'subview-speed-num-buf)
-})
-
-(defun subview-init-timer () {
-    (var x (center-pos 160 (* 14 8) 0))
-    (def subview-timer-buf (create-sbuf 'indexed2 (+ 15 x) 75 (* 14 8) 26))
-    
-    (var text (img-buffer-from-bin text-timer))
-    (def subview-title-buf (create-sbuf 'indexed2 119 108 50 17))
-    (sbuf-blit subview-title-buf text 0 0 ())
-    
-    ; Reset dependencies
-    (state-reset-keys-last '(thr-timer-secs))
 })
 
 (defun subview-draw-timer () {
-    (state-with-changed '(thr-timer-secs) (fn (thr-timer-secs) {
-        (var hours (to-i (/ thr-timer-secs (* 60 60))))
-        (-set thr-timer-secs (* hours 60 60))
-        
-        (var minutes (to-i (/ thr-timer-secs 60)))
-        (-set thr-timer-secs (* minutes 60))
-        
-        (var seconds (to-i thr-timer-secs))
-        
-        (var timer-str (str-merge
-            (str-left-pad (str-from-n hours) 2 "0")
-            ":"
-            (str-left-pad (str-from-n minutes) 2 "0")
-            ":"
-            (str-left-pad (str-from-n seconds) 2 "0")
-        ))
-        
-        (sbuf-exec img-text subview-timer-buf 0 0 (1 0 font-b1 timer-str))
-    }))
+    (var thr-secs (state-get 'thr-timer-secs))
+    (var hours (to-i (/ thr-secs (* 60 60))))
+    (-set thr-secs (* hours 60 60))
+
+    (var minutes (to-i (/ thr-secs 60)))
+    (-set thr-secs (* minutes 60))
+
+    (var seconds (to-i thr-secs))
+
+    (var timer-str (str-merge
+        (str-left-pad (str-from-n hours) 2 "0")
+        ":"
+        (str-left-pad (str-from-n minutes) 2 "0")
+        ":"
+        (str-left-pad (str-from-n seconds) 2 "0")
+    ))
+
+    (sbuf-exec img-text gear-buf 20 0 (3 0 font-ubuntu-mono-22h timer-str))
 })
 
-(defun subview-cleanup-timer () {
-    (def subview-timer-buf nil)
-    (def subview-title-buf nil)
-})
-
-(defun subview-init-dbg () {
-    ; 10 chars / 3 lines
-    (def subview-text-buf (create-sbuf 'indexed2 20 45 150 (* 26 4))) ; max width: 150
-    (def subview-update-buf (create-sbuf 'indexed2 100 320 16 16))
-})
-
-(def last-measurements-update false)
 (defun subview-draw-dbg () {
-    (if (and
-        (not measurements-updated)
-        last-measurements-update
-    ) {
-        (def last-measurements-update false)
-        (sbuf-clear subview-update-buf)
-    })
-    
-    (if measurements-updated {
-        (def last-measurements-update true)
-        (def measurements-updated false)
-        
-        (var failed-pings m-failed-pings)
-        (var last-failed-pings m-last-fail-count)
-        ; (var max-ping-fails m-max-ping-fails)
-        (var total-pings m-total-pings)
-        (var connections-lost-count measure-connections-lost-count)
-        
-        (sbuf-clear subview-text-buf)
-        
-        (var lines (list
-            (str-merge "ping /s:" (str-from-n total-pings))
-            (str-merge "fail /s:" (str-from-n failed-pings))
-            (str-merge "last fl:" (str-from-n last-failed-pings))
-            (str-merge "lost #:" (str-from-n connections-lost-count))
-        ))
-        
-        (var y 0)
-        (map (fn (line) {
-            (sbuf-exec img-text subview-text-buf 0 y (1 0 font-b1 line))
-            (setq y (+ y 26))
-        }) lines)
-        
-        (sbuf-exec img-circle subview-update-buf 8 8 (8 1 '(filled)))
-    })
-    
-    (state-with-changed '(is-connected) (fn (is-connected) {
-        (if is-connected {
-            (if (and
-                (not measurements-updated)
-                (not last-measurements-update)
-            ) {
-                (sbuf-clear subview-update-buf)
-            })
-        } {
-            (if (not measurements-updated) {
-                (sbuf-clear subview-update-buf)
-            })
-        })
-    }))
-})
+    (sbuf-exec img-rectangle view-main-buf 0 0 (180 100 0 '(filled) `(rounded ,bevel-small)))
 
-(defun subview-cleanup-dbg () {
-    (def subview-text-buf nil)
-    (def subview-update-buf nil)
+    (var failed-pings m-failed-pings)
+    (var last-failed-pings m-last-fail-count)
+    ; (var max-ping-fails m-max-ping-fails)
+    (var total-pings m-total-pings)
+    (var connections-lost-count measure-connections-lost-count)
+
+    (var lines (list
+        (str-merge "ping /s:" (str-from-n total-pings))
+        (str-merge "fail /s:" (str-from-n failed-pings))
+        (str-merge "last fl:" (str-from-n last-failed-pings))
+        (str-merge "lost #:" (str-from-n connections-lost-count))
+    ))
+
+    (var y 0)
+    (map (fn (line) {
+        (sbuf-exec img-text view-main-buf 0 y (3 0 font-ubuntu-mono-22h line))
+        (setq y (+ y 26))
+    }) lines)
 })

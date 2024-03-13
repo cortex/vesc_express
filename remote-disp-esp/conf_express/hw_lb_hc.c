@@ -1745,6 +1745,7 @@ static void load_extensions(void) {
 
 void hw_init(void) {
 	i2c_mutex = xSemaphoreCreateMutex();
+
 	bat_init();
-	lispif_set_ext_load_callback(load_extensions);
+	lispif_add_ext_load_callback(load_extensions);
 }
