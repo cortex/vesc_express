@@ -496,7 +496,11 @@
 
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
-        (state-set 'soc-bms soc-bms)
+
+        (if dev-bind-soc-bms-to-thr
+            (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
+            (state-set 'soc-bms soc-bms)
+        )
         (sleep 1)
     })
 ))
@@ -524,7 +528,7 @@
         (if any-ping-has-failed
             (sleep-ms-or-until 80 (not any-ping-has-failed))
             {
-                (var secs (- 0.05 elapsed)) ; 50 ms
+                (var secs (- 0.04 elapsed)) ; 40 ms (25fps maximum)
                 ; (print (to-str "slept for" (* (if (< secs 0.0) 0 secs) 1000) "ms"))
                 (sleep (if (< secs 0.0) 0 secs))
             }
