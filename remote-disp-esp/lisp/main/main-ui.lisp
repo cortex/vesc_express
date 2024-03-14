@@ -212,6 +212,8 @@
 (import "../assets/texts/bin/speed-pro.bin" 'text-speed-pro)
 
 (import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
+
+(import "../assets/texts/bin/percent.bin" 'text-percent)
 ; remote-battery-low.bin was moved to top
 
 ;;; Fonts
@@ -219,6 +221,7 @@
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
 (import "../assets/fonts/bin/SFProBold25x35x1.2.bin" 'font-sfpro-bold-35h)
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
+(import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)
 (import "../assets/fonts/bin/UbuntuMono14x22x1.0.bin" 'font-ubuntu-mono-22h)
 
 ;;; Colors
@@ -493,7 +496,11 @@
 
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
-        (state-set 'soc-bms soc-bms)
+
+        (if dev-bind-soc-bms-to-thr
+            (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
+            (state-set 'soc-bms soc-bms)
+        )
         (sleep 1)
     })
 ))
@@ -521,7 +528,7 @@
         (if any-ping-has-failed
             (sleep-ms-or-until 80 (not any-ping-has-failed))
             {
-                (var secs (- 0.05 elapsed)) ; 50 ms
+                (var secs (- 0.04 elapsed)) ; 40 ms (25fps maximum)
                 ; (print (to-str "slept for" (* (if (< secs 0.0) 0 secs) 1000) "ms"))
                 (sleep (if (< secs 0.0) 0 secs))
             }

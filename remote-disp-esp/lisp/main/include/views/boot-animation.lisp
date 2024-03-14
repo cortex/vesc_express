@@ -39,6 +39,8 @@
     (var animation-percent 0.0)
 
     ; Watch Sunrise
+    (def last-frame-time (systime))
+    (def fps-boot 1)
     (loopwhile (< elapsed animation-time) {
         ; Update Animation Time
         (setq elapsed (secs-since start))
@@ -56,7 +58,7 @@
         (sbuf-exec img-rectangle rising-sun-buf 0 vapor-5-y (142 vapor-5-thickness 0 '(filled)))
 
         ; Apply a gradient to the sun
-        (sbuf-render-changes rising-sun-buf (list
+        (sbuf-render rising-sun-buf (list
             0x000000
             (img-color 'gradient_y 0xffa500 (lerp-color 0xff5347 0xffa500 (* animation-percent 0.9)) 142 0)
         ))
@@ -82,12 +84,17 @@
 
         ; Repeat
         (sbuf-clear rising-sun-buf)
-        (sleep 0.02)
+
+        (var smoothing 0.1) ; lower is smoother
+        (def fps-boot (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps-boot (- 1.0 smoothing))))
+        (def last-frame-time (systime))
     })
+    (print (str-merge "FPS Boot: " (to-str fps-boot)))
+    (def last-frame-time nil)
+    (def fps-boot nil)
 
     (setq start (systime))
     (setq elapsed (secs-since start))
-
 
     (setq animation-time 2.0)
     (if dev-fast-start-animation
@@ -128,13 +135,10 @@
         (setq vapor-2-thickness (to-i (- 6 (* (ease-in-out-sine animation-percent) (- 6 12)))))
 
         ; Render buffer
-        (sbuf-render-changes rising-sun-buf (list
+        (sbuf-render rising-sun-buf (list
             0x000000
             0xffa500
         ))
-
-        ; Repeat
-        (sleep 0.02)
     })
 
     ; Draw version number

@@ -127,9 +127,10 @@
     (if dev-bind-soc-remote-to-thr {
         (state-set-current 'soc-remote (state-get 'thr-input))
     })
-    (if dev-bind-soc-bms-to-thr {
-        (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
-    })
+    ; NOTE: Moved to main-ui slow update thread for more realistic response to changes
+    ; (if dev-bind-soc-bms-to-thr {
+    ;     (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
+    ; })
     (if dev-bind-speed-to-thr {
         (state-set-current 'kmh (* (state-get 'thr-input) 40.0))
     })
