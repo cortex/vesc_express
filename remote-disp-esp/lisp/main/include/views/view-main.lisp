@@ -29,6 +29,8 @@
     (var color-bg-light 2)
     (var color-white 3) ; Use as FG color for icon-bolt-16color
 
+    (var view-updated false)
+
     ; Watch for gear select
     (state-with-changed '(gear) (fn (gear) {
         (view-draw-gear-select main-current-gear)
@@ -42,11 +44,15 @@
         })
 
         (view-draw-center-animal main-current-gear)
+        (setq view-updated true)
     }))
 
     ; Watch for speed changes
     (state-with-changed '(kmh) (fn (kmh) {
-        (if speed-visible (view-draw-center-speed main-current-gear (to-i kmh)))
+        (if speed-visible {
+            (view-draw-center-speed main-current-gear (to-i kmh))
+            (setq view-updated true)
+        })
     }))
 
     ; Switch back to drawing speed if it's hidden and the animal timer is expired
@@ -54,6 +60,7 @@
         (if (< show-time (secs-since view-timeline-start)) (setq show-time 0))
         (if (eq show-time 0)
             (view-draw-center-speed main-current-gear main-speed-kph)
+            (setq view-updated true)
         )
     })
 
@@ -66,6 +73,7 @@
         )
         ; Draw outer arc (slow)
         (view-draw-outer-arc main-soc-bms)
+        (setq view-updated true)
     }))
 
     ; Watch for Throttle changes
@@ -76,21 +84,47 @@
             (sbuf-clear gear-buf)
             (subview-draw-timer)
         })
+        (setq view-updated true)
     }))
 
     ; Watch for debug views changing
     (state-with-changed '(view-main-subview) (fn (view-main-subview) {
-        ; TODO: Reset buffers to clear debug views? Needs improvement
-        (if (not-eq view-main-subview 'none)
-            {
-                (sbuf-clear view-main-buf)
-                (sbuf-clear gear-buf)
-            }
-        )
+        (if (eq view-main-subview 'timer) {
+            (sbuf-clear gear-buf)
+            (subview-draw-timer)
+
+            (sbuf-clear view-main-buf)
+            (var main-soc-bms (state-get 'soc-bms))
+            (if (< main-soc-bms 0.001)
+                ; Enforcing a minimum BMS value so the arc remains rounded
+                (setq main-soc-bms 0.001)
+            )
+            (view-draw-outer-arc main-soc-bms)
+            (view-draw-inner-arc main-current-gear main-thr-input)
+            (view-draw-center-speed main-current-gear main-speed-kph)
+        })
+        (if (eq view-main-subview 'dbg) {
+            (subview-draw-dbg)
+            (sbuf-clear gear-buf)
+            (view-draw-gear-select main-current-gear)
+        })
+        (if (eq view-main-subview 'none) {
+            (sbuf-clear gear-buf)
+            (sbuf-clear view-main-buf)
+            (var main-soc-bms (state-get 'soc-bms))
+            (if (< main-soc-bms 0.001)
+                ; Enforcing a minimum BMS value so the arc remains rounded
+                (setq main-soc-bms 0.001)
+            )
+            (view-draw-outer-arc main-soc-bms)
+            (view-draw-inner-arc main-current-gear main-thr-input)
+            (view-draw-center-speed main-current-gear main-speed-kph)
+            (view-draw-gear-select main-current-gear)
+        })
     }))
 
     ; Check if we should draw the debug view
-    (if (eq (state-get 'view-main-subview) 'dbg)
+    (if (and (eq (state-get 'view-main-subview) 'dbg) view-updated)
         (subview-draw-dbg)
     )
 })
