@@ -1154,6 +1154,23 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 #define BAT_REG_CHARGE_CONTROL 0x04
 #define BAT_REG_FET_CONTROL 0x0A
 
+static lbm_value ext_bat_vsysmin(lbm_value *args, lbm_uint argn) {
+
+	if (argn == 0 || (argn == 1 && lbm_is_number(args[0]))) {
+		uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
+		uint8_t vsysmin = (config >> 1) & 0x7;
+
+		if (argn == 1  && lbm_is_number(args[0])) {
+			vsysmin = (uint8_t)(lbm_dec_as_u32(args[0]) & 7);
+			config = (config & ~(7 << 1)) | (vsysmin << 1);
+			i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work ?
+		}
+
+		return lbm_enc_u((uint32_t)vsysmin);
+	}
+	return ENC_SYM_TERROR;
+}
+
 void bat_init(void) {
 	uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
 	config = config & ~(3 << 4); //Clear charge mode.
@@ -1688,6 +1705,7 @@ static void load_extensions(void) {
 	lbm_add_extension("mag-get-z", ext_mag_get_z);
 	lbm_add_extension("mag-age", ext_mag_age);
 
+	lbm_add_extension("bat-vsysmin", ext_bat_vsysmin);
 	lbm_add_extension("bat-set-fet", ext_bat_set_fet);
 	lbm_add_extension("bat-set-charge", ext_bat_set_charge);
 	lbm_add_extension("bat-safety-timer-expired", ext_bat_safety_timer_expired);
