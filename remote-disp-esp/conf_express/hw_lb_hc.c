@@ -1543,12 +1543,46 @@ static lbm_value ext_go_to_sleep(lbm_value *args, lbm_uint argn) {
 	gpio_set_direction(GPIO_BUTTON, GPIO_MODE_INPUT);
 	esp_deep_sleep_enable_gpio_wakeup(1 << GPIO_BUTTON, ESP_GPIO_WAKEUP_GPIO_HIGH);
 
-	float sleep_time = lbm_dec_as_float(args[0]);
-	if (sleep_time > 0) {
-		esp_sleep_enable_timer_wakeup((uint32_t)(sleep_time * 1.0e6));
+	int sleep_seconds = lbm_dec_as_i32(args[0]);
+	if (sleep_seconds > 0) {
+		esp_sleep_enable_timer_wakeup((uint64_t)sleep_seconds * 1.0e6);
 	}
 
 	esp_deep_sleep_start();
+
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_wake_cause(lbm_value *args, lbm_uint argn) {
+	lbm_value r = ENC_SYM_NIL;
+
+	esp_sleep_wakeup_cause_t wakeup_reason;
+	wakeup_reason = esp_sleep_get_wakeup_cause();
+
+	switch(wakeup_reason) {
+        case ESP_SLEEP_WAKEUP_TIMER: {
+            r = lbm_enc_i(2);
+            break;
+        }
+        case ESP_SLEEP_WAKEUP_GPIO: {
+			r = lbm_enc_i(1);
+			break;
+		}
+        default:
+            r = lbm_enc_i(0);
+            break;
+    }
+
+	return r;
+}
+
+static lbm_value ext_hibernate_now(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+
+	//TODO: I2C turn charger off
+	//TODO: Battery Fet Nil ? BAT_REG_FET_CONTROL
+	//TODO: Check datasheet
+	//TODO: Ask Joel if still unsure :)
 
 	return ENC_SYM_TRUE;
 }
@@ -1728,6 +1762,8 @@ static void load_extensions(void) {
 	lbm_add_extension("vib-i2c-write", ext_vib_i2c_write);
 
 	lbm_add_extension("go-to-sleep", ext_go_to_sleep);
+	lbm_add_extension("wake-cause", ext_wake_cause);
+	lbm_add_extension("hibernate-now", ext_hibernate_now);
 	lbm_add_extension("init-hw", ext_init_hw);
 
 	// NEAR FIELD

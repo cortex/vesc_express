@@ -6,12 +6,49 @@
     (if (main-init-done) (def initializing false))
 })
 
+; remote v3
 (init-hw)
 
-; remote v3
+; Turn Display Backlight OFF immediately
 (gpio-configure 3 'pin-mode-out)
 (gpio-write 3 1)
-; disp size (total): 240x320 (TODO: Might not be correct.)
+
+; Battery Protection (Deep Sleep Timer Check)
+{
+    ; Check if the Timer woke the ESP32
+    ;  < 5% User SOC = Hibernate
+    ;  > 5% User SOC = Go back to sleep
+    ; NOTE: wake-cause returns 2 for Timer
+    ; NOTE: wake-cause returns 1 for GPIO
+    ; NOTE: wake-cause returns 0 for Everything Else
+    (if (= (wake-cause) 2) {
+        (print "Exiting sleep from ESP Timer. Checking battery!")
+        (var clamp01 (lambda (v) (cond
+            ((< v 0.0) 0.0)
+            ((> v 1.0) 1.0)
+            (t v)
+        )))
+        (var map-range-01 (lambda (v min max)
+            (clamp01 (/ (- (to-float v) min) (- max min)))
+        ))
+        (var boot-voltage (vib-vmon))
+        (var boot-soc (map-range-01 boot-voltage 3.4 4.2))
+        (print (str-merge "SOC: " (to-str boot-soc)))
+
+        (if (>= boot-soc 0.05) {
+            (print "Going back to sleep")
+            (sleep 1)
+            (go-to-sleep (* (* 6 60) 60)) ; Go to sleep and wake up in 6 hours
+        } {
+            (print "Battery too low! Disconnecting Power. USB Required to Wake Up!")
+            (sleep 1)
+            (go-to-sleep (* (* 6 60) 60)) ; TODO: Hibernate the remote (requires USB power to wake)
+            (hibernate-now)
+        })
+    })
+}
+
+; disp size (total): 240x320
 (disp-load-st7789 6 5 7 8 0 40) ; sd0 clk cs reset dc mhz
 (disp-reset)
 (ext-disp-orientation 0)
@@ -39,6 +76,7 @@
 
     (if (not-eq dev-soc-remote nil)
         dev-soc-remote
+        ; NOTE: 3.4V is ~20% SOC, reporting 0%
         (map-range-01 (vib-vmon) 3.4 4.2)
     )
 })
@@ -46,8 +84,11 @@
 (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
 
 {
-    (if (and (<= (get-remote-soc) 0.05) (not dev-disable-low-battery-msg)) { ; 5%
-        (print "low battery!")
+    ; Once on startup, check remote battery soc
+    ; Require charging below 20% reported SOC (~38% actual SOC)
+    ; Display image and go to sleep after 10 seconds
+    (if (and (<= (get-remote-soc) 0.2) (not dev-disable-low-battery-msg)) {
+        (print (str-merge "low battery! " (to-str (get-remote-soc))))
 
         (import "include/draw-utils.lisp" code-draw-utils)
         (read-eval-program code-draw-utils)
@@ -82,7 +123,8 @@
         (sleep 10)
         (print "entering sleep (low power)...")
         (disp-clear)
-        (go-to-sleep -1)
+        ; Go to sleep and wake up in 6 hours
+        (go-to-sleep (* (* 6 60) 60))
     })
 }
 
@@ -110,8 +152,8 @@
 (read-eval-program code-vib-reg)
 
 {
-    ; (def cal-result (vib-cal))
-    ; (print (to-str "calibration result:" cal-result))
+    ;(def cal-result (vib-cal)) ; Causes vibration
+    ;(print (to-str "vibration calibration result:" cal-result))
 
     ; intersting bits are 6-4 and 3-2 (brake factor and loop gain)
     (var reg-feedback-control (bitwise-or
@@ -120,18 +162,16 @@
             ; (ix cal-result 0)
             (parse-bin (str-merge "1" "000" "00" "11"))
         )
-        (parse-bin (str-merge "0" "000" "11" "00"))
-        ; (parse-bin (str-merge "0" "010" "10" "00"))
+        ;(parse-bin (str-merge "0" "000" "11" "00"))
+         (parse-bin (str-merge "0" "010" "10" "00"))
     ))
-    (var arg1 reg-feedback-control)
-    ; (var arg2 (ix cal-result 1))
-    ; (var arg3 (ix cal-result 2))
-    (var arg2 13)
-    (var arg3 100)
-    (print arg1 arg2 arg3)
-    ; (vib-cal-set arg1 arg2 arg3)
-    ; (vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
-    ; (vib-cal-set reg-feedback-control 13 100)
+    ; (print reg-feedback-control)
+
+    ; arg 0 VIB_REG_FEEDBACK_CTRL
+    ; arg 1 VIB_A_CAL_COMP
+    ; arg 2 VIB_A_CAL_BEMF
+    ;(vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
+    (vib-cal-set reg-feedback-control 13 100)
 }
 
 @const-start
@@ -336,19 +376,19 @@
 ; Updates and renders the small battery at the top of the screen.
 ; Charge is from 0.0 to 1.0
 (defun render-status-battery (charge) {
+    (sbuf-clear small-battery-buf)
+
     (if (state-get 'soc-bar-visible) {
         (sbuf-exec img-rectangle small-battery-buf 0 0 (26 16 1 '(thickness 2)))
         (sbuf-exec img-rectangle small-battery-buf 28 5 (2 6 1 '(filled)))
 
         (sbuf-exec img-rectangle small-battery-buf 4 4 ((* 19 charge) 9 2 '(filled)))
-    } {
-        (sbuf-clear small-battery-buf)
     })
 
     (sbuf-render small-battery-buf (list
         0x0
         0x6a6a6a
-        (if (< charge 0.15) 0xff0000 0xffffff)
+        (if (< charge 0.25) 0xff0000 0xffffff) ; Red below 25%
         0x0000ff
     ))
 })
@@ -496,6 +536,16 @@
 
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
+
+        ; If we reach 0% the remote must power down
+        ; Note: Actual SOC is ~20% when soc-remote is 0%
+        (if (= soc-remote 0.0) {
+            (print "Remote battery too low for operation!")
+            (print "Foced Shutdown Event @ 0%")
+
+            (go-to-sleep -1) ; TODO: use hibernate when implemented
+            (hibernate-now)
+        })
 
         (if dev-bind-soc-bms-to-thr
             (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
