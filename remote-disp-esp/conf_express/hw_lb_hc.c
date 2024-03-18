@@ -1579,10 +1579,13 @@ static lbm_value ext_wake_cause(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_hibernate_now(lbm_value *args, lbm_uint argn) {
 	(void)args; (void)argn;
 
-	//TODO: I2C turn charger off
-	//TODO: Battery Fet Nil ? BAT_REG_FET_CONTROL
-	//TODO: Check datasheet
-	//TODO: Ask Joel if still unsure :)
+	uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
+	config = config & ~(3 << 4); // Charge disabled
+	i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work?
+
+	uint8_t fet = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL);
+	fet = fet & ~(1 << 5); // Force BATFET off
+	i2c_write_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL, fet); // what if this doesnt work?
 
 	return ENC_SYM_TRUE;
 }
