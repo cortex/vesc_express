@@ -83,6 +83,8 @@
 
 (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
 
+@const-end
+
 {
     ; Once on startup, check remote battery soc
     ; Require charging below 20% reported SOC (~38% actual SOC)
@@ -128,6 +130,8 @@
     })
 }
 
+@const-start
+
 (def version-str "v0.1")
 
 ; parse string containing unsigned binary integer
@@ -150,6 +154,8 @@
 
 (import "include/vib-reg.lisp" 'code-vib-reg)
 (read-eval-program code-vib-reg)
+
+@const-end
 
 {
     ;(def cal-result (vib-cal)) ; Causes vibration
@@ -174,9 +180,6 @@
     (vib-cal-set reg-feedback-control 13 100)
 }
 
-@const-start
-
-
 ; these don't seem to make any noticeable difference...
 ; (vib-i2c-write (vib-get-reg 'reg-control1)
 ;     (bitwise-or
@@ -190,6 +193,8 @@
 ;         (vib-i2c-read (vib-get-reg 'reg-control2))
 ;     )
 ; )
+
+@const-start
 
 ;;; Included files
 
@@ -281,9 +286,10 @@
 ;;; Startup Animation
 (import "include/views/boot-animation.lisp" code-boot-animation)
 (read-eval-program code-boot-animation)
-(boot-animation)
 
 @const-end
+
+(boot-animation)
 
 (def start-tick (systime))
 
@@ -353,6 +359,8 @@
 
 ; Whether or not the screen is currently enabled.
 (def draw-enabled true)
+
+@const-start
 
 ;;; GUI dimensions
 
@@ -430,6 +438,8 @@
 ;;; Specific view state management
 
 (read-eval-program code-ui-tick)
+
+@const-end
 
 (def m-connection-tick-ms 0.0)
 ; Communication
