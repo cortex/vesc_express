@@ -177,7 +177,9 @@
     ; arg 1 VIB_A_CAL_COMP
     ; arg 2 VIB_A_CAL_BEMF
     ;(vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
-    (vib-cal-set reg-feedback-control 13 100)
+    (if (eq (vib-cal-set reg-feedback-control 13 100) nil)
+        (print "Vibration Calibration Failed to Set")
+    )
 }
 
 ; these don't seem to make any noticeable difference...

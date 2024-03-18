@@ -1408,7 +1408,7 @@ static lbm_value ext_vib_cal_set(lbm_value *args, lbm_uint argn) {
 
 	int fb_ctrl = i2c_read_reg(I2C_ADDR_VIB, VIB_REG_FEEDBACK_CTRL);
 	if (fb_ctrl < 0) {
-		return ENC_SYM_EERROR;
+		return ENC_SYM_NIL;
 	}
 
 	// fb_ctrl &= 0b11111100;
