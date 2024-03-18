@@ -151,29 +151,30 @@ Item {
             wrapMode: Text.WordWrap
         }
         RowLayout{
-            Button {
-                Layout.fillWidth: true
-                text: "ON"
 
-                onClicked: {
-                    VescIf.canTmpOverride(true, 10)
-                    mCommands.lispSendReplCmd("(lte-on)")
-                    VescIf.canTmpOverrideEnd()
-                    VescIf.emitMessageDialog("LTE switched on", "Done!", true, false)
-                }
-            }
             Button {
                 Layout.fillWidth: true
                 text: "OFF"
 
                 onClicked: {
                     VescIf.canTmpOverride(true, 10)
-                    mCommands.lispSendReplCmd("(lte-off)")
+                    mCommands.lispSendReplCmd("(modem-pwr-off)")
                     VescIf.canTmpOverrideEnd()
-                    VescIf.emitMessageDialog("LTE switched off", "Done!", true, false)
+                    VescIf.emitMessageDialog("Modem switched off", "Done!", true, false)
                 }
             }
             Button {
+                Layout.fillWidth: true
+                text: "ON"
+
+                onClicked: {
+                    VescIf.canTmpOverride(true, 10)
+                    mCommands.lispSendReplCmd("(modem-pwr-on)")
+                    VescIf.canTmpOverrideEnd()
+                    VescIf.emitMessageDialog("Modem switched off", "Done!", true, false)
+                }
+            }
+                        Button {
                 Layout.fillWidth: true
                 text: "GSM"
 
@@ -181,7 +182,7 @@ Item {
                     VescIf.canTmpOverride(true, 10)
                     mCommands.lispSendReplCmd("(lte-gsm)")
                     VescIf.canTmpOverrideEnd()
-                    VescIf.emitMessageDialog("LTE switched off", "Done!", true, false)
+                    VescIf.emitMessageDialog("GSM switched ON", "Done!", true, false)
                 }
             }
              Button {
@@ -192,7 +193,7 @@ Item {
                     VescIf.canTmpOverride(true, 10)
                     mCommands.lispSendReplCmd("(lte-cat1)")
                     VescIf.canTmpOverrideEnd()
-                    VescIf.emitMessageDialog("LTE switched off", "Done!", true, false)
+                    VescIf.emitMessageDialog("LTE switched ON", "Done!", true, false)
                 }
             }
         }
@@ -200,7 +201,7 @@ Item {
         Text {
             Layout.fillWidth: true
             Layout.fillHeight: false
-            text: "GPS"
+            text: "NFC"
             color: "white"
             wrapMode: Text.WordWrap
         }
@@ -211,7 +212,7 @@ Item {
 
                 onClicked: {
                     VescIf.canTmpOverride(true, 31)
-                    mCommands.lispSendReplCmd("(gps-on)")
+                    mCommands.lispSendReplCmd("(def nfc-enabled 1)")
                     VescIf.canTmpOverrideEnd()
                     VescIf.emitMessageDialog("LTE switched on", "Done!", true, false)
                 }
@@ -222,7 +223,7 @@ Item {
 
                 onClicked: {
                     VescIf.canTmpOverride(true, 31)
-                    mCommands.lispSendReplCmd("(gps-off)")
+                    mCommands.lispSendReplCmd("(def nfc-enabled nil)")
                     VescIf.canTmpOverrideEnd()
                     VescIf.emitMessageDialog("LTE switched ff", "Done!", true, false)
                 }
