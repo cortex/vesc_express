@@ -55,8 +55,8 @@
 
 // CAN Status Messages
 #define HW_CAN_STATUS_ADC0			hw_temp_filtered(0)
-#define HW_CAN_STATUS_ADC1			hw_temp_filtered(1)
-#define HW_CAN_STATUS_ADC2			hw_temp_filtered(2)
+#define HW_CAN_STATUS_ADC1			hw_temp_filtered(2)
+#define HW_CAN_STATUS_ADC2			hw_temp_filtered(1)
 #define HW_CAN_STATUS_ADC3			bme280_if_get_hum()
 
 // Functions

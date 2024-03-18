@@ -418,9 +418,9 @@ float hw_get_temp_motor(int motor) {
 
 	if (val && UTILS_AGE_S(val->rx_time) < 4.0) {
 		if (motor == 1) {
-			res = val->adc_voltages[1];
-		} else if (motor == 2) {
 			res = val->adc_voltages[0];
+		} else if (motor == 2) {
+			res = val->adc_voltages[1];
 		}
 	}
 
