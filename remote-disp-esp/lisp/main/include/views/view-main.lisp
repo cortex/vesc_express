@@ -269,16 +269,16 @@
     (var arc-innder-rad 68)
 
     ; Arc Inner BG
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle 450 color-arc-inner-bg '(thickness 21)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle 450 color-arc-inner-bg '(thickness 22)))
 
     ; Arc Inner FG Max Power
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21) '(rounded)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 22) '(rounded)))
 
     ; Highlight throttle position
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-innder-rad 1) arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 19) '(rounded)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-innder-rad 1) arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 20) '(rounded)))
 
     ; Blue Arc White Bottom
-    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 40) (6 color-white '(filled)))
+    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (6 color-white '(filled)))
     ; Blue Arc White Top
     (var angle 0.0)
     (setq angle (- arc-end-max-power 46))
@@ -302,13 +302,13 @@
     (setq arc-end-throttle (+ arc-end-throttle 90))
 
     ; Arc Inner FG Max Power
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 21) '(rounded)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 22) '(rounded)))
 
     ; Arc Inner Highlight Throttle Input
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-innder-rad 1) arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 19) '(rounded)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-innder-rad 1) arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 20) '(rounded)))
 
     ; Blue Arc White Bottom
-    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 40) (6 color-white '(filled)))
+    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (6 color-white '(filled)))
     ; Blue Arc White Top
     (var angle 0.0)
     (setq angle (- arc-end-max-power 46))
