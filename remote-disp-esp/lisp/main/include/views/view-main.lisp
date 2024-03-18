@@ -282,7 +282,7 @@
     ; Blue Arc White Top
     (var angle 0.0)
     (setq angle (- arc-end-max-power 46))
-    (var pos (rot-point-origin 41 41 angle))
+    (var pos (rot-point-origin 41 40 angle))
     (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (6 color-white '(filled)))
 })
 
@@ -312,7 +312,7 @@
     ; Blue Arc White Top
     (var angle 0.0)
     (setq angle (- arc-end-max-power 46))
-    (var pos (rot-point-origin 41 41 angle))
+    (var pos (rot-point-origin 41 40 angle))
     (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (6 color-white '(filled)))
 })
 
