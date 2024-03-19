@@ -161,7 +161,7 @@
     (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 })
 
-(def input-debounce-count 1) ; How many ticks buttons need to be pressed to register.
+(def input-debounce-count 2) ; How many ticks buttons need to be pressed to register.
 
 (defun input-tick () {
     ; Buttons with counters for debouncing
