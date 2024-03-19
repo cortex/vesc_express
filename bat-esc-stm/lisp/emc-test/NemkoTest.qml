@@ -176,13 +176,13 @@ Item {
             }
                         Button {
                 Layout.fillWidth: true
-                text: "GSM"
+                text: "GPRS"
 
                 onClicked: {
                     VescIf.canTmpOverride(true, 10)
                     mCommands.lispSendReplCmd("(lte-gsm)")
                     VescIf.canTmpOverrideEnd()
-                    VescIf.emitMessageDialog("GSM switched ON", "Done!", true, false)
+                    VescIf.emitMessageDialog("GPRS switched ON", "Done!", true, false)
                 }
             }
              Button {
@@ -214,7 +214,7 @@ Item {
                     VescIf.canTmpOverride(true, 31)
                     mCommands.lispSendReplCmd("(def nfc-enabled 1)")
                     VescIf.canTmpOverrideEnd()
-                    VescIf.emitMessageDialog("LTE switched on", "Done!", true, false)
+                    VescIf.emitMessageDialog("NFC switched on", "Done!", true, false)
                 }
             }
             Button {
@@ -225,7 +225,7 @@ Item {
                     VescIf.canTmpOverride(true, 31)
                     mCommands.lispSendReplCmd("(def nfc-enabled nil)")
                     VescIf.canTmpOverrideEnd()
-                    VescIf.emitMessageDialog("LTE switched ff", "Done!", true, false)
+                    VescIf.emitMessageDialog("NFC switched off", "Done!", true, false)
                 }
             }
         }
