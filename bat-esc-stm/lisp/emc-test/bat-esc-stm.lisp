@@ -12,7 +12,6 @@
 
 (defun modem-pwr-off () {
         (print "Turning modem off")
-
         (ext-pwr-key 0)
         (sleep 1)
         (ext-pwr-key 1)
@@ -25,10 +24,13 @@
     ;(modem-pwr-off)
     ;(modem-pwr-on)
     (map at '(
-         "ATE0"     ; Disable echo
-         "AT+CPIN?" ; Enter pin
-         "AT+CMGF=1" ; Set SMS format to text
+         "ATE0"       ; Disable echo
+         "AT+CPIN?"   ; Enter pin
+         "AT+CMGF=1"  ; Set SMS format to text
          "AT+CNMP=13" ; Set GSM mode
+         "AT+CGATT?"  ; Attach GPRS
+         "AT+CGNAPN\r\n" ; Print network APN
+         "AT+CNACT=0,1" ; "OK" 100; Set APP active
     ))
     (print "GSM enabled")})
 
@@ -45,7 +47,6 @@
         "AT+CGATT?"     ; Attach GPRS
         "AT+COPS?"      ; List operators
         "AT+CGNAPN\r\n" ; Print network APN
-        "AT+CNCFG=0,1,\"internet.telenor.se\"" ; print 100 ; Configure PDP APN, set active
         "AT+CNACT=0,1" ; "OK" 100; Set APP active
     ))
     (print "LTE enabled")
@@ -62,3 +63,8 @@
         (puts (str-merge "$ < " command))
         (puts (str-merge "$ > " response))
 })
+
+(defun set-baud-rate ()
+    (at "AT+IPR=115200"))
+
+(set-baud-rate)
