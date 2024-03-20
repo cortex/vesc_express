@@ -1609,7 +1609,6 @@ static lbm_value ext_init_hw(lbm_value *args, lbm_uint argn) {
 
 	init_mag();
 	init_gpio_expander();
-	init_nf();
 
 	bme280_if_init_with_mutex(i2c_mutex);
 
