@@ -180,7 +180,17 @@
 
 (def input-debounce-count 1) ; How many ticks buttons need to be pressed to register.
 
+@const-end
+(def adc-buf '(0 0 0))
+(def adc-buf-idx 0)
+@const-start
+
 (defun input-tick () {
+
+    ; Median filter for get-adc
+    (setix adc-buf adc-buf-idx (get-adc 0))
+    (setq adc-buf-idx (mod (+ adc-buf-idx 1) 3))
+    (def btn-adc (ix (sort < adc-buf) 1))
     ; Buttons with counters for debouncing
     (def btn-adc (get-adc 0))
     ; (print btn-adc)
