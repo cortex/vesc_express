@@ -33,7 +33,7 @@
 (def btn-left 0)
 (def btn-right 0)
 
-; Timestamp when the buttons were last pressed down (the rising edge). 
+; Timestamp when the buttons were last pressed down (the rising edge).
 (def btn-up-start 0)
 (def btn-down-start 0)
 (def btn-left-start 0)
@@ -132,7 +132,7 @@
 
 (def samples-nodist (map (fn (x) (second x)) samples))
 (defun sq (a) (* a a))
-(defun point6 () 
+(defun point6 ()
     (list magn0x-f magn0y-f magn0z-f magn1x-f magn1y-f magn1z-f)
 )
 
@@ -163,18 +163,18 @@
     (def magn0x-f (mag-get-x 0))
     (def magn0y-f (mag-get-y 0))
     (def magn0z-f (mag-get-z 0))
-    
+
     (def magn1x-f (mag-get-x 1))
     (def magn1y-f (mag-get-y 1))
     (def magn1z-f (mag-get-z 1))
-    
+
     (def travel (thr-interpolate))
     (def thr-input (* (map-range-01 travel 2.0 11.0)))
 
     (state-set 'thr-input thr-input)
     (state-set 'kmh kmh)
     (state-set 'is-connected is-connected)
-    
+
     (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 })
 
@@ -191,9 +191,8 @@
     (setix adc-buf adc-buf-idx (get-adc 0))
     (setq adc-buf-idx (mod (+ adc-buf-idx 1) 3))
     (def btn-adc (ix (sort < adc-buf) 1))
+
     ; Buttons with counters for debouncing
-    (def btn-adc (get-adc 0))
-    ; (print btn-adc)
     (if (< btn-adc 4.0) {
         (var new-up false)
         (var new-down false)
@@ -205,31 +204,13 @@
         (if (and (> btn-adc 1.65) (< btn-adc 1.85))
             (set 'new-down t)
         )
-        (if (and (> btn-adc 1.9) (< btn-adc 2.1)) {
-            (set 'new-down t)
-            (set 'new-left t)
-        })
-        (if (and (> btn-adc 2.15) (< btn-adc 2.35))
+
+        (if (and (> btn-adc 2.15) (< btn-adc 2.25))
             (set 'new-right t)
         )
-        (if (and (> btn-adc 2.4) (< btn-adc 2.57)) {
-            (set 'new-down t)
-            (set 'new-right t)
-        })
         (if (and (> btn-adc 2.58) (< btn-adc 2.67)) {
             (set 'new-up t)
         })
-        (if (and (> btn-adc 2.67) (< btn-adc 2.75)) {
-            (set 'new-up t)
-            (set 'new-left t)
-        })
-        (if (and (> btn-adc 2.75) (< btn-adc 2.91)) {
-            (set 'new-up t)
-            (set 'new-right t)
-        })
-
-        ; (print (str-merge "left: " (to-str new-left) ", right: " (to-str
-        ; new-right) ", down: " (to-str new-down) ", up: " (to-str new-up) ", adc: " (to-str btn-adc)))
 
         (if (or
             new-left
@@ -255,24 +236,11 @@
             (maybe-call (on-right-pressed))
         )
 
-        
+
         (def btn-down (if new-down (+ btn-down 1) 0))
         (def btn-left (if new-left (+ btn-left 1) 0))
         (def btn-right (if new-right (+ btn-right 1) 0))
         (def btn-up (if new-up (+ btn-up 1) 0))
-        
-        ; (if (!= btn-down 0) {
-        ;     (print-vars '(btn-down))
-        ; })
-        ; (if (!= btn-up 0) {
-        ;     (print-vars '(btn-up))
-        ; })
-        ; (if (!= btn-left 0) {
-        ;     (print-vars '(btn-left))
-        ; })
-        ; (if (!= btn-right 0) {
-        ;     (print-vars '(btn-right))
-        ; })
 
         (state-set 'down-pressed (>= btn-down input-debounce-count))
         (state-set 'up-pressed (>= btn-up input-debounce-count))
@@ -291,7 +259,7 @@
         (if (= btn-right 1)
             (def btn-right-start (systime))
         )
-        
+
         ; long presses fire as soon as possible and not on release
         (if (and (>= btn-up input-debounce-count) (>= (secs-since btn-up-start) 1.0) (not btn-up-long-fired)) {
             (def btn-up-long-fired true)
@@ -309,12 +277,12 @@
             (def btn-right-long-fired true)
             (maybe-call (on-right-long-pressed))
         })
-        
+
         (if (= btn-up 0) (def btn-up-long-fired false))
         (if (= btn-down 0) (def btn-down-long-fired false))
         (if (= btn-left 0) (def btn-left-long-fired false))
         (if (= btn-right 0) (def btn-right-long-fired false))
-        
+
         ; TODO: Revisit, no longer used
         (if (or
             (and (= btn-left 1) (>= btn-down 1))
