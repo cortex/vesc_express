@@ -13,195 +13,43 @@
 (gpio-configure 3 'pin-mode-out)
 (gpio-write 3 1)
 
-; Battery Protection (Deep Sleep Timer Check)
-{
-    ; Check if the Timer woke the ESP32
-    ;  < 5% User SOC = Hibernate
-    ;  > 5% User SOC = Go back to sleep
-    ; NOTE: wake-cause returns 2 for Timer
-    ; NOTE: wake-cause returns 1 for GPIO
-    ; NOTE: wake-cause returns 0 for Everything Else
-    (if (= (wake-cause) 2) {
-        (print "Exiting sleep from ESP Timer. Checking battery!")
-        (var clamp01 (lambda (v) (cond
-            ((< v 0.0) 0.0)
-            ((> v 1.0) 1.0)
-            (t v)
-        )))
-        (var map-range-01 (lambda (v min max)
-            (clamp01 (/ (- (to-float v) min) (- max min)))
-        ))
-        (var boot-voltage (vib-vmon))
-        (var boot-soc (map-range-01 boot-voltage 3.4 4.2))
-        (print (str-merge "SOC: " (to-str boot-soc)))
-
-        (if (>= boot-soc 0.05) {
-            (print "Going back to sleep")
-            (sleep 1)
-            (go-to-sleep (* (* 6 60) 60)) ; Go to sleep and wake up in 6 hours
-        } {
-            (print "Battery too low! Disconnecting Power. USB Required to Wake Up!")
-            (sleep 1)
-            (go-to-sleep (* (* 6 60) 60)) ; TODO: Hibernate the remote (requires USB power to wake)
-            (hibernate-now)
-        })
-    })
-}
-
-; disp size (total): 240x320
-(disp-load-st7789 6 5 7 8 0 40) ; sd0 clk cs reset dc mhz
-(disp-reset)
-(ext-disp-orientation 0)
-(disp-clear)
-
-(gpio-write 3 0) ; enable display backlight (active when low)
-
 @const-start
+
+(def version-str "v0.2")
 
 ;;; Dev flags
 (import "../dev-flags.lisp" 'code-dev-flags)
 (read-eval-program code-dev-flags)
 
-;;; Check and render remote low battery screen
+;;; Startup Animation
+(import "include/views/boot-animation.lisp" code-boot-animation)
+(read-eval-program code-boot-animation)
 
-(defun get-remote-soc () {
-    (var clamp01 (lambda (v) (cond
-        ((< v 0.0) 0.0)
-        ((> v 1.0) 1.0)
-        (t v)
-    )))
-    (var map-range-01 (lambda (v min max)
-        (clamp01 (/ (- (to-float v) min) (- max min)))
-    ))
+;;; Utilities
+(import "include/draw-utils.lisp" code-draw-utils)
+(read-eval-program code-draw-utils)
+(import "include/utils.lisp" code-utils)
+(read-eval-program code-utils)
 
-    (if (not-eq dev-soc-remote nil)
-        dev-soc-remote
-        ; NOTE: 3.4V is ~20% SOC, reporting 0%
-        (map-range-01 (vib-vmon) 3.4 4.2)
-    )
-})
-
-(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+(import "include/startup-utils.lisp" code-startup-utils)
+(read-eval-program code-startup-utils)
 
 @const-end
 
-{
-    ; Once on startup, check remote battery soc
-    ; Require charging below 20% reported SOC (~38% actual SOC)
-    ; Display image and go to sleep after 10 seconds
-    (if (and (<= (get-remote-soc) 0.2) (not dev-disable-low-battery-msg)) {
-        (print (str-merge "low battery! " (to-str (get-remote-soc))))
-
-        (import "include/draw-utils.lisp" code-draw-utils)
-        (read-eval-program code-draw-utils)
-        (def view-icon-buf (create-sbuf 'indexed4 50 59 141 142))
-        (def view-text-buf (create-sbuf 'indexed4 (- 120 100) 210 200 55))
-
-        ; Red Circle
-        (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(thickness 16)))
-
-        ; Battery outline
-        (sbuf-exec img-rectangle view-icon-buf 47 42 (46 60 2 '(filled) '(rounded 4)))
-        (sbuf-exec img-rectangle view-icon-buf 53 (+ 42 6) ((- 46 12) (- 60 12) 0 '(filled)))
-
-        ; Battery nub
-        (sbuf-exec img-rectangle view-icon-buf (+ 13 47) 32 (20 7 2 '(filled)))
-
-        ; Battery center
-        (sbuf-exec img-rectangle view-icon-buf (- 70 13) 87 (26 5 2 '(filled)))
-
-        ; Static Text
-        (var text (img-buffer-from-bin text-remote-battery-low))
-        (sbuf-blit view-text-buf text (/ (- 200 (ix (img-dims text) 0)) 2) 0 ())
-
-        (sbuf-render-changes view-icon-buf (list
-            0x000000
-            0xe23a26
-            0xffffff
-        ))
-
-        (sbuf-render-changes view-text-buf (list 0x000000 0x4f514f 0x929491 0xffffff))
-
-        (sleep 10)
-        (print "entering sleep (low power)...")
-        (disp-clear)
-        ; Go to sleep and wake up in 6 hours
-        (go-to-sleep (* (* 6 60) 60))
-    })
-}
+(check-wake-cause-on-boot)
+(display-init)
+(vibration-init)
+(check-battery-on-boot)
+(boot-animation)
 
 @const-start
 
-(def version-str "v0.1")
-
-; parse string containing unsigned binary integer
-(def ascii-0 48)
-(def ascii-1 49)
-(defun parse-bin (bin-str) {
-    (var bin-str (str-replace bin-str "0b" ""))
-    (var bits (str-len bin-str))
-    (foldl
-        (fn (init char-pair)
-            (bitwise-or init (shl (if (= (first char-pair) ascii-1) 1 0) (rest char-pair)))
-
-        )
-        0
-        (map (fn (i)
-            (cons (bufget-u8 bin-str i) (- bits i 1))
-        ) (range bits))
-    )
-})
-
+;;; Vibration
 (import "include/vib-reg.lisp" 'code-vib-reg)
 (read-eval-program code-vib-reg)
 
-@const-end
-
-{
-    ;(def cal-result (vib-cal)) ; Causes vibration
-    ;(print (to-str "vibration calibration result:" cal-result))
-
-    ; intersting bits are 6-4 and 3-2 (brake factor and loop gain)
-    (var reg-feedback-control (bitwise-or
-        (bitwise-and
-            169
-            ; (ix cal-result 0)
-            (parse-bin (str-merge "1" "000" "00" "11"))
-        )
-        ;(parse-bin (str-merge "0" "000" "11" "00"))
-         (parse-bin (str-merge "0" "010" "10" "00"))
-    ))
-    ; (print reg-feedback-control)
-
-    ; arg 0 VIB_REG_FEEDBACK_CTRL
-    ; arg 1 VIB_A_CAL_COMP
-    ; arg 2 VIB_A_CAL_BEMF
-    ;(vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
-    (if (eq (vib-cal-set reg-feedback-control 13 100) nil)
-        (print "Vibration Calibration Failed to Set")
-    )
-}
-
-; these don't seem to make any noticeable difference...
-; (vib-i2c-write (vib-get-reg 'reg-control1)
-;     (bitwise-or
-;         (parse-bin "0b10000000")
-;         (vib-i2c-read (vib-get-reg 'reg-control1))
-;     )
-; )
-; (vib-i2c-write (vib-get-reg 'reg-control2)
-;     (bitwise-and
-;         (parse-bin "0b10111111")
-;         (vib-i2c-read (vib-get-reg 'reg-control2))
-;     )
-; )
-
-@const-start
-
 ;;; Included files
 
-(import "include/utils.lisp" code-utils)
-(import "include/draw-utils.lisp" code-draw-utils)
 (import "include/views.lisp" code-views)
 (import "include/ui-tick.lisp" code-ui-tick)
 (import "include/theme.lisp" code-theme)
@@ -261,7 +109,8 @@
 (import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
 
 (import "../assets/texts/bin/percent.bin" 'text-percent)
-; remote-battery-low.bin was moved to top
+
+(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
 
 ;;; Fonts
 
@@ -275,23 +124,25 @@
 
 (read-eval-program code-theme)
 
-;;; Utilities
-
-(read-eval-program code-utils)
-(read-eval-program code-draw-utils)
-
 ;;; Connection and input
 
 (read-eval-program code-connection)
 (read-eval-program code-input)
 
-;;; Startup Animation
-(import "include/views/boot-animation.lisp" code-boot-animation)
-(read-eval-program code-boot-animation)
+;;; State management
+
+(read-eval-program code-ui-state)
+(read-eval-program code-state-management)
+
+;;; Views
+
+(read-eval-program code-views)
+
+;;; Specific view state management
+
+(read-eval-program code-ui-tick)
 
 @const-end
-
-(boot-animation)
 
 (def start-tick (systime))
 
@@ -344,6 +195,9 @@
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)
 
+; The last voltage captured while checking the remote battery.
+(def remote-batt-v (vib-vmon))
+
 ; Timestamp of the last tick where the left or right buttons where pressed
 (def main-left-held-last-time 0)
 (def main-right-held-last-time 0)
@@ -362,86 +216,9 @@
 ; Whether or not the screen is currently enabled.
 (def draw-enabled true)
 
-@const-start
-
-;;; GUI dimensions
-
-; how far the area of the screen used by the gui is inset (see 'Masked Area' vs
-; 'Actual Display' in the figma design document)
-(def screen-inset-x 2)
-(def screen-inset-y 9)
-
-(def bevel-medium 15)
-(def bevel-small 13)
-
-
 ;;; Specific UI components
 
-@const-end
-
 (def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
-
-@const-start
-
-; Updates and renders the small battery at the top of the screen.
-; Charge is from 0.0 to 1.0
-(defun render-status-battery (charge) {
-    (sbuf-clear small-battery-buf)
-
-    (if (state-get 'soc-bar-visible) {
-        (sbuf-exec img-rectangle small-battery-buf 0 0 (26 16 1 '(thickness 2)))
-        (sbuf-exec img-rectangle small-battery-buf 28 5 (2 6 1 '(filled)))
-
-        (sbuf-exec img-rectangle small-battery-buf 4 4 ((* 19 charge) 9 2 '(filled)))
-    })
-
-    (sbuf-render small-battery-buf (list
-        0x0
-        0x6a6a6a
-        (if (< charge 0.25) 0xff0000 0xffffff) ; Red below 25%
-        0x0000ff
-    ))
-})
-
-; Quick and dirty debug function.
-(defun render-is-connected (is-connected) {
-    (var connected-buf (create-sbuf 'indexed4 20 30 24 23))
-    (var connected-icon (img-buffer-from-bin icon-pair-inverted))
-    (img-clear (sbuf-img connected-buf) 3)
-    (sbuf-blit connected-buf connected-icon 0 0 ())
-
-    (var status-buf (create-sbuf 'indexed4 48 34 24 18))
-    (var status-icon (img-buffer-from-bin (if is-connected
-        icon-check-mark-inverted
-        icon-failed-inverted
-    )))
-    (img-clear (sbuf-img status-buf) 3)
-    (sbuf-blit status-buf status-icon 0 0 ())
-
-    ; These would draw outside the bounds of the new display!
-    ; (sbuf-render connected-buf (list col-fg 0 0 col-bg))
-    ; (sbuf-render status-buf (list
-    ;     (if is-connected col-accent col-error)
-    ;     0
-    ;     0
-    ;     col-bg
-    ; ))
-})
-
-;;; State management
-
-(read-eval-program code-ui-state)
-(read-eval-program code-state-management)
-
-;;; Views
-
-(read-eval-program code-views)
-
-;;; Specific view state management
-
-(read-eval-program code-ui-tick)
-
-@const-end
 
 (def m-connection-tick-ms 0.0)
 ; Communication
@@ -549,9 +326,8 @@
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
 
-        ; If we reach 0% the remote must power down
-        ; Note: Actual SOC is ~20% when soc-remote is 0%
-        (if (= soc-remote 0.0) {
+        ; If we reach 3.2V (0% SOC) the remote must power down
+        (if (<= remote-batt-v 3.2) {
             (print "Remote battery too low for operation!")
             (print "Foced Shutdown Event @ 0%")
 
