@@ -10,6 +10,7 @@
 (defun view-init-thr-activation () {
     ; large center graphic
     (def view-graphic-buf (create-sbuf 'indexed4 (- 120 90) 46 181 182))
+    (def angle-previous 90.0)
 
     ; status text
     (def view-status-text-buf (create-sbuf 'indexed4 (- 120 90) 230 180 76))
@@ -29,6 +30,7 @@
             ; Exclamation
             (sbuf-exec img-rectangle view-graphic-buf (- 90 3) 74 (6 20 3 '(filled)))
             (sbuf-exec img-rectangle view-graphic-buf (- 90 3) 101 (6 6 3 '(filled)))
+            (setq angle-previous 90.0)
         } {
             ; three empty circles
             (sbuf-exec img-circle view-graphic-buf 91 52 (20 3 '(thickness 2)))
@@ -36,7 +38,7 @@
             (sbuf-exec img-circle view-graphic-buf 129 91 (20 3 '(thickness 2)))
             ; one full circle
             (sbuf-exec img-circle view-graphic-buf 91 129 (20 1 '(filled)))
-
+            (setq angle-previous 90.0)
         })
         
         (sbuf-clear view-status-text-buf)
@@ -55,7 +57,8 @@
         (var value (/ secs thr-countdown-len-secs))
         (var angle (+ 90 (* value 360)))
         
-        (sbuf-exec img-arc view-graphic-buf 90 90 (90 90 angle 1 '(thickness 17)))
+        (sbuf-exec img-arc view-graphic-buf 90 90 (90 angle-previous angle 1 '(thickness 17)))
+        (setq angle-previous angle)
     })
 })
 
@@ -66,5 +69,6 @@
 
 (defun view-cleanup-thr-activation () {
     (def view-graphic-buf nil)
+    (def angle-previous nil)
     (def view-status-text-buf nil)
 })
