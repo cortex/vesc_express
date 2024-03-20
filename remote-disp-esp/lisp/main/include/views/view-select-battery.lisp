@@ -21,27 +21,34 @@
 })
 
 (defun cycle-battery () {
-  (def batteries (rotate batteries))
-  (set-batt (car (car batteries)))
+        (def batteries (rotate batteries))
+        (set-batt (car (car batteries)))
+        (request-view-change)
+
 })
 
+(defun cycle-battery-rev () {
+        (map cycle-battery (range (- (length batteries) 1)))
+})
+
+
 (defun view-is-visible-set-battery () {
-    battery-changed
+        battery-changed
 })
 
 (defun view-init-set-battery () {
-    (def view-text-buf (create-sbuf 'indexed2 25 100 140 78))
-    (var text (img-buffer-from-bin text-warning-msg))
+        (def view-text-buf (create-sbuf 'indexed2 25 100 140 78))
+        (var text (img-buffer-from-bin text-warning-msg))
 })
 
 (defun view-draw-set-battery () {})
 
 (defun view-render-set-battery () {
-    (draw-text-centered view-text-buf 0 0 140 0 0 4 font-b3 1 0 "Paired to")
-    (draw-text-centered view-text-buf 0 32 150 0 0 4 font-b3 1 0 (ix (car batteries) 1))
-    (sbuf-render-changes view-text-buf (list col-bg col-fg))
+        (draw-text-centered view-text-buf 0 0 140 0 0 4 font-ubuntu-mono-22h 1 0 "Paired to")
+        (draw-text-centered view-text-buf 0 32 160 0 0 4 font-ubuntu-mono-22h 1 0 (ix (car batteries) 1))
+        (sbuf-render-changes view-text-buf (list col-bg col-fg))
 })
 
 (defun view-cleanup-set-battery () {
-    (def view-text-buf nil)
+        (def view-text-buf nil)
 })
