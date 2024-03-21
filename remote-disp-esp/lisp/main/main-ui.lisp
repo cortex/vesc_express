@@ -331,8 +331,10 @@
             (print "Remote battery too low for operation!")
             (print "Foced Shutdown Event @ 0%")
 
-            (go-to-sleep -1) ; TODO: use hibernate when implemented
+            ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
             (hibernate-now)
+            (render-low-battery)
+            (sleep 8)
         })
 
         (if dev-bind-soc-bms-to-thr

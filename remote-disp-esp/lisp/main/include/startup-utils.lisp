@@ -30,8 +30,7 @@
             (go-to-sleep (* (* 6 60) 60)) ; Go to sleep and wake up in 6 hours
         } {
             (print "Battery too low! Disconnecting Power. USB Required to Wake Up!")
-            (sleep 1)
-            (go-to-sleep (* (* 6 60) 60)) ; TODO: Hibernate the remote (requires USB power to wake)
+            ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
             (hibernate-now)
         })
     })
@@ -48,16 +47,21 @@
     )
 })
 
+(defun render-low-battery() {
+    (disp-clear)
+    (def view-timeline-start (systime))
+    (view-init-low-battery)
+    (view-draw-low-battery)
+    (view-render-low-battery)
+    (view-cleanup-low-battery)
+})
+
 (defun check-battery-on-boot () {
     ; Once on startup, check remote battery soc
     (if (and (<= (get-remote-soc) 0.2) (not dev-disable-low-battery-msg)) {
         (print (str-merge "Low battery on boot: " (to-str (get-remote-soc))))
 
-        (def view-timeline-start (systime))
-        (view-init-low-battery)
-        (view-draw-low-battery)
-        (view-render-low-battery)
-        (view-cleanup-low-battery)
+        (render-low-battery)
         (sleep 1.0)
     })
 })
