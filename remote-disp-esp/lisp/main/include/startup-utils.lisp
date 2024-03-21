@@ -53,6 +53,7 @@
     (if (and (<= (get-remote-soc) 0.2) (not dev-disable-low-battery-msg)) {
         (print (str-merge "Low battery on boot: " (to-str (get-remote-soc))))
 
+        (def view-timeline-start (systime))
         (view-init-low-battery)
         (view-draw-low-battery)
         (view-render-low-battery)

@@ -30,9 +30,17 @@
 (read-eval-program code-draw-utils)
 (import "include/utils.lisp" code-utils)
 (read-eval-program code-utils)
-
 (import "include/startup-utils.lisp" code-startup-utils)
 (read-eval-program code-startup-utils)
+
+;;; Colors
+(import "include/theme.lisp" code-theme)
+(read-eval-program code-theme)
+
+;;; Low Battery View
+(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
+(read-eval-program code-view-low-battery)
+(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
 
 @const-end
 
@@ -52,7 +60,6 @@
 
 (import "include/views.lisp" code-views)
 (import "include/ui-tick.lisp" code-ui-tick)
-(import "include/theme.lisp" code-theme)
 (import "include/ui-state.lisp" code-ui-state)
 (import "include/state-management.lisp" code-state-management)
 (import "include/connection.lisp" code-connection)
@@ -63,7 +70,6 @@
 (import "include/views/view-thr-activation.lisp" 'code-view-thr-activation)
 (import "include/views/view-board-info.lisp" 'code-view-board-info)
 (import "include/views/view-charging.lisp" 'code-view-charging)
-(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
 (import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
@@ -110,8 +116,6 @@
 
 (import "../assets/texts/bin/percent.bin" 'text-percent)
 
-(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
-
 ;;; Fonts
 
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
@@ -119,10 +123,6 @@
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
 (import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)
 (import "../assets/fonts/bin/UbuntuMono14x22x1.0.bin" 'font-ubuntu-mono-22h)
-
-;;; Colors
-
-(read-eval-program code-theme)
 
 ;;; Connection and input
 

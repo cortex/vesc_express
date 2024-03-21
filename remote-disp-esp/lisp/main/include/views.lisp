@@ -302,7 +302,6 @@
 (read-eval-program code-view-thr-activation)
 (read-eval-program code-view-board-info)
 (read-eval-program code-view-charging)
-(read-eval-program code-view-low-battery)
 (read-eval-program code-view-warning)
 (read-eval-program code-view-firmware)
 (read-eval-program code-view-conn-lost)
