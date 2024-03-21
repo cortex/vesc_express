@@ -133,7 +133,9 @@
             (sbuf-exec img-line small-battery-buf 7 1 (23 16 2))
         } {
             ; Display battery charge %
-            (sbuf-exec img-rectangle small-battery-buf 4 4 ((* 19 charge) 9 2 '(filled)))
+            (var width (* 19 charge))
+            (if (< width 1) (setq width 1))
+            (sbuf-exec img-rectangle small-battery-buf 4 4 (width 9 2 '(filled)))
         })
     })
 
