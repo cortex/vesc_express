@@ -47,6 +47,7 @@
 #include "bme280_if.h"
 #include "imu.h"
 
+
 // LBM Utilities
 
 /** Convert lbm linked list into a c-style array.
@@ -342,18 +343,6 @@ static void mag_task(void *arg) {
 }
 
 static void init_mag() {
-	i2c_config_t conf = {
-			.mode = I2C_MODE_MASTER,
-			.sda_io_num = I2C_SDA,
-			.scl_io_num = I2C_SCL,
-			.sda_pullup_en = GPIO_PULLUP_ENABLE,
-			.scl_pullup_en = GPIO_PULLUP_ENABLE,
-			.master.clk_speed = 100000,
-	};
-
-	i2c_param_config(0, &conf);
-	i2c_driver_install(0, conf.mode, 0, 0, 0);
-
 	als31300_init_reg(I2C_ADDR_MAG1);
 	als31300_init_reg(I2C_ADDR_MAG2);
 	als31300_init_reg(I2C_ADDR_MAG3);
@@ -1152,6 +1141,7 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 #define BAT_REG_FAULT 0x0D
 #define BAT_REG_SAFETY_TIMER 0x17
 #define BAT_REG_CHARGE_CONTROL 0x04
+#define BAT_REG_CHARGE_V_REG 0x07
 #define BAT_REG_FET_CONTROL 0x0A
 
 static lbm_value ext_bat_vsysmin(lbm_value *args, lbm_uint argn) {
@@ -1163,7 +1153,9 @@ static lbm_value ext_bat_vsysmin(lbm_value *args, lbm_uint argn) {
 		if (argn == 1  && lbm_is_number(args[0])) {
 			vsysmin = (uint8_t)(lbm_dec_as_u32(args[0]) & 7);
 			config = (config & ~(7 << 1)) | (vsysmin << 1);
-			i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work ?
+			if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config) != ESP_OK) {
+				return ENC_SYM_NIL;
+			}
 		}
 
 		return lbm_enc_u((uint32_t)vsysmin);
@@ -1171,11 +1163,27 @@ static lbm_value ext_bat_vsysmin(lbm_value *args, lbm_uint argn) {
 	return ENC_SYM_TERROR;
 }
 
+static bool bat_init_success = false; // NOTE: For debugging purposes
 void bat_init(void) {
+	bat_init_success = true;
+
 	uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
 	config = config & ~(3 << 4); //Clear charge mode.
 	config = config | (1 << 4); // Enable charge
-	i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work?
+	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config) != ESP_OK) {
+		bat_init_success = false;
+	}
+
+	uint8_t fet = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL);
+	fet = fet & ~(1 << 5); //CLEAR, FET ON
+	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL, fet) != ESP_OK) {
+		bat_init_success = false;
+	}
+
+	uint8_t charge_voltage = 0x8C; // Set charger voltage to 4.1V (~90% SOC)
+	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_V_REG, charge_voltage) != ESP_OK) {
+		bat_init_success = false;
+	}
 }
 
 static lbm_value ext_bat_set_charge(lbm_value *args, lbm_uint argn) {
@@ -1188,7 +1196,9 @@ static lbm_value ext_bat_set_charge(lbm_value *args, lbm_uint argn) {
 		if (!lbm_is_symbol_nil(args[0])) {
 			config = config | (1 << 4); // Enable charge
 		}
-		i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work?
+		if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config) != ESP_OK) {
+			return ENC_SYM_NIL;
+		}
 		res = ENC_SYM_TRUE;
 	}
 	return res;
@@ -1204,7 +1214,9 @@ static lbm_value ext_bat_set_fet(lbm_value *args, lbm_uint argn) {
 		if (lbm_is_symbol_nil(args[0])) {
 			fet = fet | (1 << 5); // FORCE FET OFF
 		}
-		i2c_write_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL, fet); // what if this doesnt work?
+		if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL, fet) != ESP_OK) {
+			return ENC_SYM_NIL;
+		}
 		res = ENC_SYM_TRUE;
 	}
 	return res;
@@ -1581,11 +1593,15 @@ static lbm_value ext_hibernate_now(lbm_value *args, lbm_uint argn) {
 
 	uint8_t config = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL);
 	config = config & ~(3 << 4); // Charge disabled
-	i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config); // what if this doesnt work?
+	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_CONTROL, config) != ESP_OK) {
+		return ENC_SYM_NIL;
+	}
 
 	uint8_t fet = i2c_read_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL);
-	fet = fet & ~(1 << 5); // Force BATFET off
-	i2c_write_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL, fet); // what if this doesnt work?
+	fet = fet | (1 << 5); // Force BATFET off
+	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_FET_CONTROL, fet) != ESP_OK) {
+		return ENC_SYM_NIL;
+	}
 
 	return ENC_SYM_TRUE;
 }
@@ -1802,6 +1818,18 @@ static void load_extensions(void) {
 void hw_init(void) {
 	i2c_mutex = xSemaphoreCreateMutex();
 
+	i2c_config_t conf = {
+			.mode = I2C_MODE_MASTER,
+			.sda_io_num = I2C_SDA,
+			.scl_io_num = I2C_SCL,
+			.sda_pullup_en = GPIO_PULLUP_ENABLE,
+			.scl_pullup_en = GPIO_PULLUP_ENABLE,
+			.master.clk_speed = 100000,
+	};
+	i2c_param_config(0, &conf);
+	i2c_driver_install(0, conf.mode, 0, 0, 0);
+
 	bat_init();
+
 	lispif_add_ext_load_callback(load_extensions);
 }
