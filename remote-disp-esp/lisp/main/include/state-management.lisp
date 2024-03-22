@@ -185,13 +185,15 @@
     })
 )
 
-; TODO: fix this
+; Put ESP32 into sleep mode and configure electronics to
+; conserve energy.
 (defun enter-sleep () {
     (print "entering sleep...")
     (def draw-enabled false)
-    (disp-clear) ; Should I clean up old buffers here?
-    ; (loopwhile (!= btn-down 0) (sleep 0.1))
-    (go-to-sleep -1)
+    (disp-clear)
+
+    ; Go to sleep and wake up in 6 hours
+    (go-to-sleep (* (* 6 60) 60))
 })
 
 ;;;; Lower-level functions

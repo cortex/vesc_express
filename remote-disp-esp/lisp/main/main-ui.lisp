@@ -6,158 +6,60 @@
     (if (main-init-done) (def initializing false))
 })
 
+; remote v3
 (init-hw)
 
-; remote v3
+; Turn Display Backlight OFF immediately
 (gpio-configure 3 'pin-mode-out)
 (gpio-write 3 1)
-; disp size (total): 240x320 (TODO: Might not be correct.)
-(disp-load-st7789 6 5 7 8 0 40) ; sd0 clk cs reset dc mhz
-(disp-reset)
-(ext-disp-orientation 0)
-(disp-clear)
-
-(gpio-write 3 0) ; enable display backlight (active when low)
 
 @const-start
+
+(def version-str "v0.2")
 
 ;;; Dev flags
 (import "../dev-flags.lisp" 'code-dev-flags)
 (read-eval-program code-dev-flags)
 
-;;; Check and render remote low battery screen
+;;; Startup Animation
+(import "include/views/boot-animation.lisp" code-boot-animation)
+(read-eval-program code-boot-animation)
 
-(defun get-remote-soc () {
-    (var clamp01 (lambda (v) (cond
-        ((< v 0.0) 0.0)
-        ((> v 1.0) 1.0)
-        (t v)
-    )))
-    (var map-range-01 (lambda (v min max)
-        (clamp01 (/ (- (to-float v) min) (- max min)))
-    ))
+;;; Utilities
+(import "include/draw-utils.lisp" code-draw-utils)
+(read-eval-program code-draw-utils)
+(import "include/utils.lisp" code-utils)
+(read-eval-program code-utils)
+(import "include/startup-utils.lisp" code-startup-utils)
+(read-eval-program code-startup-utils)
 
-    (if (not-eq dev-soc-remote nil)
-        dev-soc-remote
-        (map-range-01 (vib-vmon) 3.4 4.2)
-    )
-})
+;;; Colors
+(import "include/theme.lisp" code-theme)
+(read-eval-program code-theme)
 
+;;; Low Battery View
+(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
+(read-eval-program code-view-low-battery)
 (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
 
-{
-    (if (and (<= (get-remote-soc) 0.05) (not dev-disable-low-battery-msg)) { ; 5%
-        (print "low battery!")
+@const-end
 
-        (import "include/draw-utils.lisp" code-draw-utils)
-        (read-eval-program code-draw-utils)
-        (def view-icon-buf (create-sbuf 'indexed4 50 59 141 142))
-        (def view-text-buf (create-sbuf 'indexed4 (- 120 100) 210 200 55))
-
-        ; Red Circle
-        (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(thickness 16)))
-
-        ; Battery outline
-        (sbuf-exec img-rectangle view-icon-buf 47 42 (46 60 2 '(filled) '(rounded 4)))
-        (sbuf-exec img-rectangle view-icon-buf 53 (+ 42 6) ((- 46 12) (- 60 12) 0 '(filled)))
-
-        ; Battery nub
-        (sbuf-exec img-rectangle view-icon-buf (+ 13 47) 32 (20 7 2 '(filled)))
-
-        ; Battery center
-        (sbuf-exec img-rectangle view-icon-buf (- 70 13) 87 (26 5 2 '(filled)))
-
-        ; Static Text
-        (var text (img-buffer-from-bin text-remote-battery-low))
-        (sbuf-blit view-text-buf text (/ (- 200 (ix (img-dims text) 0)) 2) 0 ())
-
-        (sbuf-render-changes view-icon-buf (list
-            0x000000
-            0xe23a26
-            0xffffff
-        ))
-
-        (sbuf-render-changes view-text-buf (list 0x000000 0x4f514f 0x929491 0xffffff))
-
-        (sleep 10)
-        (print "entering sleep (low power)...")
-        (disp-clear)
-        (go-to-sleep -1)
-    })
-}
-
-(def version-str "v0.1")
-
-; parse string containing unsigned binary integer
-(def ascii-0 48)
-(def ascii-1 49)
-(defun parse-bin (bin-str) {
-    (var bin-str (str-replace bin-str "0b" ""))
-    (var bits (str-len bin-str))
-    (foldl
-        (fn (init char-pair)
-            (bitwise-or init (shl (if (= (first char-pair) ascii-1) 1 0) (rest char-pair)))
-
-        )
-        0
-        (map (fn (i)
-            (cons (bufget-u8 bin-str i) (- bits i 1))
-        ) (range bits))
-    )
-})
-
-(import "include/vib-reg.lisp" 'code-vib-reg)
-(read-eval-program code-vib-reg)
-
-{
-    ; (def cal-result (vib-cal))
-    ; (print (to-str "calibration result:" cal-result))
-
-    ; intersting bits are 6-4 and 3-2 (brake factor and loop gain)
-    (var reg-feedback-control (bitwise-or
-        (bitwise-and
-            169
-            ; (ix cal-result 0)
-            (parse-bin (str-merge "1" "000" "00" "11"))
-        )
-        (parse-bin (str-merge "0" "000" "11" "00"))
-        ; (parse-bin (str-merge "0" "010" "10" "00"))
-    ))
-    (var arg1 reg-feedback-control)
-    ; (var arg2 (ix cal-result 1))
-    ; (var arg3 (ix cal-result 2))
-    (var arg2 13)
-    (var arg3 100)
-    (print arg1 arg2 arg3)
-    ; (vib-cal-set arg1 arg2 arg3)
-    ; (vib-cal-set reg-feedback-control (ix cal-result 1) (ix cal-result 2))
-    ; (vib-cal-set reg-feedback-control 13 100)
-}
+(check-wake-cause-on-boot)
+(display-init)
+(vibration-init)
+(check-battery-on-boot)
+(boot-animation)
 
 @const-start
 
-
-; these don't seem to make any noticeable difference...
-; (vib-i2c-write (vib-get-reg 'reg-control1)
-;     (bitwise-or
-;         (parse-bin "0b10000000")
-;         (vib-i2c-read (vib-get-reg 'reg-control1))
-;     )
-; )
-; (vib-i2c-write (vib-get-reg 'reg-control2)
-;     (bitwise-and
-;         (parse-bin "0b10111111")
-;         (vib-i2c-read (vib-get-reg 'reg-control2))
-;     )
-; )
+;;; Vibration
+(import "include/vib-reg.lisp" 'code-vib-reg)
+(read-eval-program code-vib-reg)
 
 ;;; Included files
 
-(import "include/utils.lisp" code-utils)
-(import "include/draw-utils.lisp" code-draw-utils)
 (import "include/views.lisp" code-views)
 (import "include/ui-tick.lisp" code-ui-tick)
-(import "include/theme.lisp" code-theme)
 (import "include/ui-state.lisp" code-ui-state)
 (import "include/state-management.lisp" code-state-management)
 (import "include/connection.lisp" code-connection)
@@ -168,7 +70,6 @@
 (import "include/views/view-thr-activation.lisp" 'code-view-thr-activation)
 (import "include/views/view-board-info.lisp" 'code-view-board-info)
 (import "include/views/view-charging.lisp" 'code-view-charging)
-(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
 (import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
@@ -214,7 +115,6 @@
 (import "../assets/texts/bin/connection-lost.bin" 'text-connection-lost)
 
 (import "../assets/texts/bin/percent.bin" 'text-percent)
-; remote-battery-low.bin was moved to top
 
 ;;; Fonts
 
@@ -224,24 +124,23 @@
 (import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)
 (import "../assets/fonts/bin/UbuntuMono14x22x1.0.bin" 'font-ubuntu-mono-22h)
 
-;;; Colors
-
-(read-eval-program code-theme)
-
-;;; Utilities
-
-(read-eval-program code-utils)
-(read-eval-program code-draw-utils)
-
 ;;; Connection and input
 
 (read-eval-program code-connection)
 (read-eval-program code-input)
 
-;;; Startup Animation
-(import "include/views/boot-animation.lisp" code-boot-animation)
-(read-eval-program code-boot-animation)
-(boot-animation)
+;;; State management
+
+(read-eval-program code-ui-state)
+(read-eval-program code-state-management)
+
+;;; Views
+
+(read-eval-program code-views)
+
+;;; Specific view state management
+
+(read-eval-program code-ui-tick)
 
 @const-end
 
@@ -296,6 +195,9 @@
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)
 
+; The last voltage captured while checking the remote battery.
+(def remote-batt-v (vib-vmon))
+
 ; Timestamp of the last tick where the left or right buttons where pressed
 (def main-left-held-last-time 0)
 (def main-right-held-last-time 0)
@@ -314,82 +216,9 @@
 ; Whether or not the screen is currently enabled.
 (def draw-enabled true)
 
-;;; GUI dimensions
-
-; how far the area of the screen used by the gui is inset (see 'Masked Area' vs
-; 'Actual Display' in the figma design document)
-(def screen-inset-x 2)
-(def screen-inset-y 9)
-
-(def bevel-medium 15)
-(def bevel-small 13)
-
-
 ;;; Specific UI components
 
-@const-end
-
 (def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
-
-@const-start
-
-; Updates and renders the small battery at the top of the screen.
-; Charge is from 0.0 to 1.0
-(defun render-status-battery (charge) {
-    (if (state-get 'soc-bar-visible) {
-        (sbuf-exec img-rectangle small-battery-buf 0 0 (26 16 1 '(thickness 2)))
-        (sbuf-exec img-rectangle small-battery-buf 28 5 (2 6 1 '(filled)))
-
-        (sbuf-exec img-rectangle small-battery-buf 4 4 ((* 19 charge) 9 2 '(filled)))
-    } {
-        (sbuf-clear small-battery-buf)
-    })
-
-    (sbuf-render small-battery-buf (list
-        0x0
-        0x6a6a6a
-        (if (< charge 0.15) 0xff0000 0xffffff)
-        0x0000ff
-    ))
-})
-
-; Quick and dirty debug function.
-(defun render-is-connected (is-connected) {
-    (var connected-buf (create-sbuf 'indexed4 20 30 24 23))
-    (var connected-icon (img-buffer-from-bin icon-pair-inverted))
-    (img-clear (sbuf-img connected-buf) 3)
-    (sbuf-blit connected-buf connected-icon 0 0 ())
-
-    (var status-buf (create-sbuf 'indexed4 48 34 24 18))
-    (var status-icon (img-buffer-from-bin (if is-connected
-        icon-check-mark-inverted
-        icon-failed-inverted
-    )))
-    (img-clear (sbuf-img status-buf) 3)
-    (sbuf-blit status-buf status-icon 0 0 ())
-
-    ; These would draw outside the bounds of the new display!
-    ; (sbuf-render connected-buf (list col-fg 0 0 col-bg))
-    ; (sbuf-render status-buf (list
-    ;     (if is-connected col-accent col-error)
-    ;     0
-    ;     0
-    ;     col-bg
-    ; ))
-})
-
-;;; State management
-
-(read-eval-program code-ui-state)
-(read-eval-program code-state-management)
-
-;;; Views
-
-(read-eval-program code-views)
-
-;;; Specific view state management
-
-(read-eval-program code-ui-tick)
 
 (def m-connection-tick-ms 0.0)
 ; Communication
@@ -496,6 +325,17 @@
 
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
+
+        ; If we reach 3.2V (0% SOC) the remote must power down
+        (if (<= remote-batt-v 3.2) {
+            (print "Remote battery too low for operation!")
+            (print "Foced Shutdown Event @ 0%")
+
+            ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
+            (hibernate-now)
+            (render-low-battery)
+            (sleep 8)
+        })
 
         (if dev-bind-soc-bms-to-thr
             (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))

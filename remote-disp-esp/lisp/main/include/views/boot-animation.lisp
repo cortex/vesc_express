@@ -39,8 +39,8 @@
     (var animation-percent 0.0)
 
     ; Watch Sunrise
-    (def last-frame-time (systime))
-    (def fps-boot 1)
+    (var last-frame-time (systime))
+    (var fps-boot 0.0)
     (loopwhile (< elapsed animation-time) {
         ; Update Animation Time
         (setq elapsed (secs-since start))
@@ -86,12 +86,10 @@
         (sbuf-clear rising-sun-buf)
 
         (var smoothing 0.1) ; lower is smoother
-        (def fps-boot (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps-boot (- 1.0 smoothing))))
-        (def last-frame-time (systime))
+        (setq fps-boot (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps-boot (- 1.0 smoothing))))
+        (setq last-frame-time (systime))
     })
     (print (str-merge "FPS Boot: " (to-str fps-boot)))
-    (def last-frame-time nil)
-    (def fps-boot nil)
 
     (setq start (systime))
     (setq elapsed (secs-since start))
@@ -147,7 +145,7 @@
     (var x (/ (- screen-w w) 2))
     (var version-buf (img-buffer 'indexed2 w 16))
     (img-text version-buf 0 0 1 0 font-b3 version-str)
-    (disp-render version-buf x 250 (list 0x0 0x676767))
+    (disp-render version-buf x 265 (list 0x0 0x676767))
 
     (setq rising-sun-buf nil)
     (gc)

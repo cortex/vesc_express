@@ -178,7 +178,7 @@
     (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 })
 
-(def input-debounce-count 1) ; How many ticks buttons need to be pressed to register.
+(def input-debounce-count 2) ; How many ticks buttons need to be pressed to register.
 
 @const-end
 (def adc-buf '(0 0 0))
