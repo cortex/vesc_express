@@ -155,8 +155,8 @@
     (if (and
         (not-eq soc-bms-last 'reset)
         (not-eq
-            (>= soc-bms 0.5)
-            (>= soc-bms-last 0.5)
+            (>= soc-bms 0.55)
+            (>= soc-bms-last 0.55)
         )
         (<= (abs (- soc-bms soc-bms-last)) 0.15)
     ) {
