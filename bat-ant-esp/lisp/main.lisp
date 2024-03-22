@@ -16,7 +16,7 @@
 
 (def zero-rx-rime (systime))
 
-(def throttle-rx-timestamp (- (systime) 100))
+(def throttle-rx-timestamp (- (systime) 20000))
 (def log-running nil)
 
 (loopwhile-thd 100 t {
