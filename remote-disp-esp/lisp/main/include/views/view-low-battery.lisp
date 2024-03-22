@@ -1,10 +1,11 @@
 ;;; low-battery
 
 (defun view-is-visible-low-battery () 
-    (and
-        (<= (state-get 'soc-remote) 0.05)
-        (not dev-disable-low-battery-msg)
-    )
+    false ; Not displayed automatically
+    ; (and
+    ;     (<= (state-get 'soc-remote) 0.05)
+    ;     (not dev-disable-low-battery-msg)
+    ; )
 )
 
 (defun view-init-low-battery () {
