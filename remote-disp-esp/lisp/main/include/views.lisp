@@ -6,7 +6,7 @@
     (cons 'main (list
         ;(cons 'up (if dev-enable-connection-dbg-menu cycle-main-dbg-menu))
         ;(cons 'up-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
-        (cons 'up-long cycle-battery)
+        (cons 'up-long show-select-battery)
         (cons 'down try-activate-thr)
         (cons 'down-long enter-sleep)
 
@@ -47,7 +47,7 @@
     ))
 
     (cons 'thr-activation (list
-        (cons 'up nil)
+        (cons 'up-long show-select-battery)
         (cons 'down try-activate-thr)
         (cons 'down-long enter-sleep)
         (cons 'left nil)
@@ -72,10 +72,10 @@
     ))
 
     (cons 'charging (list
-        (cons 'up nil)
+        (cons 'up-long show-select-battery)
         (cons 'down nil)
         (cons 'down-long enter-sleep)
-        (cons 'left cycle-battery)
+        (cons 'left nil)
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
     ))
@@ -107,7 +107,7 @@
     ))
 
     (cons 'conn-lost (list
-        (cons 'up cycle-battery)
+        (cons 'up-long show-select-battery)
 ;        (cons 'down nil)
         (cons 'down nil)
 
@@ -120,8 +120,8 @@
         (cons 'up exit-set-batt)
         (cons 'down exit-set-batt)
         (cons 'down-long exit-set-batt)
-        (cons 'left cycle-battery)
-        (cons 'right cycle-battery-rev)
+        (cons 'left next-battery)
+        (cons 'right prev-battery)
         ; (cons 'left-long enter-sleep)
     ))
 ))
