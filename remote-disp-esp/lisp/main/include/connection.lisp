@@ -196,6 +196,12 @@
         
         ; normal communication
         (def thr (thr-apply-gear thr-input))
+
+        ; Check for a very inactive remote (1 Hour)
+        (if (and (> (secs-since last-input-time) 3600.0) (not dev-disable-inactivity-check)) {
+            (print "Remote inactive for 1 hour. Going to sleep")
+            (enter-sleep)
+        })
         
         (if (and (> (secs-since last-input-time) 30.0) (not dev-disable-inactivity-check)) {
                 (set-thr-is-active false)

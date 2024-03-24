@@ -178,10 +178,10 @@
     (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 })
 
-(def input-debounce-count 1) ; How many ticks buttons need to be pressed to register.
+(def input-debounce-count 2) ; How many ticks buttons need to be pressed to register.
 
 @const-end
-(def adc-buf '(0 0 0))
+(def adc-buf '(0 0 0 0 0))
 (def adc-buf-idx 0)
 @const-start
 
@@ -189,8 +189,8 @@
 
     ; Median filter for get-adc
     (setix adc-buf adc-buf-idx (get-adc 0))
-    (setq adc-buf-idx (mod (+ adc-buf-idx 1) 3))
-    (def btn-adc (ix (sort < adc-buf) 1))
+    (setq adc-buf-idx (mod (+ adc-buf-idx 1) 5))
+    (def btn-adc (ix (sort < adc-buf) 2))
 
     ; Buttons with counters for debouncing
     (if (< btn-adc 4.0) {

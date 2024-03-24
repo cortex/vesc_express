@@ -59,6 +59,7 @@
             (i-vesc (+ i-in i-in-m2))
             (corr (if (> i-vesc 1.0) (/ i-bms i-vesc) 0.0)) ; Correction factor based on BMS current
             (iq-tot (+ iq iq-m2))
+            ; TODO: Use (get-est-lambda)
             (fluxl (* (conf-get 'foc-motor-flux-linkage) 1.0e-3))
         ) (* iq-tot corr fluxl gearing 2.0 1.5)
 ))

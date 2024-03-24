@@ -141,6 +141,37 @@
     (list font-x (+ font-x (* font-w (str-len text))))
 })
 
+(defun draw-text-aa-centered (sbuf x y container-w margin-left margin-right max-characters font colors text) {
+    (var container-w (if (!= container-w -1)
+        container-w
+        (- (ix (sbuf-dims sbuf) 0) x)
+    ))
+
+    (var font-w (bufget-u8 font 0))
+    (var font-h (bufget-u8 font 1))
+
+    ; clear old text
+    (if (!= max-characters -1) {
+        (var clear-w (+ (* font-w max-characters) margin-left margin-right))
+        (var clear-x (+ x (- (/ container-w 2) (/ clear-w 2))))
+        (sbuf-exec img-rectangle sbuf clear-x y (clear-w font-h (first colors) '(filled)))
+    })
+
+    ; draw text
+    (var font-x
+        (+
+            (-
+                (+ x (- (/ container-w 2) (/ (* font-w (str-len text)) 2)))
+                (/ margin-right 2)
+            )
+            (/ margin-left 2)
+        )
+    )
+    (sbuf-exec img-text sbuf font-x y (colors font text))
+
+    (list font-x (+ font-x (* font-w (str-len text))))
+})
+
 ; Like draw-text-centered, but the text is aligned to the right edge of the container.
 ; the x and y coordinates specify the upper *right* corner of the container.
 (defun draw-text-right-aligned (sbuf x y margin-left margin-right max-characters font fg bg text) {
