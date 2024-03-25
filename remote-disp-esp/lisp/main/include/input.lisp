@@ -198,17 +198,17 @@
         (var new-down false)
         (var new-left false)
         (var new-right false)
-        (if (and (> btn-adc 0.9) (< btn-adc 1.1))
+        (if (and (> btn-adc 0.8) (< btn-adc 1.1))
             (set 'new-left t)
         )
-        (if (and (> btn-adc 1.65) (< btn-adc 1.85))
+        (if (and (> btn-adc 1.6) (< btn-adc 1.8))
             (set 'new-down t)
         )
 
-        (if (and (> btn-adc 2.15) (< btn-adc 2.25))
+        (if (and (> btn-adc 2.1) (< btn-adc 2.3))
             (set 'new-right t)
         )
-        (if (and (> btn-adc 2.58) (< btn-adc 2.67)) {
+        (if (and (> btn-adc 2.55) (< btn-adc 2.7)) {
             (set 'new-up t)
         })
 
