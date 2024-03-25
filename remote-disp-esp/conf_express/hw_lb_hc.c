@@ -1542,10 +1542,6 @@ static lbm_value ext_vib_i2c_write(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_go_to_sleep(lbm_value *args, lbm_uint argn) {
 	LBM_CHECK_ARGN_NUMBER(1);
 
-	//disp_clear();
-	//	disp_command(0x10, 0, 0);
-	// TODO: Switch off display voltage rails here on next hw
-
 	als31300_sleep(I2C_ADDR_MAG1, 1);
 	als31300_sleep(I2C_ADDR_MAG2, 1);
 	als31300_sleep(I2C_ADDR_MAG3, 1);
@@ -1823,7 +1819,7 @@ static void load_extensions(void) {
 	lispif_load_disp_extensions();
 }
 
-void hw_init(void) {
+static void i2c_init(void) {
 	i2c_mutex = xSemaphoreCreateMutex();
 
 	i2c_config_t conf = {
@@ -1836,6 +1832,13 @@ void hw_init(void) {
 	};
 	i2c_param_config(0, &conf);
 	i2c_driver_install(0, conf.mode, 0, 0, 0);
+}
+
+void hw_init(void) {
+	gpio_set_direction(GPIO_DISP_BACKLIGHT, GPIO_MODE_OUTPUT);
+	gpio_set_level(GPIO_DISP_BACKLIGHT, 1); // Active Low
+
+	i2c_init();
 
 	bat_init();
 

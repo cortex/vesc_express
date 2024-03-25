@@ -20,11 +20,10 @@
 #ifndef MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
 #define MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
 
-/*
- * TODO hw V3
- * - GPIO2 high at boot
- * - Display sleep power (test SLPIN cmd)
- */
+#define LB_HW_REV_A 1
+#define LB_HW_REV_B 2
+
+#define LB_HW_VERSION LB_HW_REV_A
 
 #define HW_INIT_HOOK()				hw_init()
 #define HW_EARLY_LBM_INIT
@@ -33,7 +32,25 @@
 #include <math.h>
 #include <stdint.h>
 
-#define HW_NAME						"LB HC V3"
+#if LB_HW_VERSION == LB_HW_REV_A
+    #define HW_NAME                 "LB HC V3"
+    // BUTTONS
+    #define HW_ADC_CH0              ADC1_CHANNEL_2
+    // IO
+    #define GPIO_BUTTON             GPIO_NUM_2
+    // NEAR FIELD
+    #define GPIO_NF_TX_EN           GPIO_NUM_1
+#elif LB_HW_VERSION == LB_HW_REV_B
+    #define HW_NAME                 "LB HC REVB"
+    // BUTTONS
+    #define HW_ADC_CH0              ADC1_CHANNEL_1
+    // IO
+    #define GPIO_BUTTON             GPIO_NUM_1
+    // NEAR FIELD
+    #define GPIO_NF_TX_EN           GPIO_NUM_2
+#else
+    #error "Invalid hardware version."
+#endif
 
 // I2C bus
 #define HW_OVERRIDE_UART
@@ -50,15 +67,13 @@
 #define I2C_ADDR_PN532				0x24
 #define I2C_ADDR_BME280				0x76
 
+// BACKLIGHT
+#define GPIO_DISP_BACKLIGHT         GPIO_NUM_3
+
 // BUTTONS
 #define HW_HAS_ADC
-#define HW_ADC_CH0					ADC1_CHANNEL_2
-
-// IO
-#define GPIO_BUTTON					GPIO_NUM_2
 
 // NEAR FIELD
-#define GPIO_NF_TX_EN				GPIO_NUM_1
 #define GPIO_NF_SW_EN				GPIO_NUM_4
 #define GPIO_NF_SW_A				GPIO_NUM_10
 
