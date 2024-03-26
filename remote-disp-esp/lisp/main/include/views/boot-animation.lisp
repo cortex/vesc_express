@@ -1,7 +1,7 @@
 ;;; Boot Animation V2
 
 (defun compute-shades (time num-shades) {
-    (var initial-value 3.9) ; NOTE: Setting 3.9 for rounding to int while drawing
+    (var initial-value 4.9) ; NOTE: Setting 4.9 for rounding to int while drawing
     (var new-list nil)
     (var i 0)
     (var previous-value initial-value)
@@ -19,6 +19,7 @@
 (defun boot-animation ()
 {
     ; debugging: (var debug-first-compute true)
+    ; debugging: (var debug-stop-now false)
 
     (var sun-start-y 140)
     (var sun-end-y 70)
@@ -28,13 +29,13 @@
     (var sun-lower-shade-start-y 75)
     (var sun-lower-shade-y 75)
 
-    (var shade-count-sun 23)
-    (var shade-y-centers (list 3 9 15 21 27 33 39 45 51 57 63 69 75 81 87 93 99 105 111 117 123 129 135 141))
-    (var shade-heights (list 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3))
+    (var shade-count-sun 24)
+    (var shade-y-centers (list 3 9 15 21 27 33 39 45 51 57 63 69 75 81 87 93 99 105 111 117 123 129 135 141 143))
+    (var shade-heights (list 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4))
 
     (var shade-count-logo 4)
     (var logo-shade-y-centers (list 60 66 72 78))
-    (var logo-shade-heights (list 3 3 3 3))
+    (var logo-shade-heights (list 4 4 4 4))
 
     (var rising-sun-buf (create-sbuf 'indexed2 50 59 141 142))
 
@@ -43,10 +44,12 @@
     (var start (systime))
     (var elapsed (secs-since start))
 
-    (var animation-time 3.0)
+    (var animation-time 3.5)
     (var animation-percent 0.0)
-    (var sun-rise-time 1.5)
+    (var sun-rise-time 1.25)
     (var sun-rise-percent 0.0)
+    (var sun-rise-stop (/ sun-rise-time animation-time))
+    (var sun-rise-remains (- 1.0 (/ sun-rise-time animation-time)))
 
     ; Watch Sunrise
     (var last-frame-time (systime))
@@ -64,33 +67,42 @@
         (sbuf-exec img-circle rising-sun-buf 70 sun-height-offset (70 1 '(filled)))
 
         ; Draw the logo over the sun at the end of the animation
-        (if (> animation-percent 0.5) {
+        (if (> animation-percent sun-rise-stop) {
             ; Draw logo on sun
             (sbuf-blit rising-sun-buf logo 12 61 -1)
-            (sbuf-exec img-rectangle rising-sun-buf 0 69 (142 3 0 '(filled)))
 
             ; Logo has 4 shades matching the color of the sun
             (var i 0)
-            (loopwhile (< i 4) {
+            (loopwhile (< i shade-count-logo) {
                 (sbuf-exec img-rectangle rising-sun-buf
-                    0
-                    (+ (ix logo-shade-y-centers i) (- 3.9 (ix logo-shade-heights i))) ; adjusting y for effect
-                    (142 (ix logo-shade-heights i) 1 '(filled)))
+                    5
+                    (+ (ix logo-shade-y-centers i) (- 4.9 (ix logo-shade-heights i))) ; adjusting y for effect
+                    (130 (ix logo-shade-heights i) 1 '(filled)))
                 (+set i 1)
             })
 
+            ; Adjust logo shades
+            (if (< animation-percent 0.55)
+                ;(setq logo-shade-heights (compute-shades (ease-in-quad (map-range-01 animation-percent sun-rise-stop 0.50)) shade-count-logo))
+            )
             ; Adjust logo shades (slightly later than showing the logo)
-            (if (< animation-percent 0.7) {
-                (setq logo-shade-heights (compute-shades (ease-in-out-quart (map-range-01 animation-percent 0.6 0.7)) shade-count-logo))
+            (if (and
+                (< animation-percent 0.6)
+                (> animation-percent 0.5)
+            ) {
+                (setq logo-shade-heights (compute-shades (ease-in-quad (map-range-01 animation-percent 0.5 0.6)) shade-count-logo))
             })
+
+            ; Draw line through logo
+            (sbuf-exec img-rectangle rising-sun-buf 0 69 (142 3 0 '(filled)))
         })
 
         ; Draw shades over the sun
         (var i 0)
-        (loopwhile (< i 23) {
+        (loopwhile (< i shade-count-sun) {
             (sbuf-exec img-rectangle rising-sun-buf
                 0
-                (+ (ix shade-y-centers i) (- 3.9 (ix shade-heights i))) ; adjusting y for falling effect
+                (+ (ix shade-y-centers i) (- 4.9 (ix shade-heights i))) ; adjusting y for falling effect
                 (142 (ix shade-heights i) 0 '(filled)))
             (+set i 1)
         })
@@ -98,12 +110,12 @@
         ; Reveal lower half of sun at the start of sun-rise-time
         (if (< sun-rise-percent 0.75) {
             (sbuf-exec img-rectangle rising-sun-buf 0 sun-lower-shade-y (142 100 0 '(filled)))
-            (setq sun-lower-shade-y (+ sun-lower-shade-start-y (* (ease-in-out-quart sun-rise-percent) 142)))
+            (setq sun-lower-shade-y (+ sun-lower-shade-start-y (* (ease-out-sine sun-rise-percent) 142)))
         })
 
-        ; Close the blinds for the second half of the animation
-        (if (>= animation-percent 0.5) {
-            (setq shade-heights (compute-shades (ease-in-out-quart (* (- animation-percent 0.5) 2)) shade-count-sun))
+        ; Open the blinds after sunrise
+        (if (eq sun-rise-percent 1.0) {
+            (setq shade-heights (compute-shades (ease-in-cubic (map-range-01 (- animation-percent sun-rise-stop) 0.0 sun-rise-remains)) shade-count-sun))
 
             ;(if debug-first-compute {
             ;    (print shade-heights)
@@ -114,15 +126,22 @@
         ; Apply a gradient to the sun
         (sbuf-render rising-sun-buf (list
             0x000000
-            (img-color 'gradient_y 0xffa500 (lerp-color 0xbd1000 0xffa500 sun-rise-percent) 142 0)
+            (if (= sun-rise-percent 1.0) {
+                0xffa500
+            }{
+                (img-color 'gradient_y 0xffa500 (lerp-color 0xbd1000 0xffa500 (ease-in-cubic sun-rise-percent)) 142 0)
+            })
             ; debugging: 0xff0000
             ; debugging: 0x00ff00
         ))
 
         ; debugging: (if (> animation-percent 0.6) die)
+        ; debugging: (if (eq debug-stop-now true) debug-now )
 
         ; Sun height
-        (setq sun-height-offset (- sun-start-y (* (ease-in-out-quart sun-rise-percent) (- sun-start-y sun-end-y))))
+        (if (not-eq sun-height-offset sun-end-y)
+            (setq sun-height-offset (- sun-start-y (* (ease-out-sine sun-rise-percent) (- sun-start-y sun-end-y))))
+        )
 
         ; Repeat
         (sbuf-clear rising-sun-buf)
