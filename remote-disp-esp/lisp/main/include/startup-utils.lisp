@@ -13,10 +13,7 @@
     ; Check if the Timer woke the ESP32
     ;  < 5% User SOC = Hibernate
     ;  > 5% User SOC = Go back to sleep
-    ; NOTE: wake-cause returns 2 for Timer
-    ; NOTE: wake-cause returns 1 for GPIO
-    ; NOTE: wake-cause returns 0 for Everything Else
-    (if (= (wake-cause) 2) {
+    (if (eq (wake-cause) 'wake-timer) {
         (print "Exiting sleep from ESP Timer. Checking battery!")
 
         (var boot-voltage (vib-vmon))

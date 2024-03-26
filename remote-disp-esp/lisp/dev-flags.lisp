@@ -29,4 +29,4 @@
 (def dev-smooth-tick-ms true) ; Applies a smoothing filter to the tick interval measurements.
 (def dev-smoothing-factor 0.1) ; Lower values result in more smoothing.
 
-(def dev-fast-start-animation true) ; Reduce the time to wait for the startup animation.
+(def dev-fast-start-animation false) ; Reduce animation duration to boot faster.

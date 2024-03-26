@@ -120,6 +120,10 @@ static lbm_uint symbol_trickle = 0;
 static lbm_uint symbol_constant_current = 0;
 static lbm_uint symbol_complete = 0;
 
+static lbm_uint symbol_wake_timer = 0;
+static lbm_uint symbol_wake_gpio = 0;
+static lbm_uint symbol_wake_other = 0;
+
 static bool register_symbols_hc(void) {
 	bool res = true;
 	
@@ -132,6 +136,10 @@ static bool register_symbols_hc(void) {
 	res = res && lbm_add_symbol_const("trickle", &symbol_trickle);
 	res = res && lbm_add_symbol_const("constant-current", &symbol_constant_current);
 	res = res && lbm_add_symbol_const("complete", &symbol_complete);
+
+	res = res && lbm_add_symbol_const("wake-timer", &symbol_wake_timer);
+	res = res && lbm_add_symbol_const("wake-gpio", &symbol_wake_gpio);
+	res = res && lbm_add_symbol_const("wake-other", &symbol_wake_other);
 
 	return res;
 }
@@ -1572,18 +1580,18 @@ static lbm_value ext_wake_cause(lbm_value *args, lbm_uint argn) {
 	wakeup_reason = esp_sleep_get_wakeup_cause();
 
 	switch(wakeup_reason) {
-        case ESP_SLEEP_WAKEUP_TIMER: {
-            r = lbm_enc_i(2);
-            break;
-        }
-        case ESP_SLEEP_WAKEUP_GPIO: {
-			r = lbm_enc_i(1);
+		case ESP_SLEEP_WAKEUP_TIMER: {
+			r = lbm_enc_sym(symbol_wake_timer);
 			break;
 		}
-        default:
-            r = lbm_enc_i(0);
-            break;
-    }
+		case ESP_SLEEP_WAKEUP_GPIO: {
+			r = lbm_enc_sym(symbol_wake_gpio);
+			break;
+		}
+		default:
+			r = lbm_enc_sym(symbol_wake_other);
+			break;
+	}
 
 	return r;
 }
