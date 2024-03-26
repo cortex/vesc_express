@@ -64,7 +64,7 @@
         (sbuf-exec img-circle rising-sun-buf 70 sun-height-offset (70 1 '(filled)))
 
         ; Draw the logo over the sun at the end of the animation
-        (if (> animation-percent 0.6) {
+        (if (> animation-percent 0.5) {
             ; Draw logo on sun
             (sbuf-blit rising-sun-buf logo 12 61 -1)
             (sbuf-exec img-rectangle rising-sun-buf 0 69 (142 3 0 '(filled)))
@@ -79,9 +79,9 @@
                 (+set i 1)
             })
 
-            ; Adjust logo shades
-            (if (< animation-percent 0.75) {
-                (setq logo-shade-heights (compute-shades (ease-in-out-quart (map-range-01 animation-percent 0.6 0.75)) shade-count-logo))
+            ; Adjust logo shades (slightly later than showing the logo)
+            (if (< animation-percent 0.7) {
+                (setq logo-shade-heights (compute-shades (ease-in-out-quart (map-range-01 animation-percent 0.6 0.7)) shade-count-logo))
             })
         })
 
