@@ -9,10 +9,6 @@
 ; remote v3
 (init-hw)
 
-; Turn Display Backlight OFF immediately
-(gpio-configure 3 'pin-mode-out)
-(gpio-write 3 1)
-
 @const-start
 
 (def version-str "v0.2")
