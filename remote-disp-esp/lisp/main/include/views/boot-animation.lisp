@@ -1,19 +1,47 @@
 ;;; Boot Animation V2
 
-(defun compute-shades (time num-shades) {
-    (var initial-value 4.9) ; NOTE: Setting 4.9 for rounding to int while drawing
-    (var new-list nil)
+(defun compute-start-times (num-shades) {
+    (var values (list))
     (var i 0)
-    (var previous-value initial-value)
+    (var increment (/ 0.48 num-shades)) ; NOTE: 0.48 is the last start time
     (loopwhile (< i num-shades) {
-        (var current-value (- previous-value (* (+ i initial-value) time)))
-        (setq previous-value current-value)
-        (setq current-value (if (< current-value 0) 0 current-value))
-        (setq new-list (append new-list (list current-value)))
+        (setq values (append values (list (* i increment))))
         (+set i 1)
     })
 
-    (reverse new-list)
+    values
+})
+
+(defun compute-shades (time num-shades start-times) {
+    (var initial-value 4.0)
+    (var values (list))
+    (var i 0)
+    (def close-duration 0.33) ; NOTE: 0.33 is the width of the applied computation
+
+    (loopwhile (< i num-shades) {
+        (if (>= time (ix start-times i)) {
+            ; This index needs to be decremented
+            (var elapsed (- time (ix start-times i)))
+            (if (> elapsed 0.0) {
+                ; Determine how far past the start time we are to scale the value
+                (var percent (/ close-duration elapsed))
+                (if (> percent 1.0) (setq percent 1.0))
+                (setq percent (ease-in-cubic percent)) ; NOTE: Heavily effects timing
+                ; Scale and set the current value
+                (var current-value (* initial-value percent))
+                (setq values (append values (list current-value)))
+            } {
+                ; Sometimes elapsed is 0.0 and we only need to add the initial value
+                (setq values (append values (list initial-value)))
+            })
+        } {
+            ; It is not time for this item, use initial value
+            (setq values (append values (list initial-value)))
+        })
+        (+set i 1)
+    })
+
+    values
 })
 
 (defun boot-animation ()
@@ -32,10 +60,17 @@
     (var shade-count-sun 24)
     (var shade-y-centers (list 3 9 15 21 27 33 39 45 51 57 63 69 75 81 87 93 99 105 111 117 123 129 135 141 143))
     (var shade-heights (list 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4))
+    (var shade-start-times (compute-start-times shade-count-sun))
 
     (var shade-count-logo 4)
     (var logo-shade-y-centers (list 60 66 72 78))
     (var logo-shade-heights (list 4 4 4 4))
+    (var logo-shade-start-times (list
+        (ix shade-start-times 10)
+        (ix shade-start-times 11)
+        (ix shade-start-times 12)
+        (ix shade-start-times 13)
+    ))
 
     (var rising-sun-buf (create-sbuf 'indexed2 50 59 141 142))
 
@@ -44,9 +79,9 @@
     (var start (systime))
     (var elapsed (secs-since start))
 
-    (var animation-time 3.5)
+    (var animation-time 3.0)
     (var animation-percent 0.0)
-    (var sun-rise-time 1.25)
+    (var sun-rise-time 1.0)
     (var sun-rise-percent 0.0)
     (var sun-rise-stop (/ sun-rise-time animation-time))
     (var sun-rise-remains (- 1.0 (/ sun-rise-time animation-time)))
@@ -76,22 +111,17 @@
             (loopwhile (< i shade-count-logo) {
                 (sbuf-exec img-rectangle rising-sun-buf
                     5
-                    (+ (ix logo-shade-y-centers i) (- 4.9 (ix logo-shade-heights i))) ; adjusting y for effect
+                    (+ (ix logo-shade-y-centers i) (- 4.0 (ix logo-shade-heights i))) ; adjusting y for effect
                     (130 (ix logo-shade-heights i) 1 '(filled)))
                 (+set i 1)
             })
 
             ; Adjust logo shades
-            (if (< animation-percent 0.55)
-                ;(setq logo-shade-heights (compute-shades (ease-in-quad (map-range-01 animation-percent sun-rise-stop 0.50)) shade-count-logo))
-            )
-            ; Adjust logo shades (slightly later than showing the logo)
-            (if (and
-                (< animation-percent 0.6)
-                (> animation-percent 0.5)
-            ) {
-                (setq logo-shade-heights (compute-shades (ease-in-quad (map-range-01 animation-percent 0.5 0.6)) shade-count-logo))
-            })
+            (setq logo-shade-heights (compute-shades
+                (map-range-01 animation-percent (- sun-rise-stop 0.2) 1.0)  ; NOTE: Manipulating sun-rise-stop for timing purposes
+                shade-count-logo
+                logo-shade-start-times
+            ))
 
             ; Draw line through logo
             (sbuf-exec img-rectangle rising-sun-buf 0 69 (142 3 0 '(filled)))
@@ -102,7 +132,7 @@
         (loopwhile (< i shade-count-sun) {
             (sbuf-exec img-rectangle rising-sun-buf
                 0
-                (+ (ix shade-y-centers i) (- 4.9 (ix shade-heights i))) ; adjusting y for falling effect
+                (+ (ix shade-y-centers i) (- 4.0 (ix shade-heights i))) ; adjusting y for falling effect
                 (142 (ix shade-heights i) 0 '(filled)))
             (+set i 1)
         })
@@ -115,7 +145,11 @@
 
         ; Open the blinds after sunrise
         (if (eq sun-rise-percent 1.0) {
-            (setq shade-heights (compute-shades (ease-in-cubic (map-range-01 (- animation-percent sun-rise-stop) 0.0 sun-rise-remains)) shade-count-sun))
+            (setq shade-heights (compute-shades
+                (map-range-01 animation-percent (- sun-rise-stop 0.2) 1.0) ; NOTE: Manipulating sun-rise-stop for timing purposes
+                shade-count-sun
+                shade-start-times
+            ))
 
             ;(if debug-first-compute {
             ;    (print shade-heights)
