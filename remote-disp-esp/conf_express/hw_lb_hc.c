@@ -47,6 +47,10 @@
 #include "bme280_if.h"
 #include "imu.h"
 
+#ifndef LB_HC_CONF_EXPRESS_VERION
+	// Check this version in LBM to validate compatibility
+	#define LB_HC_CONF_EXPRESS_VERION 2
+#endif
 
 // LBM Utilities
 
@@ -1753,8 +1757,16 @@ static lbm_value ext_i2c_tx_rx(lbm_value *args, lbm_uint argn) {
 	return lbm_enc_i(i2c_tx_rx(addr, txbuf, txlen, rxbuf, rxlen));
 }
 
+// Allow LBM script to query the version of this source code
+static lbm_value ext_conf_express_version(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_i(LB_HC_CONF_EXPRESS_VERION);
+}
+
 static void load_extensions(void) {
 	register_symbols_hc();
+
+	lbm_add_extension("conf-express-version", ext_conf_express_version);
 	
 	lbm_add_extension("mag-get-x", ext_mag_get_x);
 	lbm_add_extension("mag-get-y", ext_mag_get_y);
