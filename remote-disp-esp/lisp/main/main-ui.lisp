@@ -7,7 +7,7 @@
 })
 
 (defun version-check () {
-    (var compatible-version 2)
+    (var compatible-version 3)
     (if (!= (conf-express-version) compatible-version) {
         (loopwhile t {
             (print (str-merge
