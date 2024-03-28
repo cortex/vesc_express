@@ -79,9 +79,9 @@
     (var start (systime))
     (var elapsed (secs-since start))
 
-    (var animation-time 3.0)
+    (var animation-time 3.5)
     (var animation-percent 0.0)
-    (var sun-rise-time 1.0)
+    (var sun-rise-time 1.5)
     (var sun-rise-percent 0.0)
     (var sun-rise-stop (/ sun-rise-time animation-time))
     (var sun-rise-remains (- 1.0 (/ sun-rise-time animation-time)))
@@ -140,7 +140,7 @@
         ; Reveal lower half of sun at the start of sun-rise-time
         (if (< sun-rise-percent 0.75) {
             (sbuf-exec img-rectangle rising-sun-buf 0 sun-lower-shade-y (142 100 0 '(filled)))
-            (setq sun-lower-shade-y (+ sun-lower-shade-start-y (* (ease-out-sine sun-rise-percent) 142)))
+            (setq sun-lower-shade-y (+ sun-lower-shade-start-y (* (ease-in-out-sine sun-rise-percent) 142)))
         })
 
         ; Open the blinds after sunrise
@@ -174,7 +174,7 @@
 
         ; Sun height
         (if (not-eq sun-height-offset sun-end-y)
-            (setq sun-height-offset (- sun-start-y (* (ease-out-sine sun-rise-percent) (- sun-start-y sun-end-y))))
+            (setq sun-height-offset (- sun-start-y (* (ease-in-out-sine sun-rise-percent) (- sun-start-y sun-end-y))))
         )
 
         ; Repeat
@@ -182,6 +182,10 @@
 
         (var smoothing 0.1) ; lower is smoother
         (setq fps-boot (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps-boot (- 1.0 smoothing))))
+
+        (var secs (- 0.05 (secs-since last-frame-time))) ; 50 ms (20fps maximum)
+        (sleep (if (< secs 0.0) 0 secs))
+
         (setq last-frame-time (systime))
     })
     (print (str-merge "FPS Boot: " (to-str fps-boot)))
