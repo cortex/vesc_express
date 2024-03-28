@@ -458,6 +458,10 @@
     (/ (- 1 (cos (* pi x))) 2)
 )
 
+(defun ease-out-sine (x)
+    (sin (/ (* x pi) 2))
+)
+
 (defun ease-in-quad (x) 
     (* x x)
 )
