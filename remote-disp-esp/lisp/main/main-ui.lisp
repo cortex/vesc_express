@@ -28,7 +28,7 @@
 
 @const-start
 
-(def version-str "v0.3")
+(def version-str "v0.3.1")
 
 ;;; Dev flags
 (import "../dev-flags.lisp" 'code-dev-flags)
