@@ -6,12 +6,29 @@
     (if (main-init-done) (def initializing false))
 })
 
+(defun version-check () {
+    (var compatible-version 2)
+    (if (!= (conf-express-version) compatible-version) {
+        (loopwhile t {
+            (print (str-merge
+                "Version mismatch! VESC conf_express: "
+                (to-str (conf-express-version))
+                " LBM: "
+                (to-str compatible-version)
+            ))
+            (sleep 2.0)
+        })
+    })
+})
+
 ; remote v3
 (init-hw)
 
+(version-check)
+
 @const-start
 
-(def version-str "v0.2")
+(def version-str "v0.3")
 
 ;;; Dev flags
 (import "../dev-flags.lisp" 'code-dev-flags)
@@ -37,6 +54,10 @@
 (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
 (read-eval-program code-view-low-battery)
 (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+
+;;; Startup Animation
+(import "../assets/icons/bin/icon-lind-logo-inverted.bin" 'icon-lind-logo) ; size: 115x19
+(import "../assets/fonts/bin/B3.bin" 'font-b3)
 
 @const-end
 
@@ -76,7 +97,6 @@
 (import "../assets/icons/bin/icon-pair-inverted.bin" 'icon-pair-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-check-mark-inverted.bin" 'icon-check-mark-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-failed-inverted.bin" 'icon-failed-inverted) ; indexed4; bg: 3, fg: 0
-(import "../assets/icons/bin/icon-lind-logo-inverted.bin" 'icon-lind-logo) ; size: 115x19
 (import "../assets/icons/bin/icon-bolt-16color.bin" 'icon-bolt-16color)
 (import "../assets/icons/bin/icon-sync.bin" 'icon-sync)
 (import "../assets/icons/bin/icon-pairing.bin" 'icon-pairing)
@@ -114,7 +134,6 @@
 
 ;;; Fonts
 
-(import "../assets/fonts/bin/B3.bin" 'font-b3)
 (import "../assets/fonts/bin/SFProBold25x35x1.2.bin" 'font-sfpro-bold-35h)
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
 (import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)

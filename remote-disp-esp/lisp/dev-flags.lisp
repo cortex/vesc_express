@@ -1,7 +1,7 @@
 ;;; Dev flags (these disable/simulate certain features)
 
 (def dev-disable-low-battery-msg false)
-(def dev-disable-charging-msg true)
+(def dev-disable-charging-msg false)
 (def dev-short-thr-activation false)
 (def dev-disable-inactivity-check false) ; Disables the check that deactivates the thrust upon 30 seconds of inactivity.
 (def dev-disable-connection-check false) ; Disables the check that deactivates the thrust when connection has been lost.
@@ -28,5 +28,3 @@
 
 (def dev-smooth-tick-ms true) ; Applies a smoothing filter to the tick interval measurements.
 (def dev-smoothing-factor 0.1) ; Lower values result in more smoothing.
-
-(def dev-fast-start-animation false) ; Reduce animation duration to boot faster.
