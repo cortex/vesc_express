@@ -1,24 +1,8 @@
-@const-start
-
 ;;; Math Constants
 
-(def pi 3.14159265359)
-(def two-pi 6.28318530718)
+;(def two-pi 6.28318530718)
 
 ;;; Generic utility functions.
-
-; Add value to variable and assign the result to the variable.
-; Works like `+=` in conventional languages.
-; Ex:
-; ```
-; (def a 5)
-; (+set a 1)
-; (print a)
-; > 6
-; ```
-(def +set (macro (variable value)
-    `(setq ,variable (+ ,variable ,value))
-))
 
 ; Subtract value from variable and assign the result to the variable.
 ; Works like `-=` in conventional languages.
@@ -28,15 +12,15 @@
 
 ; Multiply variable and value and assign the result to the variable.
 ; Works like `*=` in conventional languages.
-(def *set (macro (variable value)
-    `(setq ,variable (* ,variable ,value))
-))
+; (def *set (macro (variable value)
+;     `(setq ,variable (* ,variable ,value))
+; ))
 
 ; Divide variable by value and assign the result to the variable.
 ; Works like `/=` in conventional languages.
-(def /set (macro (variable value)
-    `(setq ,variable (* ,variable ,value))
-))
+; (def /set (macro (variable value)
+;     `(setq ,variable (* ,variable ,value))
+; ))
 
 ; Print values on the same line with spaces between them. For debugging.
 ; Converts all values to strings using `to-string`.
@@ -109,43 +93,43 @@
 ; If it's nill the bits are determined by it's type (e.g. 32 bits for an i32)
 ; Ex: (str-from-bin 57 8)
 ; > "00111001"
-(defunret str-from-bin (n bits) {
-    (var bits (if (not-eq bits nil)
-        bits
-        (match (type-of n)
-            (type-i32 32)
-            (type-u32 32)
-            (type-i64 64)
-            (type-u64 64)
-            (type-byte 8)
-            (_ 'type_error)
-        )
-    ))
-    (if (eq bits 'type_error)
-        (return 'type_error)
-    )
-    (apply str-merge (map (fn (bit)
-        (to-str (shr (bitwise-and n (shl 1 bit)) bit))
-    ) (range bits 0)))
-})
+; (defunret str-from-bin (n bits) {
+;     (var bits (if (not-eq bits nil)
+;         bits
+;         (match (type-of n)
+;             (type-i32 32)
+;             (type-u32 32)
+;             (type-i64 64)
+;             (type-u64 64)
+;             (type-byte 8)
+;             (_ 'type_error)
+;         )
+;     ))
+;     (if (eq bits 'type_error)
+;         (return 'type_error)
+;     )
+;     (apply str-merge (map (fn (bit)
+;         (to-str (shr (bitwise-and n (shl 1 bit)) bit))
+;     ) (range bits 0)))
+; })
 
 ; Swap the values of a and b. ex: (swap-in-place var1 var2)
-(define swap-in-place (macro (a b) `(let (
-    (tmp ,a)
-) (progn
-    (setvar ',a ,b)
-    (setvar ',b tmp)
-))))
+; (define swap-in-place (macro (a b) `(let (
+;     (tmp ,a)
+; ) (progn
+;     (setvar ',a ,b)
+;     (setvar ',b tmp)
+; ))))
 
 ; Remove the global binding for a. It's fine to call this even if a wasn't
 ; defined before.
 ; Ex: (maybe-undef 'variable)
 ; ! this seems unsafe...
-(def maybe-undef (macro (a) {
-    (print a)
-    `(def ,a nil)
-    ; (undefine a)
-}))
+; (def maybe-undef (macro (a) {
+;     (print a)
+;     `(def ,a nil)
+;     ; (undefine a)
+; }))
 
 (defun ident (x) x)
 
@@ -259,74 +243,74 @@
 
 ; Quote all items in a list.
 ; Given a list (label 5), this is will give the list ('label 5).
-(defun quote-items (lst)
-    (map (fn (item) `(quote ,item)) lst)
-)
+; (defun quote-items (lst)
+;     (map (fn (item) `(quote ,item)) lst)
+; )
 
 ; Performs euclidian modulo.
 ; This plays nicer around negative values. (too lazy to explain nicely)
 ; source: https://internals.rust-lang.org/t/mathematical-modulo-operator/5952/4
 ; and https://stackoverflow.com/a/11714601/15507414
-(defun euclid-mod (a b) (let (
-    (rem (mod a b))
-)
-    (if (>= rem 0)
-        rem
-        (+ rem (abs b))
-    )
-))
+; (defun euclid-mod (a b) (let (
+;     (rem (mod a b))
+; )
+;     (if (>= rem 0)
+;         rem
+;         (+ rem (abs b))
+;     )
+; ))
 
 ; Returns list containting the closest multiple of factor that is greater than
 ; or equal to a, and the difference between the input and output number.
 ; Ex: (next-multiple 40 4) gives '(40, 0), while (next-multiple 41 4) gives
 ; '(44, 3)
 ; potential optimization (get rid of the branch?): https://stackoverflow.com/q/2403631
-(defun next-multiple (a factor) (let (
-    (rem (euclid-mod a factor))
-) (cond
-    ((= rem 0) (list a 0))
-    (t (list (+ a (- factor rem)) (- factor rem)))
-)))
+; (defun next-multiple (a factor) (let (
+;     (rem (euclid-mod a factor))
+; ) (cond
+;     ((= rem 0) (list a 0))
+;     (t (list (+ a (- factor rem)) (- factor rem)))
+; )))
 
 ; Returns list containting the closest multiple of factor that is smaller than
 ; or equal to a, and the difference between the output and input number (it's
 ; always positive).
 ; Ex: (previous-multiple 40 4) gives '(40, 0), while (previous-multiple 41 4) gives
 ; '(40, 1)
-(defun previous-multiple (a factor) (let (
-    (rem (euclid-mod a factor))
-) (list (- a rem) rem)))
+; (defun previous-multiple (a factor) (let (
+;     (rem (euclid-mod a factor))
+; ) (list (- a rem) rem)))
 
 ; Returns list containting the closest multiple of factor to a, and the
 ; difference between the output and input number (it's always positive).
-(defun nearest-multiple (a factor) (let (
-    (rem (euclid-mod a factor))
-    (half-factor (/ factor 2))
-) (if (>= rem half-factor) 
-    (list (+ a (- factor rem)) (- factor rem))
-    (list (- a rem) rem)
-)))
+; (defun nearest-multiple (a factor) (let (
+;     (rem (euclid-mod a factor))
+;     (half-factor (/ factor 2))
+; ) (if (>= rem half-factor) 
+;     (list (+ a (- factor rem)) (- factor rem))
+;     (list (- a rem) rem)
+; )))
 
 ; Returns a list of values, with a delta equal to the specified interval.
 ; Usefull for placing equally spaced points.
-(defun regularly-place-points (from to interval) {
-    (var diff (- to from))
-    (var cnt (+ (to-i (/ (abs diff) interval)) 1))
-    (var delta (if (> diff 0) interval (* interval -1)))
+; (defun regularly-place-points (from to interval) {
+;     (var diff (- to from))
+;     (var cnt (+ (to-i (/ (abs diff) interval)) 1))
+;     (var delta (if (> diff 0) interval (* interval -1)))
+; 
+;     (map (fn (n) (+ (* delta n) from)) (range cnt))
+; })
 
-    (map (fn (n) (+ (* delta n) from)) (range cnt))
-})
-
-(defun regularly-place-points-stretch (from to interval) {
-    (var diff (- to from))
-    (var cnt (+ (to-i (/ (abs diff) interval)) 1))
-    (var delta (if (<= cnt 1)
-        0
-        (/ (to-float diff) (- cnt 1))
-    ))
-
-    (map (lambda (n) (+ (to-i (* delta n)) from)) (range cnt))
-})
+; (defun regularly-place-points-stretch (from to interval) {
+;     (var diff (- to from))
+;     (var cnt (+ (to-i (/ (abs diff) interval)) 1))
+;     (var delta (if (<= cnt 1)
+;         0
+;         (/ (to-float diff) (- cnt 1))
+;     ))
+; 
+;     (map (lambda (n) (+ (to-i (* delta n)) from)) (range cnt))
+; })
 
 ; Returns a list of values of specified length, covering a specified range.
 ; The range is inclusive.
@@ -340,9 +324,9 @@
 ; Calculates the position that a box should have to be center aligned within a
 ; container, given that the box's position refers to its left/upper corner.
 ; The offset is simply 
-(defun center-pos (container-size box-size offset)
-    (+ (/ (- container-size box-size) 2) offset)
-)
+; (defun center-pos (container-size box-size offset)
+;     (+ (/ (- container-size box-size) 2) offset)
+; )
 
 ; Rotates a point around the origin in the clockwise direction. (note that the
 ; coordinate system is upside down). The returned position is a list containing
@@ -372,27 +356,6 @@
     )
 )
 
-; Clamp value to range 0-1
-; Copied from full_ui_v2.lisp
-(defun clamp01 (v)
-    (cond
-        ((< v 0.0) 0.0)
-        ((> v 1.0) 1.0)
-        (t v)
-))
-
-; Map and clamp the range min-max to 0-1
-; Copied from full_ui_v2.lisp
-(defun map-range-01 (v min max)
-    (clamp01 (/ (- (to-float v) min) (- max min)))
-)
-
-; linearly interpolate between a and b by v.
-; v is in range 0-1
-(defun lerp (a b v)
-    (+ (* (- 1 v) a) (* v b))
-)
-
 ; Ensure that angle is in the range 0 to 360
 (defun angle-normalize (a) {
     (if (> a 360)
@@ -406,47 +369,13 @@
 
 ; Get distance between two vectors.
 ; the vectors are lists containing the two x and y coordinates
-(defun vec-dist (a b)
-    (sqrt (+
-        (sq (- (ix a 0) (ix b 0)))
-        (sq (- (ix a 1) (ix b 1)))
-    ))
-)
+; (defun vec-dist (a b)
+;     (sqrt (+
+;         (sq (- (ix a 0) (ix b 0)))
+;         (sq (- (ix a 1) (ix b 1)))
+;     ))
+; )
 
-; Converts a color in the RGB integer representation (what you would get when
-; typing 0xffffff) to a list of the RGB components from 0 to 255.
-(defun color-int-to-rgb (col-int)
-    (list
-        (bitwise-and (shr col-int 16) 0xff)
-        (bitwise-and (shr col-int 8) 0xff)
-        (bitwise-and col-int 0xff)
-    )
-)
-
-; Converts a color as a list of three RGB components into its integer
-; representation (see function above for explanation).
-(defun color-rgb-to-int (col-rgb)
-    (bitwise-or 
-        (shl (ix col-rgb 0) 16)
-        (bitwise-or
-            (shl (ix col-rgb 1) 8)
-            (ix col-rgb 2)
-        )
-    )
-)
-
-; Linearly interpolate between the two integer colors a and b by v.
-; v is in the range 0.0 to 1.0.
-(defun lerp-color (a b v) {
-    (var a-rgb (color-int-to-rgb a))
-    (var b-rgb (color-int-to-rgb b))
-    
-    (var r (to-i (lerp (ix a-rgb 0) (ix b-rgb 0) v)))
-    (var g (to-i (lerp (ix a-rgb 1) (ix b-rgb 1) v)))
-    (var b (to-i (lerp (ix a-rgb 2) (ix b-rgb 2) v)))
-    
-    (color-rgb-to-int (list r g b))
-})
 
 ;;; Easing functions
 ;;; Most of the function are from here: https://gizma.com/easing/
@@ -454,44 +383,36 @@
 ;;; to the same range.
 ;;; The input and output values are not clamped to be within this range though.
 
-(defun ease-in-out-sine (x)
-    (/ (- 1 (cos (* pi x))) 2)
-)
+; (defun ease-out-sine (x)
+;     (sin (/ (* x pi) 2))
+; )
 
-(defun ease-out-sine (x)
-    (sin (/ (* x pi) 2))
-)
+; (defun ease-in-quad (x) 
+;     (* x x)
+; )
 
-(defun ease-in-quad (x) 
-    (* x x)
-)
+; (defun ease-in-quart (x)
+;     (* x x x x)
+; )
 
-(defun ease-in-cubic (x) 
-    (* x x x)
-)
+; (defun ease-in-out-quart (x)
+;     (if (< x 0.5)
+;         (* 8 x x x x)
+;         (- 1 (/ (pow (+ (* -2.0 x) 2.0) 4) 2.0))
+;     )
+; )
 
-(defun ease-in-quart (x)
-    (* x x x x)
-)
+; (defun ease-in-quint (x)
+;     (pow x 5)
+; )
 
-(defun ease-in-out-quart (x)
-    (if (< x 0.5)
-        (* 8 x x x x)
-        (- 1 (/ (pow (+ (* -2.0 x) 2.0) 4) 2.0))
-    )
-)
+; (defun ease-in-pow (x n)
+;     (pow x n)
+; )
 
-(defun ease-in-quint (x)
-    (pow x 5)
-)
-
-(defun ease-in-pow (x n)
-    (pow x n)
-)
-
-(defun ease-out-quint (x)
-    (- 1 (pow (- 1 x) 5))
-)
+; (defun ease-out-quint (x)
+;     (- 1 (pow (- 1 x) 5))
+; )
 
 (defun ease-in-out-quint (x)
     (if (< x 0.5)
@@ -500,19 +421,19 @@
     )
 )
 
-(defun ease-in-back (x)
-    (- (* 2.70158 x x x) (* 1.70158 x x))
-)
+; (defun ease-in-back (x)
+;     (- (* 2.70158 x x x) (* 1.70158 x x))
+; )
 
-(defun ease-in-out-back (x)
-    (if (< x 0.5)
-        (/ (* 4.0 x x (- (* 7.189819 x) 2.5949095)) 2.0)
-        {
-            (var temp (- (* 2.0 x) 2.0))
-            (/ (+ (* temp temp (+ (* 3.5949095 temp) 2.5949095)) 2.0) 2.0)
-        }
-    )
-)
+; (defun ease-in-out-back (x)
+;     (if (< x 0.5)
+;         (/ (* 4.0 x x (- (* 7.189819 x) 2.5949095)) 2.0)
+;         {
+;             (var temp (- (* 2.0 x) 2.0))
+;             (/ (+ (* temp temp (+ (* 3.5949095 temp) 2.5949095)) 2.0) 2.0)
+;         }
+;     )
+; )
 
 (defun construct-ease-out (ease-in) (lambda (x) 
     (- 1.0 (ease-in (- 1.0 x)))
@@ -542,12 +463,12 @@
 
 ; mid-x and mid-y specify the point where the ease-in and -out functions should
 ; meet. Both should be from 0.0 to 1.0, but are not forced to.
-(defun weighted-ease (ease-in ease-out mid-x mid-y) (lambda (x) 
-    (if (< x mid-x)
-        (* (ease-in (/ x mid-x)) mid-y)
-        (+ (* (ease-out (/ (- x mid-x) (- 1 mid-x))) (- 1 mid-y)) mid-y)
-    )
-))
+; (defun weighted-ease (ease-in ease-out mid-x mid-y) (lambda (x) 
+;     (if (< x mid-x)
+;         (* (ease-in (/ x mid-x)) mid-y)
+;         (+ (* (ease-out (/ (- x mid-x) (- 1 mid-x))) (- 1 mid-y)) mid-y)
+;     )
+; ))
 
 ;;; Mutex
 ;;; A mutex consists of a cons pair where the car cell holds the lock, while the
@@ -571,26 +492,26 @@
 )
 
 ; Set mutex value. The old value is returned.
-(defun mutex-set (mutex value) {
-    (sleep-until (not (mutex-locked mutex)))
-    (setcar mutex true)
-    
-    (var old-value (mutex-get-unsafe mutex))
-    (setcdr mutex value)
-    
-    (setcar mutex false)
-    
-    old-value
-})
+; (defun mutex-set (mutex value) {
+;     (sleep-until (not (mutex-locked mutex)))
+;     (setcar mutex true)
+;     
+;     (var old-value (mutex-get-unsafe mutex))
+;     (setcdr mutex value)
+;     
+;     (setcar mutex false)
+;     
+;     old-value
+; })
 
-(defun mutex-access (mutex with-fn) {
-    (sleep-until (not (mutex-locked mutex)))
-    ; TODO: what if someone else has already re-locked the mutex in between
-    ; here?
-    (setcar mutex true)
-    (with-fn (cdr mutex))
-    (setcar mutex false)
-})
+; (defun mutex-access (mutex with-fn) {
+;     (sleep-until (not (mutex-locked mutex)))
+;     ; TODO: what if someone else has already re-locked the mutex in between
+;     ; here?
+;     (setcar mutex true)
+;     (with-fn (cdr mutex))
+;     (setcar mutex false)
+; })
 
 ; Update a mutex's value using the given function.
 ; The value is passed to `with-fn`. The mutex is then set to the value returned
@@ -603,5 +524,3 @@
     (setcdr mutex (with-fn (cdr mutex)))
     (setcar mutex false)
 })
-
-@const-end

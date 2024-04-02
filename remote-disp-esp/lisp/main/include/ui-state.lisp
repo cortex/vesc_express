@@ -1,7 +1,5 @@
 ;;; The generic safe state management library code
 
-@const-start
-
 ; Checks if value of the given key changed since the last frame.
 (defun state-value-changed (key)
     (not-eq (assoc ui-state-current key) (assoc ui-state-last key))
@@ -92,5 +90,3 @@
         )
     )
 })
-
-@const-end

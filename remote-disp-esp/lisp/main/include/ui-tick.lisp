@@ -1,5 +1,3 @@
-@const-start
-
 ;;; View tick functions
 
 (defun view-tick-main () {    
@@ -242,5 +240,3 @@
     (def fps (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps (- 1.0 smoothing))))
     (def last-frame-time (systime))
 })
-
-@const-end

@@ -236,5 +236,3 @@
     (event-register-handler (spawn 120 event-handler))
     (event-enable 'event-esp-now-rx)
 })
-
-@const-start

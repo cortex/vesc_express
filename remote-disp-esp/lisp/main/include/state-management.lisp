@@ -284,14 +284,14 @@
     (vib-play-constant 0.8 0.4)
 })
 
-(defun vib-bms-connect () {
-    (vib-play-constant 1.0 0.8)
+;(defun vib-bms-connect () {
+;    (vib-play-constant 1.0 0.8)
     ; (vib-play-constant 0.7 0.12)
     ; (sleep 0.1)
     ; (vib-play-constant 0.7 0.12)
     ; (sleep 0.1)
     ; (vib-play-constant 1.0 0.3)
-})
+;})
 
 (defun vib-bms-disconnect () {
     (vib-play-constant 1.0 0.12)
@@ -362,5 +362,3 @@
         (vib-play-next-in-queue)
     })
 })
-
-@const-end

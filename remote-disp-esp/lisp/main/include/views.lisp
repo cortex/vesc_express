@@ -1,5 +1,3 @@
-@const-start
-
 ;;; View input listeners
 ;;; This is a function to avoid undefined dependencies at initial parse time
 (defun get-view-handlers () (list
@@ -131,7 +129,6 @@
 ; priority. For example, the main view always want's to be displayed, but is
 ; last, so it's only displayed if no other view want's to.
 (defun get-view-is-visible-functions () (list
-    (cons 'low-battery view-is-visible-low-battery)
     (cons 'warning view-is-visible-warning)
     (cons 'firmware view-is-visible-firmware)
     (cons 'set-battery view-is-visible-set-battery)
@@ -210,7 +207,6 @@
         (board-info view-cleanup-board-info)
         (thr-activation view-cleanup-thr-activation)
         (charging view-cleanup-charging)
-        (low-battery view-cleanup-low-battery)
         (warning view-cleanup-warning)
         (firmware view-cleanup-firmware)
         (conn-lost view-cleanup-conn-lost)
@@ -225,7 +221,6 @@
         (board-info view-init-board-info)
         (thr-activation view-init-thr-activation)
         (charging view-init-charging)
-        (low-battery view-init-low-battery)
         (warning view-init-warning)
         (firmware view-init-firmware)
         (conn-lost view-init-conn-lost)
@@ -248,7 +243,6 @@
         (board-info (view-draw-board-info))
         (thr-activation (view-draw-thr-activation))
         (charging (view-draw-charging))
-        (low-battery (view-draw-low-battery))
         (warning (view-draw-warning))
         (firmware (view-draw-firmware))
         (conn-lost (view-draw-conn-lost))
@@ -263,7 +257,6 @@
         (board-info (view-render-board-info))
         (thr-activation (view-render-thr-activation))
         (charging (view-render-charging))
-        (low-battery (view-render-low-battery))
         (warning (view-render-warning))
         (firmware (view-render-firmware))
         (conn-lost (view-render-conn-lost))
@@ -307,5 +300,3 @@
 (read-eval-program code-view-firmware)
 (read-eval-program code-view-conn-lost)
 (read-eval-program code-view-select-battery)
-
-@const-end
