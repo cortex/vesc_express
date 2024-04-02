@@ -7,7 +7,7 @@
 })
 
 (defun version-check () {
-    (var compatible-version 2)
+    (var compatible-version 3)
     (if (!= (conf-express-version) compatible-version) {
         (loopwhile t {
             (print (str-merge
@@ -28,7 +28,7 @@
 
 @const-start
 
-(def version-str "v0.3")
+(def version-str "v0.3.1")
 
 ;;; Dev flags
 (import "../dev-flags.lisp" 'code-dev-flags)

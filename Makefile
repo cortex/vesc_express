@@ -5,7 +5,6 @@
 	bat-esc-stm \
 	jet-if-esp \
 	remote-disp-esp \
-	remote-disp-esp-rev-b \
 
 all: firmware lisp
 
@@ -15,8 +14,7 @@ firmware: \
 	build/bat-bms-esp/firmware.bin \
 	build/bat-esc-stm/firmware.bin \
 	build/jet-if-esp/firmware.bin \
-	build/remote-disp-esp/firmware.bin \
-	build/remote-disp-esp-rev-b/firmware.bin
+	build/remote-disp-esp/firmware.bin
 
 lisp: \
 	build/bat-ant-esp/main.lpkg \
@@ -46,9 +44,6 @@ jet-if-esp: \
 
 remote-disp-esp: \
 	build/remote-disp-esp/firmware.bin
-
-remote-disp-esp: \
-	build/remote-disp-esp-rev-b/firmware.bin
 
 reset:
 	git submodule foreach --recursive git clean -xfd
@@ -129,14 +124,6 @@ build/remote-disp-esp/firmware.bin: \
 	cp ./remote-disp-esp/conf_express/* ./dependencies/vesc_express/main
 	./build-vesc-express.sh lb_hc build/remote-disp-esp
 
-build/remote-disp-esp-rev-b/firmware.bin: \
-	remote-disp-esp-rev-b/conf_express/hw_lb_hc.c \
-	remote-disp-esp-rev-b/conf_express/hw_lb_hc.h
-
-	mkdir -p build/remote-disp-esp-rev-b
-	cp ./remote-disp-esp-rev-b/conf_express/* ./dependencies/vesc_express/main
-	./build-vesc-express.sh lb_hc build/remote-disp-esp-rev-b
-
 result/bin/vesc_tool_6.05:
 	nix-build vesc-tool.nix
 
@@ -181,16 +168,3 @@ flash-remote-openocd:
 	$(OPENOCD) -c "program_esp build/remote-disp-esp/partition-table.bin 0x8000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/remote-disp-esp/firmware.bin 0x20000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/remote-disp-esp/firmware.bin 0x1a000 verify reset exit"
-
-flash-remote-rev-b-openocd:
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/bootloader.bin 0 verify reset exit"
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/partition-table.bin 0x8000 verify reset exit"
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/firmware.bin 0x20000 verify reset exit"
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/firmware.bin 0x1a000 verify reset exit"
-	$(OPENOCD) -c "program_esp build/remote-disp-esp/firmware.bin 0x1a000 verify reset exit"
-
-flash-remote-rev-b-openocd:
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/bootloader.bin 0 verify reset exit"
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/partition-table.bin 0x8000 verify reset exit"
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/firmware.bin 0x20000 verify reset exit"
-	$(OPENOCD) -c "program_esp build/remote-disp-esp-rev-b/firmware.bin 0x1a000 verify reset exit"

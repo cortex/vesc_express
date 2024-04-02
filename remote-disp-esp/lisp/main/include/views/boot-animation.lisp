@@ -46,9 +46,6 @@
 
 (defun boot-animation ()
 {
-    ; debugging: (var debug-first-compute true)
-    ; debugging: (var debug-stop-now false)
-
     (var sun-start-y 140)
     (var sun-end-y 70)
     (var sun-height-offset sun-start-y)
@@ -79,9 +76,9 @@
     (var start (systime))
     (var elapsed (secs-since start))
 
-    (var animation-time 3.0)
+    (var animation-time 3.5)
     (var animation-percent 0.0)
-    (var sun-rise-time 1.0)
+    (var sun-rise-time 1.5)
     (var sun-rise-percent 0.0)
     (var sun-rise-stop (/ sun-rise-time animation-time))
     (var sun-rise-remains (- 1.0 (/ sun-rise-time animation-time)))
@@ -90,12 +87,35 @@
     (var last-frame-time (systime))
     (def fps-boot 0.0)
     (loopwhile (< elapsed animation-time) {
-        ; Update Animation Time
-        (setq elapsed (secs-since start))
-        (setq animation-percent (/ elapsed animation-time))
-        (if (< sun-rise-percent 1.0) {
-            (setq sun-rise-percent (/ elapsed sun-rise-time))
-            (if (> sun-rise-percent 1.0) (setq sun-rise-percent 1.0))
+
+        ; Watch for user input to skip animation
+        (if (> (get-adc 0) 0.5) {
+            ; Fast forward to the end of the animation
+            (setq animation-percent 1.0)
+            (setq sun-rise-percent 1.0)
+            (setq elapsed animation-time)
+        } {
+            ; No Interruption, Compute Animation Position
+            (setq elapsed (secs-since start))
+            (setq animation-percent (/ elapsed animation-time))
+            (if (< sun-rise-percent 1.0) {
+                (setq sun-rise-percent (/ elapsed sun-rise-time))
+                (if (> sun-rise-percent 1.0) (setq sun-rise-percent 1.0))
+            })
+        })
+
+        ; Sun height
+        (if (not-eq sun-height-offset sun-end-y)
+            (setq sun-height-offset (- sun-start-y (* (ease-in-out-sine sun-rise-percent) (- sun-start-y sun-end-y))))
+        )
+
+        ; Open the blinds after sunrise
+        (if (eq sun-rise-percent 1.0) {
+            (setq shade-heights (compute-shades
+                (map-range-01 animation-percent (- sun-rise-stop 0.2) 1.0) ; NOTE: Manipulating sun-rise-stop for timing purposes
+                shade-count-sun
+                shade-start-times
+            ))
         })
 
         ; Draw a sun in the buffer
@@ -106,6 +126,13 @@
             ; Draw logo on sun
             (sbuf-blit rising-sun-buf logo 12 61 -1)
 
+            ; Adjust logo shades
+            (setq logo-shade-heights (compute-shades
+                (map-range-01 animation-percent (- sun-rise-stop 0.2) 1.0)  ; NOTE: Manipulating sun-rise-stop for timing purposes
+                shade-count-logo
+                logo-shade-start-times
+            ))
+
             ; Logo has 4 shades matching the color of the sun
             (var i 0)
             (loopwhile (< i shade-count-logo) {
@@ -115,13 +142,6 @@
                     (130 (ix logo-shade-heights i) 1 '(filled)))
                 (+set i 1)
             })
-
-            ; Adjust logo shades
-            (setq logo-shade-heights (compute-shades
-                (map-range-01 animation-percent (- sun-rise-stop 0.2) 1.0)  ; NOTE: Manipulating sun-rise-stop for timing purposes
-                shade-count-logo
-                logo-shade-start-times
-            ))
 
             ; Draw line through logo
             (sbuf-exec img-rectangle rising-sun-buf 0 69 (142 3 0 '(filled)))
@@ -140,21 +160,7 @@
         ; Reveal lower half of sun at the start of sun-rise-time
         (if (< sun-rise-percent 0.75) {
             (sbuf-exec img-rectangle rising-sun-buf 0 sun-lower-shade-y (142 100 0 '(filled)))
-            (setq sun-lower-shade-y (+ sun-lower-shade-start-y (* (ease-out-sine sun-rise-percent) 142)))
-        })
-
-        ; Open the blinds after sunrise
-        (if (eq sun-rise-percent 1.0) {
-            (setq shade-heights (compute-shades
-                (map-range-01 animation-percent (- sun-rise-stop 0.2) 1.0) ; NOTE: Manipulating sun-rise-stop for timing purposes
-                shade-count-sun
-                shade-start-times
-            ))
-
-            ;(if debug-first-compute {
-            ;    (print shade-heights)
-            ;    (setq debug-first-compute false)
-            ;})
+            (setq sun-lower-shade-y (+ sun-lower-shade-start-y (* (ease-in-out-sine sun-rise-percent) 142)))
         })
 
         ; Apply a gradient to the sun
@@ -165,23 +171,17 @@
             }{
                 (img-color 'gradient_y 0xffa500 (lerp-color 0xbd1000 0xffa500 (ease-in-cubic sun-rise-percent)) 142 0)
             })
-            ; debugging: 0xff0000
-            ; debugging: 0x00ff00
         ))
-
-        ; debugging: (if (> animation-percent 0.6) die)
-        ; debugging: (if (eq debug-stop-now true) debug-now )
-
-        ; Sun height
-        (if (not-eq sun-height-offset sun-end-y)
-            (setq sun-height-offset (- sun-start-y (* (ease-out-sine sun-rise-percent) (- sun-start-y sun-end-y))))
-        )
 
         ; Repeat
         (sbuf-clear rising-sun-buf)
 
         (var smoothing 0.1) ; lower is smoother
         (setq fps-boot (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps-boot (- 1.0 smoothing))))
+
+        (var secs (- 0.05 (secs-since last-frame-time))) ; 50 ms (20fps maximum)
+        (sleep (if (< secs 0.0) 0 secs))
+
         (setq last-frame-time (systime))
     })
     (print (str-merge "FPS Boot: " (to-str fps-boot)))

@@ -49,7 +49,7 @@
 
 #ifndef LB_HC_CONF_EXPRESS_VERION
 	// Check this version in LBM to validate compatibility
-	#define LB_HC_CONF_EXPRESS_VERION 2
+	#define LB_HC_CONF_EXPRESS_VERION 3
 #endif
 
 // LBM Utilities

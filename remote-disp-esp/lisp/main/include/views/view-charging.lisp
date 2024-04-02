@@ -49,7 +49,7 @@
         (sbuf-exec img-text charge-msg-buf font-x 0 ((list 0 1 2 3) font-sfpro-display-20h text))
         ; Draw % from image
         (var symbol (img-buffer-from-bin text-percent))
-        (sbuf-blit charge-msg-buf symbol (+ font-x (* font-w (str-len text))) 0 ())
+        (sbuf-blit charge-msg-buf symbol (+ font-x (* font-w (str-len text))) -2 ())
 
     }))
 

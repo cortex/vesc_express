@@ -28,6 +28,9 @@
 #define HW_INIT_HOOK()              hw_init()
 #define HW_EARLY_LBM_INIT
 
+// Specify vesc_express extension storage size limit
+#define EXTENSION_STORAGE_SIZE 300
+
 #include "adc.h"
 #include <math.h>
 #include <stdint.h>
