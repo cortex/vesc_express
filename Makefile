@@ -14,6 +14,7 @@ firmware: \
 	build/bat-bms-esp/firmware.bin \
 	build/bat-esc-stm/firmware.bin \
 	build/jet-if-esp/firmware.bin \
+	build/bat-bms-stm/firmware.bin \
 	build/remote-disp-esp/firmware.bin
 
 lisp: \
@@ -34,6 +35,9 @@ bat-ant-stm: \
 bat-bms-esp: \
 	build/bat-bms-esp/firmware.bin \
 	build/bat-bms-esp/main.lpkg
+
+bat-bms-stm: \
+	build/bat-bms-stm/firmware.bin
 
 bat-esc-stm: \
 	build/bat-esc-stm/firmware.bin \
