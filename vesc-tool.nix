@@ -13,7 +13,7 @@ pkgs.stdenv.mkDerivation rec {
     owner = "vedderb";
     repo = "vesc_tool";
     rev = "master";
-    hash = "sha256-k6JRa3ZP4SouEj+IoHVdL3i55wJVENnI2FxHWZjh1og=";
+    hash = "sha256-o1x8xRf6GPzUq5rQ8H5Vv6v2Qjvdh4XTlWT2S7DF6CE=";
   };
   
   patches = [
