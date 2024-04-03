@@ -2,9 +2,9 @@
 ;;; This is a function to avoid undefined dependencies at initial parse time
 (defun get-view-handlers () (list
     (cons 'main (list
-        ;(cons 'up (if dev-enable-connection-dbg-menu cycle-main-dbg-menu))
-        ;(cons 'up-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
-        (cons 'up-long show-select-battery)
+        (cons 'up (if dev-enable-connection-dbg-menu cycle-main-dbg-menu))
+        (cons 'up-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
+
         (cons 'down try-activate-thr)
         (cons 'down-long enter-sleep)
 
@@ -45,7 +45,6 @@
     ))
 
     (cons 'thr-activation (list
-        (cons 'up-long show-select-battery)
         (cons 'down try-activate-thr)
         (cons 'down-long enter-sleep)
         (cons 'left nil)
@@ -70,7 +69,6 @@
     ))
 
     (cons 'charging (list
-        (cons 'up-long show-select-battery)
         (cons 'down nil)
         (cons 'down-long enter-sleep)
         (cons 'left nil)
@@ -105,21 +103,12 @@
     ))
 
     (cons 'conn-lost (list
-        (cons 'up-long show-select-battery)
 ;        (cons 'down nil)
         (cons 'down nil)
 
         (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
-        ; (cons 'left-long enter-sleep)
-    ))
-    (cons 'set-battery (list
-        (cons 'up exit-set-batt)
-        (cons 'down exit-set-batt)
-        (cons 'down-long exit-set-batt)
-        (cons 'left next-battery)
-        (cons 'right prev-battery)
         ; (cons 'left-long enter-sleep)
     ))
 ))
@@ -131,7 +120,6 @@
 (defun get-view-is-visible-functions () (list
     (cons 'warning view-is-visible-warning)
     (cons 'firmware view-is-visible-firmware)
-    (cons 'set-battery view-is-visible-set-battery)
 
     (cons 'charging view-is-visible-charging)
 
@@ -210,7 +198,6 @@
         (warning view-cleanup-warning)
         (firmware view-cleanup-firmware)
         (conn-lost view-cleanup-conn-lost)
-        (set-battery view-cleanup-set-battery)
         (_ (fn () ()))
     ))
 
@@ -224,7 +211,6 @@
         (warning view-init-warning)
         (firmware view-init-firmware)
         (conn-lost view-init-conn-lost)
-        (set-battery view-init-set-battery)
         (_ ())
     ))
 
@@ -246,7 +232,6 @@
         (warning (view-draw-warning))
         (firmware (view-draw-firmware))
         (conn-lost (view-draw-conn-lost))
-        (set-battery (view-draw-set-battery))
         (_ (print "no active current view"))
     )
 })
@@ -260,7 +245,6 @@
         (warning (view-render-warning))
         (firmware (view-render-firmware))
         (conn-lost (view-render-conn-lost))
-        (set-battery (view-render-set-battery))
         (_ (print "no active current view"))
     )
 })
@@ -299,4 +283,3 @@
 (read-eval-program code-view-warning)
 (read-eval-program code-view-firmware)
 (read-eval-program code-view-conn-lost)
-(read-eval-program code-view-select-battery)

@@ -46,8 +46,8 @@
     (cons 'charger-plugged-in false)
 
     ; Whether or not the remote is currently connected to a board.
-    ; Currently only used for debugging
     (cons 'is-connected false)
+    (cons 'was-connected false)
     
     ; If the warning vibration once the remote loses connection has been played
     ; yet.
@@ -80,7 +80,8 @@
     ; The currently displayed message and icon
     ; Can be one of 'initiate-pairing, 'pairing, 'board-not-powered,
     ; 'pairing-failed, 'pairing-success
-    (cons 'board-info-msg nil)
+    (cons 'board-info-msg 'pairing)
+    (cons 'conn-lost false)
 
     ;;; thr-activation specific state
 

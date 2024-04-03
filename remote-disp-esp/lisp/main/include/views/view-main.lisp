@@ -128,7 +128,7 @@
     })
 
     ; Check if we should draw the debug view
-    (if (and (eq (state-get 'view-main-subview) 'dbg) view-updated)
+    (if (eq (state-get 'view-main-subview) 'dbg)
         (subview-draw-dbg)
     )
 
@@ -443,17 +443,11 @@
 (defun subview-draw-dbg () {
     (sbuf-exec img-rectangle view-main-buf 0 0 (180 100 0 '(filled) `(rounded, 13)))
 
-    (var failed-pings m-failed-pings)
-    (var last-failed-pings m-last-fail-count)
-    ; (var max-ping-fails m-max-ping-fails)
-    (var total-pings m-total-pings)
-    (var connections-lost-count measure-connections-lost-count)
-
     (var lines (list
-        (str-merge "ping /s:" (str-from-n total-pings))
-        (str-merge "fail /s:" (str-from-n failed-pings))
-        (str-merge "last fl:" (str-from-n last-failed-pings))
-        (str-merge "lost #:" (str-from-n connections-lost-count))
+        (str-merge "connect:" (if (state-get 'is-connected) "true" "false"))
+        (str-merge "TX fail:" (str-from-n thr-fail-cnt))
+        (str-merge "prevcon:" (if (state-get 'was-connected) "true" "false"))
+        (str-merge "rssi:" (str-from-n esp-rx-rssi))
     ))
 
     (var y 0)

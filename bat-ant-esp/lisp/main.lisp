@@ -1,10 +1,11 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
-(def remote-addr '(255 255 255 255 255 255)) ; Broadcast
+(def broadcast-addr '(255 255 255 255 255 255))
+(def remote-addr broadcast-addr)
 
 (esp-now-start)
-(esp-now-add-peer remote-addr)
+(esp-now-add-peer broadcast-addr)
 
 (defun send-code (str)
     (def esp-send-res (if (esp-now-send remote-addr str) 1 0))
@@ -15,6 +16,7 @@
 (def rx-cnt-can 0)
 
 (def zero-rx-rime (systime))
+(def rx-timeout-ms 1000)
 
 (def throttle-rx-timestamp (- (systime) 20000))
 (def log-running nil)
@@ -47,24 +49,24 @@
 })
 
 (defun proc-data (src des data rssi) {
-        ; Ignore broadcast, only handle data sent directly to us
-        (if (not-eq des '(255 255 255 255 255 255))
-            {
-                (def remote-addr src)
-                (esp-now-add-peer src)
-                (eval (read data))
-            }
-            {
-                ; Broadcast data
-                (var br-data (unflatten data))
+    ; Ignore broadcast, only handle data sent directly to us
+    (if (not-eq des broadcast-addr)
+        {
+            (def remote-addr src)
+            (esp-now-add-peer src)
+            (eval (read data))
+        }
+        {
+            ; Broadcast data
+            (var br-data (unflatten data))
 
-                ; Load cell grams
-                (if (eq (ix br-data 0) 'lc-grams) {
-                        (rcode-run-noret 10 `(setq grams-load-cell ,(ix br-data 1)))
-                })
-            }
-        )
-        (free data)
+            ; Load cell grams
+            (if (eq (ix br-data 0) 'lc-grams) {
+                    (rcode-run-noret 10 `(setq grams-load-cell ,(ix br-data 1)))
+            })
+        }
+    )
+    (free data)
 })
 
 (defun proc-sid (id data)
@@ -95,6 +97,23 @@
             (_ nil)
 )))
 
+(defun connection-monitor () {
+    (loopwhile t {
+        (if (eq remote-addr broadcast-addr) {
+            ; Send broadcast ping to remote
+            (esp-now-send broadcast-addr "")
+        } {
+            (if (> (- (systime) throttle-rx-timestamp) rx-timeout-ms) {
+                ; Timeout, clear remote-addr
+                (def remote-addr broadcast-addr)
+            })
+        })
+        (sleep 0.1) ; Rate limit to 10Hz
+    })
+})
+
 (event-register-handler (spawn event-handler))
 (event-enable 'event-esp-now-rx)
 (event-enable 'event-can-sid)
+
+(spawn connection-monitor)

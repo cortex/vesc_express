@@ -2,7 +2,7 @@
 ;;;; Board-Info
 
 (defun view-is-visible-board-info () {
-    false ; unused
+    (eq (state-get 'was-connected) false)
 })
 
 (defun view-init-board-info () {
