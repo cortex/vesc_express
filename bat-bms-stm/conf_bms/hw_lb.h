@@ -47,6 +47,9 @@
 #define V_REG					3.3
 #define R_CHARGE_TOP			(39.0e3)
 #define R_CHARGE_BOTTOM			(2.2e3)
+#define CONF_MAX_CHARGE_CURRENT			80
+#define CONF_MIN_CHARGE_CURRENT			2
+#define CONF_MIN_CURRENT_AH_WH_CNT      1.5
 
 // LEDs
 #define LINE_LED_RED			PAL_LINE(GPIOA, 0)
