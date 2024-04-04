@@ -13,9 +13,12 @@
 (def any-ping-has-failed false) ; TODO: This is never set to true
 
 (def my-addr (get-mac-addr))
-(def rssi-pairing-threshold -42)
+(def rssi-pairing-threshold -41)
+(def battery-rx-timestamp (- (systime) 20000))
 
 @const-start
+
+(def rx-timeout-ms 1000)
 
 (esp-now-start)
 
@@ -30,6 +33,7 @@
             (state-set 'conn-lost false)
             (eval (read data))
             (def esp-rx-cnt (+ esp-rx-cnt 1))
+            (def battery-rx-timestamp (systime))
         } {
             (print (str-merge "Broadcast RX too weak to pair: " (to-str rssi)))
             (def esp-rx-rssi rssi)
@@ -40,6 +44,7 @@
         (def esp-rx-rssi rssi)
         (eval (read data))
         (def esp-rx-cnt (+ esp-rx-cnt 1))
+        (def battery-rx-timestamp (systime))
     })
     (free data)
 })
@@ -116,12 +121,12 @@
                 (set-thr-is-active true)
         })
         
-        (if (send-thr (if thr-active thr 0))
-            (def thr-fail-cnt 0)
+        (if (not (send-thr (if thr-active thr 0)))
             (def thr-fail-cnt (+ thr-fail-cnt 1))
         )
         
-        (if (> thr-fail-cnt 8) {
+        (if (> (- (systime) battery-rx-timestamp) rx-timeout-ms) {
+            ; Timeout, clear battery address
             (def batt-addr-rx false)
             (def is-connected false)
             (if (state-get 'was-connected) (state-set 'conn-lost true))
