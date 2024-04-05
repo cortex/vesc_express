@@ -109,7 +109,6 @@
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
 (import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
-(import "include/views/view-select-battery.lisp" 'code-view-select-battery)
 
 ;;; Icons
 
