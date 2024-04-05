@@ -69,25 +69,24 @@
     (free data)
 })
 
-(defun proc-sid (id data)
-    (cond
-        ((= id 20)
-            (let (
-                    (soc-bms (/ (bufget-i16 data 0) 1000.0))
-                    (duty (/ (bufget-i16 data 2) 1000.0))
-                    (kmh (/ (bufget-i16 data 4) 10.0))
-                    (kw (/ (bufget-i16 data 6) 100.0))
-                )
-                (progn
-                    (send-code (str-from-n soc-bms "(def soc-bms %.3f)"))
-                    (send-code (str-from-n duty "(def duty %.3f)"))
-                    (send-code (str-from-n kmh "(def kmh %.2f)"))
-                    (send-code (str-from-n kw "(def motor-kw %.3f)"))
-                    (def rx-cnt-can (+ rx-cnt-can 1))
-                    (gc)
-                    (free data)
-        )))
-))
+(defun proc-sid (id data) {
+    (if (= id 20) {
+        (var soc-bms (/ (bufget-i16 data 0) 1000.0))
+        (var duty (/ (bufget-i16 data 2) 1000.0))
+        (var kmh (/ (bufget-i16 data 4) 10.0))
+        (var kw (/ (bufget-i16 data 6) 100.0))
+        (def rx-cnt-can (+ rx-cnt-can 1))
+        ; Send CAN data only when connected to a remote
+        (if (not-eq remote-addr broadcast-addr) {
+            (send-code (str-from-n soc-bms "(def soc-bms %.3f)"))
+            (send-code (str-from-n duty "(def duty %.3f)"))
+            (send-code (str-from-n kmh "(def kmh %.2f)"))
+            (send-code (str-from-n kw "(def motor-kw %.3f)"))
+            (gc)
+            (free data)
+        })
+    } (free data))
+})
 
 (defun event-handler ()
     (loopwhile t
