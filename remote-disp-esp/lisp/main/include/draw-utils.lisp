@@ -88,7 +88,7 @@
 ; center.
 ; The position is given as a list of the x and y coordinates.
 (defun bounds-centered-position (center-x center-y w h)
-    (list 
+    (list
         (- center-x (/ w 2))
         (- center-y (/ h 2))
     )
@@ -106,7 +106,7 @@
 ; The margin specifies reserved blank space around the text, that will be centered
 ; with it. So it would function as if you had an extra character of width
 ; `margin-left` or `margin-right` to the left or right respectively.
-; This area will also be cleared. 
+; This area will also be cleared.
 ;
 ; The x-coordinates of the left and right edges of the *text* bounding box
 ; (excluding any margin) is returned as a list.
@@ -268,7 +268,7 @@
 })
 
 ; Draws a value meter in the shape of a circle segment with the specified
-; thickness. 
+; thickness.
 ; `value` specifies how filled the meter is, from 0.0 to 1.0
 ; The arc will go from angle0 to angle1, with the *tip* of the path starting and
 ; ending exactly at angle0 and angle1.
@@ -324,9 +324,9 @@
 (defun gradient-calculate-easing (gradient easing) {
     (var col-a (img-color-get gradient 'color-0))
     (var col-b (img-color-get gradient 'color-1))
-    
+
     (var width (img-color-get gradient 'width))
-    (map (fn (i) 
+    (map (fn (i)
         (img-color-setpre gradient i (lerp-color col-a col-b (/ (to-float i) (to-float width))))
     ) (range width))
 })
