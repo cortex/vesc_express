@@ -48,7 +48,10 @@
     ; Whether or not the remote is currently connected to a board.
     (cons 'is-connected false)
     (cons 'was-connected false)
-    
+
+    ; Received Signal Strength Indicator
+    (cons 'rx-rssi nil)
+
     ; If the warning vibration once the remote loses connection has been played
     ; yet.
     ; When true, no more vibrations are played.

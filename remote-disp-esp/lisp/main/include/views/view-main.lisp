@@ -447,7 +447,7 @@
         (str-merge "connect:" (if (state-get 'is-connected) "true" "false"))
         (str-merge "TX fail:" (str-from-n thr-fail-cnt))
         (str-merge "prevcon:" (if (state-get 'was-connected) "true" "false"))
-        (str-merge "rssi:" (str-from-n esp-rx-rssi))
+        (str-merge "rssi:" (str-from-n (state-get 'rx-rssi)))
     ))
 
     (var y 0)

@@ -2,7 +2,7 @@
 
 (def thr-active false)
 
-(def esp-rx-rssi 0)
+(def esp-rx-rssi -99)
 (def esp-rx-cnt 0)
 (def batt-addr-rx false)
 (def batt-addr '(0 0 0 0 0 0))
@@ -15,6 +15,7 @@
 (def my-addr (get-mac-addr))
 (def rssi-pairing-threshold -41)
 (def battery-rx-timestamp (- (systime) 20000))
+(def broadcast-rx-timestamp nil)
 
 @const-start
 
@@ -24,6 +25,7 @@
 
 (defun proc-data (src des data rssi) {
     (if (and (eq des broadcast-addr) (not is-connected)){
+        (def broadcast-rx-timestamp (systime))
         (if (> rssi rssi-pairing-threshold) {
             ; Handle broadcast data
             (esp-now-add-peer src)
@@ -34,8 +36,9 @@
             (eval (read data))
             (def esp-rx-cnt (+ esp-rx-cnt 1))
             (def battery-rx-timestamp (systime))
+            (def broadcast-rx-timestamp nil)
         } {
-            (print (str-merge "Broadcast RX too weak to pair: " (to-str rssi)))
+            (print (str-merge "Broadcast RX too weak for pairing: " (to-str rssi)))
             (def esp-rx-rssi rssi)
         })
     })
@@ -122,16 +125,22 @@
         })
         
         (if (not (send-thr (if thr-active thr 0)))
-            (def thr-fail-cnt (+ thr-fail-cnt 1))
+            (setq thr-fail-cnt (+ thr-fail-cnt 1))
         )
-        
+
+        ; Update is-connected status
         (if (> (- (systime) battery-rx-timestamp) rx-timeout-ms) {
             ; Timeout, clear battery address
             (def batt-addr-rx false)
             (def is-connected false)
             (if (state-get 'was-connected) (state-set 'conn-lost true))
         } (def is-connected true))
-        
+
+        ; Timeout broadcast reception
+        (if (and (not-eq broadcast-rx-timestamp nil) (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms)) {
+            (def esp-rx-rssi -99)
+            (def broadcast-rx-timestamp nil)
+        })
 ;        (if (not is-connected) (def thr-active false))
         
         (var tick-secs (if any-ping-has-failed

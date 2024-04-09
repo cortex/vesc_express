@@ -22,7 +22,7 @@
 
 @const-start
 
-(def version-str "v0.3.2")
+(def version-str "v0.4")
 
 ;;; Colors
 (import "include/theme.lisp" code-theme)
@@ -236,6 +236,35 @@
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
+(def small-rssi-buf (create-sbuf 'indexed4 30 30 24 16))
+
+; Renders the signal strength at the top of the screen
+(defun render-signal-strength (rssi is-visible) {
+    (sbuf-clear small-rssi-buf)
+
+    (if (and is-visible (not-eq rssi nil) ) {
+        (var signal-bars 0)
+        (cond
+            ((> rssi -60) (setq signal-bars 4))
+            ((> rssi -70) (setq signal-bars 3))
+            ((> rssi -80) (setq signal-bars 2))
+            ((> rssi -90) (setq signal-bars 1))
+        )
+
+        (sbuf-exec img-rectangle small-rssi-buf 4 13 (2 3 1 '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 8 10 (2 6 (if (> signal-bars 0) 1 2) '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 12 7 (2 9 (if (> signal-bars 1) 1 2)  '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 16 4 (2 12 (if (> signal-bars 2) 1 2)  '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 20 1 (2 15 (if (> signal-bars 3) 1 2)  '(filled)))
+    })
+
+    (sbuf-render small-rssi-buf (list
+        col-bg
+        col-fg
+        0x363636
+        0x0
+    ))
+})
 
 ; Communication
 (def m-connection-tick-ms 0.0)
@@ -340,8 +369,12 @@
         ))
         (def thread-slow-updates-start (systime))
 
+        ; Update SOC
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
+
+        ; Update RSSI state from latest esp-rx-rssi
+        (state-set 'rx-rssi esp-rx-rssi)
 
         ; If we reach 3.2V (0% SOC) the remote must power down
         (if (<= remote-batt-v 3.2) {
