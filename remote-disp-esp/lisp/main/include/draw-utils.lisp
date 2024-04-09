@@ -111,7 +111,7 @@
 ; The x-coordinates of the left and right edges of the *text* bounding box
 ; (excluding any margin) is returned as a list.
 (defun draw-text-centered (sbuf x y container-w margin-left margin-right max-characters font fg bg text) {
-    (var container-w (if (!= container-w -1)
+    (setq container-w (if (!= container-w -1)
         container-w
         (- (ix (sbuf-dims sbuf) 0) x)
     ))
@@ -142,7 +142,7 @@
 })
 
 (defun draw-text-aa-centered (sbuf x y container-w margin-left margin-right max-characters font colors text) {
-    (var container-w (if (!= container-w -1)
+    (setq container-w (if (!= container-w -1)
         container-w
         (- (ix (sbuf-dims sbuf) 0) x)
     ))

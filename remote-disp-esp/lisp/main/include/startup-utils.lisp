@@ -68,7 +68,7 @@
     (def ascii-0 48)
     (def ascii-1 49)
     (defun parse-bin (bin-str) {
-        (var bin-str (str-replace bin-str "0b" ""))
+        (setq bin-str (str-replace bin-str "0b" ""))
         (var bits (str-len bin-str))
         (foldl
             (fn (init char-pair)
