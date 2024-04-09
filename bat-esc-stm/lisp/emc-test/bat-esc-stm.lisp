@@ -1,4 +1,4 @@
-(import "vesc4g.bin" tcp)
+(import "vesc4g.bin" 'tcp)
 (load-native-lib tcp)
 
 (defun modem-pwr-on () {
