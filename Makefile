@@ -163,13 +163,11 @@ flash-ant-openocd:
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x020000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x1B000 verify reset exit"
 
-
 flash-jet-openocd:
 	$(OPENOCD) -c "program_esp build/jet-if-esp/bootloader.bin 0 verify reset exit"
 	$(OPENOCD) -c "program_esp build/jet-if-esp/partition-table.bin 0x8000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/jet-if-esp/firmware.bin 0x020000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/jet-if-esp/firmware.bin 0x1B0000 verify reset exit"
-
 
 flash-remote-openocd:
 	$(OPENOCD) -c "program_esp build/remote-disp-esp/bootloader.bin 0 verify reset exit"
