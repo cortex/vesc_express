@@ -5,8 +5,6 @@
 
 (def selecting-battery nil)
 
-(defun rotate (l) (foldr cons (cons (car l) nil) (cdr l)))
-
 (defun set-batt (new-addr) {
         (def batt-addr new-addr)
         (esp-now-add-peer batt-addr)
@@ -25,7 +23,7 @@
 })
 
 (defun next-battery () {
-    (def batteries (rotate batteries))
+    (def batteries (rotate batteries 1))
     (set-batt (car (car batteries)))
 })
 
