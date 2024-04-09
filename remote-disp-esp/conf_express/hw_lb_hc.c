@@ -158,10 +158,14 @@ static esp_err_t i2c_tx_rx(uint8_t addr,
 	xSemaphoreTake(i2c_mutex, portMAX_DELAY);
 
 	esp_err_t res;
-	if (read_buffer != NULL) {
-		res = i2c_master_write_read_device(0, addr, write_buffer, write_size, read_buffer, read_size, 100);
+	if (read_size > 0 && read_buffer != NULL) {
+		if (write_size > 0 && write_buffer != NULL) {
+			res = i2c_master_write_read_device(0, addr, write_buffer, write_size, read_buffer, read_size, 2000);
+		} else {
+			res = i2c_master_read_from_device(0, addr, read_buffer, read_size, 2000);
+		}
 	} else {
-		res = i2c_master_write_to_device(0, addr, write_buffer, write_size, 100);
+		res = i2c_master_write_to_device(0, addr, write_buffer, write_size, 2000);
 	}
 	xSemaphoreGive(i2c_mutex);
 
@@ -628,7 +632,7 @@ static lbm_value ext_nf_tx_en(lbm_value *args, lbm_uint argn) {
 		} else {
 			gpio_set_level(GPIO_NF_TX_EN, 0);
 		}
-		return ENC_SYM_TERROR;
+		return ENC_SYM_TRUE;
 	}
 	return ENC_SYM_TERROR;
 }
