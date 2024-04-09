@@ -8,6 +8,7 @@
 (defun set-batt (new-addr) {
         (def batt-addr new-addr)
         (esp-now-add-peer batt-addr)
+        (esp-now-send batt-addr "(+ 1 1)")
         (request-view-change)
 })
 
