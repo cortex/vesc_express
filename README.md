@@ -108,16 +108,61 @@ bat-ant-esp -->> Remote: soc-bms, duty, kmh, motor-kw (ESP-NOW)
 
 ```mermaid
 sequenceDiagram
+Battery ->>+ Remote: Broadcast for remote
+Note right of Remote: RSSI > Threshold?
+Note right of Remote: Add Peer Address<br/>to Remote
+activate Battery
+Remote ->>- Battery: ACK (send throttle)
 
-Remote ->> Board: scan NFC tag
-Board ->> Remote: broadcast nfc tag id
+Note left of Battery: Receive <br/>message<br/>addressed to<br/> battery?
 
-bat-ant-esp ->> Board: scan NFC tag
-bat-ant-esp ->> Board: broadcast NFC tag id
-
+Note left of Battery: Add Peer Address<br/>to Battery
+Battery -->>- Remote: Paired
+Note over Battery,Remote: Devices monitor for timeout
+loop While connected
+    Remote -->> Battery: Send Throttle
+    Battery -->> Remote: Send Metrics
+end
 ```
 
-## Logging low
+<table>
+<tr>
+<th>Remote Disconnect Event</th>
+<th>&nbsp;</th>
+<th>Battery Disconnect Event</th>
+</tr>
+<tr>
+<td>
+
+```mermaid
+stateDiagram
+[*] --> DisconnectedRemote
+state DisconnectedRemote {
+    [*] --> <center>Timeout<br/>1<br>second
+    <center>Timeout<br/>1<br>second --> <center>Battery<br/>Disconnects
+    <center>Battery<br/>Disconnects --> <center>Battery<br/>Restarts<br/>Pairing
+}
+```
+
+</td>
+<td width=200>&nbsp;</td>
+<td>
+
+```mermaid
+stateDiagram
+[*] --> DisconnectedBattery
+state DisconnectedBattery {
+    [*] --> <center>Timeout<br/>1<br>second
+    <center>Timeout<br/>1<br>second --> <center>Remote<br/>Disconnects
+    <center>Remote<br/>Disconnects --> <center>Remote<br/>Listens<br/>for<br/>Broadcast
+}
+```
+
+</td>
+</tr>
+</table>
+
+## Logging flow
 
 ```mermaid
 sequenceDiagram
