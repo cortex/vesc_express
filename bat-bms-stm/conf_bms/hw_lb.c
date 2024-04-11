@@ -282,7 +282,7 @@ static THD_FUNCTION(hw_thd_mon, p) {
 			sleep_reset();
 		}
 
-		sleep_reset();
+		//sleep_reset();
 
 		if (hw_temp_cell_max() > 60.0 && 0) {
 			BUZZER_ON();
@@ -471,7 +471,7 @@ static void terminal_reset_pwr(int argc, const char **argv) {
 }
 
 void hw_test_wake_up(void) {
-	if (hw_test_if_conn(false)) {
+	if (0 && hw_test_if_conn(false)) {
 		sleep_reset();
 
 		for (int i = 0;i < 2;i++) {
