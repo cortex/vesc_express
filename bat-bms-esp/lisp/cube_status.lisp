@@ -1,9 +1,9 @@
 (import "pkg::font_16_26@://vesc_packages/lib_files/files.vescpkg" 'font)
 
-(define bms-boot-timeout-secs 0.25)
-(define bms-timeout-secs 5.0)
+(define bms-boot-timeout-secs 0.25) ; Time to wait for first BMS message on boot
+(define bms-timeout-secs 3000.0)    ; Time without BMS message before going to sleep
 
-; wait for first bms package or timeout
+; Wait for first BMS package or timeout
 (loopwhile
     (and
         (> (+ (get-bms-val 'bms-msg-age) 0.01) (secs-since 0))
@@ -12,22 +12,22 @@
     (sleep 0.01)
 )
 
+(define sleep-check-time (get-bms-val 'bms-msg-age))
+
+; Continue sleeping if no BMS package arrived within timeout
 (if (> (get-bms-val 'bms-msg-age) (- bms-boot-timeout-secs 0.05))
-    ;(sleep-deep 10)
-    (def msg "boot sleep check true")
-    ;(print "should sleep")
-    (print "shouldn't sleep")
+    (sleep-deep 10)
 )
 
-; go to sleep if not getting bms package for timeout
+; Go to sleep if not getting bms package for timeout
 (loopwhile-thd 100 t {
-    (if (> (get-bms-val 'bms-msg-age) bms-timeout-secs) (print "going to sleep") (print "staying awake"))
+    (if (> (get-bms-val 'bms-msg-age) bms-timeout-secs) (sleep-deep 10))
     (sleep 1)
 })
 
 (loopwhile (not (main-init-done)) (sleep 0.1))
 
-(wifi-connect "Lindboard" "endless_summer")
+;(wifi-connect "Lindboard" "endless_summer")
 
 ; Oled enable
 (gpio-configure 4 'pin-mode-out)
@@ -92,7 +92,7 @@
 
 (loopwhile t {
         (var t-start (systime))
-        (img-text img 5 5 1 0 font "B03")
+        (img-text img 5 5 1 0 font "B16")
         (img-text img 5 30 1 0 font (str-from-n (* (get-bms-val 'bms-soc) 100.0) "%.0f%% "))
         (draw-edges)
         (rotate-c 0.1 0.05)
