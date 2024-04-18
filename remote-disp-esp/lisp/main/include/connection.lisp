@@ -38,7 +38,7 @@
             (def battery-rx-timestamp (systime))
             (def broadcast-rx-timestamp nil)
         } {
-            (print (str-merge "Broadcast RX too weak for pairing: " (to-str rssi)))
+            ;(print (str-merge "Broadcast RX too weak for pairing: " (to-str rssi)))
             (def esp-rx-rssi rssi)
         })
     })

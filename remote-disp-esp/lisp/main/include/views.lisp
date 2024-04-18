@@ -103,16 +103,22 @@
     ))
 
     (cons 'conn-lost (list
-;        (cons 'down nil)
-        (cons 'down nil)
+        (cons 'up (fn () {(leave-view-disconnected)}))
+        (cons 'down (fn () {(leave-view-disconnected)}))
 
         (cons 'down-long enter-sleep)
-        (cons 'left nil)
-        (cons 'right nil)
-        ; (cons 'left-long enter-sleep)
+
+        (cons 'left (fn () {(leave-view-disconnected)}))
+        (cons 'right (fn () {(leave-view-disconnected)}))
     ))
 ))
 
+(defun leave-view-disconnected () {
+    (state-set 'was-connected false)
+    (state-set 'conn-lost false)
+    (def esp-rx-rssi -99)
+    (request-view-change)
+})
 ; For every view, these functions tell you if it want's to be displayed
 ; currently. The order decide the priority, with the earlier views having higher
 ; priority. For example, the main view always want's to be displayed, but is
