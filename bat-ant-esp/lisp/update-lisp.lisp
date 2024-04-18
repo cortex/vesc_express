@@ -1,33 +1,49 @@
-; These files can be generated using the VESC Tool CLI
+; Update Lisp locally (can-id -1) or remotely
 
-;(def f (f-open "lbm/test_native.lpkg" "r"))
-;(def can-id 26)
+; Lisp package files can be generated using the VESC Tool via CLI
+; ./vesc_tool --packLisp [fileIn:fileOut] : Pack lisp-file and the included imports.
 
+; Example: (update-lisp "/lbm/bat-ant-esp.lpkg" 50)
 
-(defun update-lisp (fname can-id){
-(def f (f-open fname "r"))
-(def can-id -1)
+(defun update-lisp (fname can-id) {
+    (print (str-merge "update-lisp sending file: " (to-str fname) " to CAN id: " (to-str can-id)))
 
-(def fsize (f-size f))
+    (var result true)
 
-(print "erase")
-(print (list "Erase res" (lbm-erase can-id)))
+    (def f (f-open fname "r"))
+    (if (not f) (setq result nil))
 
-(def offset 0)
-(loopwhile t {
-        (var data (f-read f 256))
-        (if (eq data nil) {
+    (if result {
+        (def fsize (f-size f))
+        (print (str-merge "File size: " (to-str fsize)))
+    })
+
+    (if result {
+        (setq result (lbm-erase can-id))
+        (print (str-merge "Erase result: " (to-str result)))
+    })
+
+    (if result {
+        (setq result nil)
+        (def offset 0)
+        (loopwhile t {
+            (var data (f-read f 256))
+            (if (eq data nil) {
                 (print "Upload done")
+                (setq result true)
                 (break)
+            })
+
+            (lbm-write offset data can-id)
+            (setq offset (+ offset (buflen data)))
+            (print (str-merge "Progress " (to-str (to-i (floor (* 100 (/ (to-float offset) fsize))))) "%"))
         })
-        
-        (lbm-write offset data can-id)
-        (setq offset (+ offset (buflen data)))
-        (print (list "Progress" (floor (* 100 (/ (to-float offset) fsize)))))
+    })
+
+    (if result {
+        (setq result (lbm-run 1 can-id))
+        (print (str-merge "Run result: " (to-str result)))
+    })
+
+    result
 })
-
-(print (list "Run res" (lbm-run 1 can-id)))
-
-})
-
-(update-lisp "/lbm/bat-ant-esp.lpkg" 10)

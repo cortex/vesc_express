@@ -1,6 +1,15 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
+(import "update-lisp.lisp" 'code-update-lisp)
+(read-eval-program code-update-lisp)
+
+(import "update-vesc.lisp" 'code-update-vesc)
+(read-eval-program code-update-vesc)
+
+(import "update-processor.lisp" 'code-update-processor)
+(read-eval-program code-update-processor)
+
 (def broadcast-addr '(255 255 255 255 255 255))
 (def remote-addr broadcast-addr)
 
@@ -116,3 +125,4 @@
 (event-enable 'event-can-sid)
 
 (spawn connection-monitor)
+(spawn fw-update-processor)
