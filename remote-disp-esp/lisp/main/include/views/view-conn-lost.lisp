@@ -2,7 +2,7 @@
 
 (defun view-is-visible-conn-lost () {
     (and
-        (not (state-get 'is-connected))
+        (state-get 'conn-lost)
         (not dev-disable-connection-check)
         (not dev-disable-connection-lost-msg)
     )

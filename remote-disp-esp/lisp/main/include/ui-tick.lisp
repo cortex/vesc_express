@@ -1,5 +1,3 @@
-@const-start
-
 ;;; View tick functions
 
 (defun view-tick-main () {    
@@ -220,6 +218,9 @@
         (render-status-battery soc-remote)
     }))
 
+    (state-with-changed '(is-connected rx-rssi) (fn (is-connected rx-rssi) {
+        (render-signal-strength rx-rssi is-connected)
+    }))
 
     ; (if (not-eq script-start nil) {
     ;     (println ("render took" (* (secs-since script-start) 1000) "ms"))
@@ -242,5 +243,3 @@
     (def fps (+ (* (/ 1.0 (secs-since last-frame-time)) smoothing) (* fps (- 1.0 smoothing))))
     (def last-frame-time (systime))
 })
-
-@const-end

@@ -1,10 +1,7 @@
 @const-symbol-strings
 
-(def initializing true)
-(loopwhile initializing {
-    (sleep 0.1)
-    (if (main-init-done) (def initializing false))
-})
+; NOTE: IMPORTANT! Enabling WiFi Station mode increases time to boot by 600ms
+; On occasion there is an additional 600ms delay noticed in the startup animation
 
 (defun version-check () {
     (var compatible-version 3)
@@ -21,39 +18,27 @@
     })
 })
 
-; remote v3
-(init-hw)
-
 (version-check)
 
 @const-start
 
-(def version-str "v0.3.1")
-
-;;; Dev flags
-(import "../dev-flags.lisp" 'code-dev-flags)
-(read-eval-program code-dev-flags)
-
-;;; Startup Animation
-(import "include/views/boot-animation.lisp" code-boot-animation)
-(read-eval-program code-boot-animation)
-
-;;; Utilities
-(import "include/draw-utils.lisp" code-draw-utils)
-(read-eval-program code-draw-utils)
-(import "include/utils.lisp" code-utils)
-(read-eval-program code-utils)
-(import "include/startup-utils.lisp" code-startup-utils)
-(read-eval-program code-startup-utils)
+(def version-str "v0.4")
 
 ;;; Colors
 (import "include/theme.lisp" code-theme)
 (read-eval-program code-theme)
 
-;;; Low Battery View
-(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
-(read-eval-program code-view-low-battery)
-(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+;;; Startup Animation
+(import "include/views/boot-animation.lisp" code-boot-animation)
+(read-eval-program code-boot-animation)
+
+;;; Startup Utilities
+(import "include/startup-utils.lisp" code-startup-utils)
+(read-eval-program code-startup-utils)
+
+;;; Utilities
+(import "include/draw-utils.lisp" code-draw-utils)
+(read-eval-program code-draw-utils)
 
 ;;; Startup Animation
 (import "../assets/icons/bin/icon-lind-logo-inverted.bin" 'icon-lind-logo) ; size: 115x19
@@ -65,9 +50,30 @@
 (display-init)
 (vibration-init)
 (check-battery-on-boot)
+
+; wait for vesc_express to finish initializing (should not be an issue at this point)
+(loopwhile (not (main-init-done)) (sleep 0.1))
+
 (boot-animation)
 
+; remote v3
+(init-hw)
+
 @const-start
+
+;;; Low Battery View
+(if (not view-low-battery-loaded) {
+    (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
+    (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+})
+
+;;; Dev flags
+(import "../dev-flags.lisp" 'code-dev-flags)
+(read-eval-program code-dev-flags)
+
+;;; Utilities
+(import "include/utils.lisp" code-utils)
+(read-eval-program code-utils)
 
 ;;; Vibration
 (import "include/vib-reg.lisp" 'code-vib-reg)
@@ -75,12 +81,25 @@
 
 ;;; Included files
 
+;;; Views
 (import "include/views.lisp" code-views)
+(read-eval-program code-views)
+
+;;; Specific view state management
 (import "include/ui-tick.lisp" code-ui-tick)
-(import "include/ui-state.lisp" code-ui-state)
-(import "include/state-management.lisp" code-state-management)
+(read-eval-program code-ui-tick)
+
+;;; Connection and input
 (import "include/connection.lisp" code-connection)
 (import "include/input.lisp" code-input)
+(read-eval-program code-connection)
+(read-eval-program code-input)
+
+;;; State management
+(import "include/ui-state.lisp" code-ui-state)
+(import "include/state-management.lisp" code-state-management)
+(read-eval-program code-ui-state)
+(read-eval-program code-state-management)
 
 ;;;; Views
 (import "include/views/view-main.lisp" 'code-view-main)
@@ -90,7 +109,6 @@
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
 (import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
-(import "include/views/view-select-battery.lisp" 'code-view-select-battery)
 
 ;;; Icons
 
@@ -98,15 +116,15 @@
 (import "../assets/icons/bin/icon-check-mark-inverted.bin" 'icon-check-mark-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-failed-inverted.bin" 'icon-failed-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-bolt-16color.bin" 'icon-bolt-16color)
-(import "../assets/icons/bin/icon-sync.bin" 'icon-sync)
-(import "../assets/icons/bin/icon-pairing.bin" 'icon-pairing)
-(import "../assets/icons/bin/icon-not-powered.bin" 'icon-not-powered)
-(import "../assets/icons/bin/icon-pair-ok.bin" 'icon-pair-ok)
-(import "../assets/icons/bin/icon-charging.bin" 'icon-charging)
-(import "../assets/icons/bin/icon-turtle-4c.bin" 'icon-turtle-4c)
-(import "../assets/icons/bin/icon-fish-4c.bin" 'icon-fish-4c)
-(import "../assets/icons/bin/icon-pro-4c.bin" 'icon-pro-4c)
-(import "../assets/icons/bin/icon-shark-4c.bin" 'icon-shark-4c)
+(import "../assets/icons/bin/icon-sync.bin" 'icon-sync) ;board-info
+(import "../assets/icons/bin/icon-pairing.bin" 'icon-pairing) ;board-info
+(import "../assets/icons/bin/icon-not-powered.bin" 'icon-not-powered) ;board-info ;conn-lost
+(import "../assets/icons/bin/icon-pair-ok.bin" 'icon-pair-ok) ;board-info
+(import "../assets/icons/bin/icon-charging.bin" 'icon-charging) ;charging
+(import "../assets/icons/bin/icon-turtle-4c.bin" 'icon-turtle-4c) ;main
+(import "../assets/icons/bin/icon-fish-4c.bin" 'icon-fish-4c) ;main
+(import "../assets/icons/bin/icon-pro-4c.bin" 'icon-pro-4c) ;main
+(import "../assets/icons/bin/icon-shark-4c.bin" 'icon-shark-4c) ;main
 
 ;;; Texts
 
@@ -138,24 +156,6 @@
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
 (import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)
 (import "../assets/fonts/bin/UbuntuMono14x22x1.0.bin" 'font-ubuntu-mono-22h)
-
-;;; Connection and input
-
-(read-eval-program code-connection)
-(read-eval-program code-input)
-
-;;; State management
-
-(read-eval-program code-ui-state)
-(read-eval-program code-state-management)
-
-;;; Views
-
-(read-eval-program code-views)
-
-;;; Specific view state management
-
-(read-eval-program code-ui-tick)
 
 @const-end
 
@@ -231,15 +231,46 @@
 ; Whether or not the screen is currently enabled.
 (def draw-enabled true)
 
+; True when input tick has ran to completion at least once.
+(def input-has-ran false)
+
 ;;; Specific UI components
-
 (def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
+(def small-rssi-buf (create-sbuf 'indexed4 30 30 24 16))
 
-(def m-connection-tick-ms 0.0)
+; Renders the signal strength at the top of the screen
+(defun render-signal-strength (rssi is-visible) {
+    (sbuf-clear small-rssi-buf)
+
+    (if (and is-visible (not-eq rssi nil) ) {
+        (var signal-bars 0)
+        (cond
+            ((> rssi -60) (setq signal-bars 4))
+            ((> rssi -70) (setq signal-bars 3))
+            ((> rssi -80) (setq signal-bars 2))
+            ((> rssi -90) (setq signal-bars 1))
+        )
+
+        (sbuf-exec img-rectangle small-rssi-buf 4 13 (2 3 1 '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 8 10 (2 6 (if (> signal-bars 0) 1 2) '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 12 7 (2 9 (if (> signal-bars 1) 1 2)  '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 16 4 (2 12 (if (> signal-bars 2) 1 2)  '(filled)))
+        (sbuf-exec img-rectangle small-rssi-buf 20 1 (2 15 (if (> signal-bars 3) 1 2)  '(filled)))
+    })
+
+    (sbuf-render small-rssi-buf (list
+        col-bg
+        col-fg
+        0x363636
+        0x0
+    ))
+})
+
 ; Communication
+(def m-connection-tick-ms 0.0)
 (spawn 200 (fn ()
     (loopwhile t {
-        (def m-connection-tick-ms (if dev-smooth-tick-ms
+        (setq m-connection-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-connection-start)
                 m-connection-tick-ms
@@ -247,20 +278,18 @@
             )
             (ms-since thread-connection-start)
         ))
-        (def thread-connection-start (systime))
+        (setq thread-connection-start (systime))
 
         (connection-tick)
         ; this tick function handles its own sleep time
     })
 ))
 
-; True when input tick has ran to completion at least once.
-(def input-has-ran false)
 
-(def m-thr-tick-ms 0.0)
 ; Throttle handling
+(def m-thr-tick-ms 0.0)
 (spawn 200 (fn () (loopwhile t {
-    (def m-thr-tick-ms (if dev-smooth-tick-ms
+    (setq m-thr-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-thr-start)
                 m-thr-tick-ms
@@ -268,7 +297,7 @@
             )
             (ms-since thread-thr-start)
         ))
-    (def thread-thr-start (systime))
+    (setq thread-thr-start (systime))
 
     (thr-tick)
 
@@ -278,11 +307,12 @@
     )
 })))
 
-(def m-input-tick-ms 0.0)
+
 ; Input read and filter
+(def m-input-tick-ms 0.0)
 (spawn 200 (fn ()
     (loopwhile t {
-        (def m-input-tick-ms (if dev-smooth-tick-ms
+        (setq m-input-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-input-start)
                 m-input-tick-ms
@@ -290,11 +320,11 @@
             )
             (ms-since thread-input-start)
         ))
-        (def thread-input-start (systime))
+        (setq thread-input-start (systime))
 
         (input-tick)
 
-        (def input-has-ran true)
+        (setq input-has-ran true)
         (if any-ping-has-failed
             (sleep-ms-or-until 80 (not any-ping-has-failed))
             (sleep 0.01) ; 10 ms
@@ -303,8 +333,8 @@
 ))
 
 
+; Vibration playback
 (def m-vibration-tick-ms 0.0)
-; Vibration play
 (spawn 120 (fn ()
     (loopwhile t {
         (def m-vibration-tick-ms (if dev-smooth-tick-ms
@@ -324,8 +354,9 @@
     })
 ))
 
-(def m-slow-updates-tick-ms 0.0)
+
 ; Slow updates
+(def m-slow-updates-tick-ms 0.0)
 (spawn 120 (fn ()
     (loopwhile t {
         (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
@@ -338,8 +369,12 @@
         ))
         (def thread-slow-updates-start (systime))
 
+        ; Update SOC
         (def soc-remote (get-remote-soc))
         (state-set 'soc-remote soc-remote)
+
+        ; Update RSSI state from latest esp-rx-rssi
+        (state-set 'rx-rssi esp-rx-rssi)
 
         ; If we reach 3.2V (0% SOC) the remote must power down
         (if (<= remote-batt-v 3.2) {
@@ -360,8 +395,9 @@
     })
 ))
 
-(def m-main-tick-ms 0.0)
+
 ; Tick UI
+(def m-main-tick-ms 0.0)
 (spawn 200 (fn ()
     (loopwhile t {
         (def m-main-tick-ms (if dev-smooth-tick-ms

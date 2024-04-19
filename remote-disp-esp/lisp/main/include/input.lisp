@@ -1,4 +1,3 @@
-@const-start
 
 (def gear-ratios (append '(0) (evenly-place-points 0.3 1.0 10)))
 
@@ -325,5 +324,3 @@
         )
     })
 })
-
-@const-end

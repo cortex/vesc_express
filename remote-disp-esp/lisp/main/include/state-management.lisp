@@ -46,9 +46,12 @@
     (cons 'charger-plugged-in false)
 
     ; Whether or not the remote is currently connected to a board.
-    ; Currently only used for debugging
     (cons 'is-connected false)
-    
+    (cons 'was-connected false)
+
+    ; Received Signal Strength Indicator
+    (cons 'rx-rssi nil)
+
     ; If the warning vibration once the remote loses connection has been played
     ; yet.
     ; When true, no more vibrations are played.
@@ -80,7 +83,8 @@
     ; The currently displayed message and icon
     ; Can be one of 'initiate-pairing, 'pairing, 'board-not-powered,
     ; 'pairing-failed, 'pairing-success
-    (cons 'board-info-msg nil)
+    (cons 'board-info-msg 'pairing)
+    (cons 'conn-lost false)
 
     ;;; thr-activation specific state
 
@@ -284,14 +288,14 @@
     (vib-play-constant 0.8 0.4)
 })
 
-(defun vib-bms-connect () {
-    (vib-play-constant 1.0 0.8)
+;(defun vib-bms-connect () {
+;    (vib-play-constant 1.0 0.8)
     ; (vib-play-constant 0.7 0.12)
     ; (sleep 0.1)
     ; (vib-play-constant 0.7 0.12)
     ; (sleep 0.1)
     ; (vib-play-constant 1.0 0.3)
-})
+;})
 
 (defun vib-bms-disconnect () {
     (vib-play-constant 1.0 0.12)
@@ -362,5 +366,3 @@
         (vib-play-next-in-queue)
     })
 })
-
-@const-end

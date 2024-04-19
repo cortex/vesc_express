@@ -2,37 +2,65 @@
 
 (def thr-active false)
 
+(def esp-rx-rssi -99)
 (def esp-rx-cnt 0)
-(def batt-addr-rx true)
-;(def batt-addr '(212 249 141 2 108 137)) ; Bat3_08
-(def batt-addr '(212 249 141 10 179 105)) ; Bat3_06
+(def batt-addr-rx false)
+(def batt-addr '(0 0 0 0 0 0))
+(def broadcast-addr '(255 255 255 255 255 255))
 
-(def any-ping-has-failed false) ; If a ping has failed, but not enough to consider connection lost
+(def thr-fail-cnt 0)
+(def is-connected false)
+(def any-ping-has-failed false) ; TODO: This is never set to true
+
+(def my-addr (get-mac-addr))
+(def rssi-pairing-threshold -41)
+(def battery-rx-timestamp (- (systime) 20000))
+(def broadcast-rx-timestamp nil)
 
 @const-start
 
+(def rx-timeout-ms 1000)
+
 (esp-now-start)
-(esp-now-add-peer batt-addr)
 
-
-(defun proc-data (src des data) {
-        ; Ignore broadcast, only handle data sent directly to us
-        (if (eq src batt-addr){
-                (def batt-addr-rx true)
-                (eval (read data))
-                (def esp-rx-cnt (+ esp-rx-cnt 1))
+(defun proc-data (src des data rssi) {
+    (if (and (eq des broadcast-addr) (not is-connected)){
+        (def broadcast-rx-timestamp (systime))
+        (if (> rssi rssi-pairing-threshold) {
+            ; Handle broadcast data
+            (esp-now-add-peer src)
+            (setq batt-addr src)
+            (def batt-addr-rx true)
+            (state-set 'was-connected true)
+            (state-set 'conn-lost false)
+            (eval (read data))
+            (def esp-rx-cnt (+ esp-rx-cnt 1))
+            (def battery-rx-timestamp (systime))
+            (def broadcast-rx-timestamp nil)
+        } {
+            ;(print (str-merge "Broadcast RX too weak for pairing: " (to-str rssi)))
+            (def esp-rx-rssi rssi)
         })
-        (free data)
+    })
+    (if (eq des my-addr){
+        ; Handle data sent directly to us
+        (def esp-rx-rssi rssi)
+        (eval (read data))
+        (def esp-rx-cnt (+ esp-rx-cnt 1))
+        (def battery-rx-timestamp (systime))
+    })
+    (free data)
 })
 
 @const-end
 
-(defun event-handler ()
+(defun event-handler () {
     (loopwhile t
         (recv
-            ((event-esp-now-rx (? src) (? des) (? data) (?rssi)) (proc-data src des data))
+            ((event-esp-now-rx (? src) (? des) (? data) (?rssi)) (proc-data src des data rssi))
             (_ nil)
-)))
+    ))
+})
 
 @const-start
 
@@ -73,124 +101,6 @@
     )
 ))
 
-@const-end
-
-(def dbg-ping-should-fail false)
-(def dbg-failed-pings 0)
-(def dbg-ping-fail-count 0)
-
-(def measure-ping-total-count 0)
-(def measure-ping-failed-total-count 0)
-(def measure-connections-lost-count 0)
-(def measure-last-fail-count 0)
-
-(def measure-temp-first-tick true)
-(def measurements-updated false)
-
-(spawn 200 (fn () (loopwhile t {
-    (if measure-temp-first-tick {
-        (def measure-temp-first-tick false)
-        (sleep 5)
-        (print "started ping measurements")
-        (def m-max-ping-fails 0)
-    })
-    
-    
-    (var new-failed-pings measure-ping-failed-total-count)
-    (def measure-ping-failed-total-count 0)
-    
-    (var new-total-pings measure-ping-total-count)
-    (def measure-ping-total-count 0)
-    
-    (def m-total-pings new-total-pings)
-    (def m-failed-pings new-failed-pings)
-    (def m-last-fail-count measure-last-fail-count)
-    
-    (def measurements-updated true)
-    
-    (sleep 1.0)
-})))
-
-@const-start
-
-; These `dbg-fail-ping-*` functions can be called even when the
-; `dev-simulate-connection` flag isn't set
-
-(defun dbg-fail-ping-short () {
-    (def dbg-ping-should-fail true)
-    (def dbg-failed-pings 0)
-    (def dbg-ping-fail-count 10)
-})
-
-(defun dbg-fail-ping-limit () {
-    (def dbg-ping-should-fail true)
-    (def dbg-failed-pings 0)
-    (def dbg-ping-fail-count 25)
-})
-
-(defun dbg-fail-ping-medium () {
-    (def dbg-ping-should-fail true)
-    (def dbg-failed-pings 0)
-    (def dbg-ping-fail-count 100)
-})
-
-(defun dbg-fail-ping-long () {
-    (def dbg-ping-should-fail true)
-    (def dbg-failed-pings 0)
-    (def dbg-ping-fail-count 2000)
-})
-
-; debug ping simulator
-(defun dbg-ping-battery () {
-    (sleep 0.001) ; simulate battery ping duration (poorly)
-    (if (and
-        dbg-ping-should-fail
-        (>= dbg-failed-pings dbg-ping-fail-count)
-    )
-        (def dbg-ping-should-fail false)
-    )
-    (if dbg-ping-should-fail (def dbg-failed-pings (+ dbg-failed-pings 1)))
-    (not dbg-ping-should-fail)
-})
-
-; Pings the battery and returns a bool indicating if it was successfully
-; received.
-; Essentially checks if there is a connection.
-(defun ping-battery (){
-        (print "ping-battery")
-        (if batt-addr-rx {
-                (+set measure-ping-total-count 1)
-                
-                (if dbg-ping-should-fail {
-                        (sleep 0.002) ; 2 ms
-                        (if (>= dbg-failed-pings dbg-ping-fail-count)
-                            (def dbg-ping-should-fail false)
-                            (+set dbg-failed-pings 1)
-                        )
-                        
-                        (not dbg-ping-should-fail)
-                        } {
-                        (esp-now-send batt-addr "")
-                })
-            }
-            false
-        )
-})
-
-; Thread whose only purpose is to check for a connection with the battery
-@const-end
-
-(def ping-success false)
-(def ping-fail-time 0) ; Timestamp of first failed battery ping
-(def failed-pings 0)
-(def connection-n 0) ; when this reaches 4, the normal communications are ran
-
-(def thr-fail-cnt 0)
-(def is-connected true)
-(def any-ping-has-failed false)
-
-@const-start
-
 (defun connection-tick () {
         (var start (systime))
         
@@ -214,13 +124,23 @@
                 (set-thr-is-active true)
         })
         
-        (if (send-thr (if thr-active thr 0))
-            (def thr-fail-cnt 0)
-            (def thr-fail-cnt (+ thr-fail-cnt 1))
+        (if (not (send-thr (if thr-active thr 0)))
+            (setq thr-fail-cnt (+ thr-fail-cnt 1))
         )
-        
-        (def is-connected (< thr-fail-cnt 8))
-        
+
+        ; Update is-connected status
+        (if (> (- (systime) battery-rx-timestamp) rx-timeout-ms) {
+            ; Timeout, clear battery address
+            (def batt-addr-rx false)
+            (def is-connected false)
+            (if (state-get 'was-connected) (state-set 'conn-lost true))
+        } (def is-connected true))
+
+        ; Timeout broadcast reception
+        (if (and (not-eq broadcast-rx-timestamp nil) (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms)) {
+            (def esp-rx-rssi -99)
+            (def broadcast-rx-timestamp nil)
+        })
 ;        (if (not is-connected) (def thr-active false))
         
         (var tick-secs (if any-ping-has-failed
@@ -236,5 +156,3 @@
     (event-register-handler (spawn 120 event-handler))
     (event-enable 'event-esp-now-rx)
 })
-
-@const-start

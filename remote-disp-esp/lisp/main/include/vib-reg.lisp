@@ -1,7 +1,5 @@
 ;;; This contains constants for the available vibration driver registers.
 
-@const-start
-
 (def vib-reg-list (list
     (cons 'reg-status        0x00)
     (cons 'reg-mode          0x01)
@@ -36,6 +34,3 @@
 (defun vib-get-reg (reg) 
     (assoc vib-reg-list reg)
 )
-
-@const-end
-

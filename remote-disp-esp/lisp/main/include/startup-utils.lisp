@@ -8,6 +8,84 @@
     (gpio-write 3 0) ; enable display backlight (active when low)
 })
 
+(def pi 3.14159265359)
+
+; Add value to variable and assign the result to the variable.
+; Works like `+=` in conventional languages.
+; Ex:
+; ```
+; (def a 5)
+; (+set a 1)
+; (print a)
+; > 6
+; ```
+(def +set (macro (variable value)
+    `(setq ,variable (+ ,variable ,value))
+))
+
+; Clamp value to range 0-1
+; Copied from full_ui_v2.lisp
+(defun clamp01 (v)
+    (cond
+        ((< v 0.0) 0.0)
+        ((> v 1.0) 1.0)
+        (t v)
+))
+
+; Map and clamp the range min-max to 0-1
+; Copied from full_ui_v2.lisp
+(defun map-range-01 (v min max)
+    (clamp01 (/ (- (to-float v) min) (- max min)))
+)
+
+(defun ease-in-out-sine (x)
+    (/ (- 1 (cos (* pi x))) 2)
+)
+
+(defun ease-in-cubic (x)
+    (* x x x)
+)
+
+; linearly interpolate between a and b by v.
+; v is in range 0-1
+(defun lerp (a b v)
+    (+ (* (- 1 v) a) (* v b))
+)
+
+; Converts a color in the RGB integer representation (what you would get when
+; typing 0xffffff) to a list of the RGB components from 0 to 255.
+(defun color-int-to-rgb (col-int)
+    (list
+        (bitwise-and (shr col-int 16) 0xff)
+        (bitwise-and (shr col-int 8) 0xff)
+        (bitwise-and col-int 0xff)
+    )
+)
+; Converts a color as a list of three RGB components into its integer
+; representation (see function above for explanation).
+(defun color-rgb-to-int (col-rgb)
+    (bitwise-or 
+        (shl (ix col-rgb 0) 16)
+        (bitwise-or
+            (shl (ix col-rgb 1) 8)
+            (ix col-rgb 2)
+        )
+    )
+)
+
+; Linearly interpolate between the two integer colors a and b by v.
+; v is in the range 0.0 to 1.0.
+(defun lerp-color (a b v) {
+    (var a-rgb (color-int-to-rgb a))
+    (var b-rgb (color-int-to-rgb b))
+
+    (var r (to-i (lerp (ix a-rgb 0) (ix b-rgb 0) v)))
+    (var g (to-i (lerp (ix a-rgb 1) (ix b-rgb 1) v)))
+    (var b (to-i (lerp (ix a-rgb 2) (ix b-rgb 2) v)))
+
+    (color-rgb-to-int (list r g b))
+})
+
 ; Battery Protection (Deep Sleep Timer Check)
 (defun check-wake-cause-on-boot () {
     ; Check if the Timer woke the ESP32
@@ -34,18 +112,14 @@
 })
 
 (defun get-remote-soc () {
-    (if (not-eq dev-soc-remote nil)
-        dev-soc-remote
-        {
-            (def remote-batt-v (vib-vmon))
-            ; NOTE: 3.45V is ~25% SOC, reporting as 0%
-            (map-range-01 remote-batt-v 3.45 4.1)
-        }
-    )
+    (def remote-batt-v (vib-vmon))
+    ; NOTE: 3.45V is ~25% SOC, reporting as 0%
+    (map-range-01 remote-batt-v 3.45 4.1)
 })
 
-(defun render-low-battery() {
+(defun render-low-battery () {
     (disp-clear)
+    (read-eval-program code-view-low-battery)
     (def view-timeline-start (systime))
     (view-init-low-battery)
     (view-draw-low-battery)
@@ -53,10 +127,16 @@
     (view-cleanup-low-battery)
 })
 
+(def view-low-battery-loaded false)
 (defun check-battery-on-boot () {
     ; Once on startup, check remote battery soc
-    (if (and (<= (get-remote-soc) 0.2) (not dev-disable-low-battery-msg)) {
+    (if (<= (get-remote-soc) 0.2) {
         (print (str-merge "Low battery on boot: " (to-str (get-remote-soc))))
+
+        ;;; Low Battery View
+        (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
+        (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+        (def view-low-battery-loaded true)
 
         (render-low-battery)
         (sleep 1.0)
@@ -65,9 +145,9 @@
 
 (defun vibration-init () {
     ; parse string containing unsigned binary integer
-    (def ascii-0 48)
-    (def ascii-1 49)
     (defun parse-bin (bin-str) {
+        ;(var ascii-0 48)
+        (var ascii-1 49)
         (setq bin-str (str-replace bin-str "0b" ""))
         (var bits (str-len bin-str))
         (foldl
