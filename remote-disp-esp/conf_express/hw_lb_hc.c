@@ -228,9 +228,18 @@ static uint8_t als31300_crc8(const uint8_t *data, uint8_t len)  {
 
 // GPIO
 
+#define GPIO_EXP_INPUT_REG  0x0
+#define GPIO_EXP_OUTPUT_REG 0x1
+#define GPIO_EXP_CONFIG_REG 0x3
+
 void init_gpio_expander(void) {
-	i2c_write_reg(I2C_ADDR_GPIO_EXP, 0x03, 0x00); // ALL outputs
-	i2c_write_reg(I2C_ADDR_GPIO_EXP, 0x01, 0x0F); // ALL zeroes
+	i2c_write_reg(I2C_ADDR_GPIO_EXP, GPIO_EXP_CONFIG_REG, 0x00); // ALL outputs
+	i2c_write_reg(I2C_ADDR_GPIO_EXP, GPIO_EXP_OUTPUT_REG, 0x0F); // ALL zeroes
+
+        // Expander2
+#if LB_HW_VERSION == LB_HW_REV_C
+        i2c_write_reg(I2C_ADDR_GPIO_EXP2, GPIO_EXP_CONFIG_REG, 0x07); // Unused are outputs
+#endif
 }
 
 static lbm_value ext_set_io(lbm_value *args, lbm_uint argn) {
@@ -1628,6 +1637,9 @@ static lbm_value ext_init_hw(lbm_value *args, lbm_uint argn) {
 	}
 
 	// GPIO
+#if LB_HW_VERSION == LB_HW_REV_C
+        gpio_set_direction(GPIO_BUTTON, GPIO_MODE_INPUT);
+#endif
 
 	gpio_reset_pin(GPIO_NF_TX_EN);
 	gpio_set_direction(GPIO_NF_TX_EN, GPIO_MODE_OUTPUT);
@@ -1767,9 +1779,38 @@ static lbm_value ext_conf_express_version(lbm_value *args, lbm_uint argn) {
 	return lbm_enc_i(LB_HC_CONF_EXPRESS_VERION);
 }
 
+
+static lbm_value ext_read_button(lbm_value *args, lbm_uint argn) {
+  lbm_value res = ENC_SYM_TERROR;
+  if (argn == 1 && lbm_is_number(args[0])) {
+    int32_t button = lbm_dec_as_i32(args[0]);
+    button = button & 0x7;
+
+    //commands_printf_lisp("button = %d\n", button);
+    
+    res = ENC_SYM_NIL;
+    
+    if (button == 0) {
+      if (gpio_get_level(GPIO_BUTTON)) {
+        res = ENC_SYM_TRUE;
+      }
+    } else {
+      uint8_t io = i2c_read_reg(I2C_ADDR_GPIO_EXP2, GPIO_EXP_INPUT_REG);
+      //commands_printf_lisp("io = %x\n", io);
+      if (io & (1 << (button - 1))) {
+        res = ENC_SYM_TRUE;
+      }
+    }
+  }
+  return res;
+} 
+
+
 static void load_extensions(void) {
 	register_symbols_hc();
-
+#if LB_HW_VERSION == LB_HW_REV_C
+        lbm_add_extension("read-button", ext_read_button);
+#endif
 	lbm_add_extension("conf-express-version", ext_conf_express_version);
 	
 	lbm_add_extension("mag-get-x", ext_mag_get_x);

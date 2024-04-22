@@ -22,8 +22,9 @@
 
 #define LB_HW_REV_A 1
 #define LB_HW_REV_B 2
+#define LB_HW_REV_C 3
 
-#define LB_HW_VERSION LB_HW_REV_A
+#define LB_HW_VERSION LB_HW_REV_C
 
 #define HW_INIT_HOOK()              hw_init()
 #define HW_EARLY_LBM_INIT
@@ -51,6 +52,14 @@
     #define GPIO_BUTTON             GPIO_NUM_1
     // NEAR FIELD
     #define GPIO_NF_TX_EN           GPIO_NUM_2
+#elif LB_HW_VERSION == LB_HW_REV_C
+    #define HW_NAME                 "LB HC REVC"
+    // BUTTONS
+    #define HW_ADC_CH0              ADC1_CHANNEL_1
+    // IO
+    #define GPIO_BUTTON             GPIO_NUM_1
+    // NEAR FIELD
+    #define GPIO_NF_TX_EN           GPIO_NUM_2
 #else
     #error "Invalid hardware version."
 #endif
@@ -69,12 +78,16 @@
 #define I2C_ADDR_GPIO_EXP           0x20
 #define I2C_ADDR_PN532              0x24
 #define I2C_ADDR_BME280             0x76
+#define I2C_ADDR_GPIO_EXP2          0x21
+
 
 // BACKLIGHT
 #define GPIO_DISP_BACKLIGHT         GPIO_NUM_3
 
 // BUTTONS
+#if LB_HW_VERSION != LB_HW_REV_C
 #define HW_HAS_ADC
+#endif
 
 // NEAR FIELD
 #define GPIO_NF_SW_EN               GPIO_NUM_4
