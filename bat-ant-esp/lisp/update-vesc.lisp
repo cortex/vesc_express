@@ -46,6 +46,7 @@
                 (break)
             })
             (setq offset (+ offset (buflen data)))
+            (free data)
 
             (var percent (to-i (floor (* 100 (/ (to-float offset) fsize)))))
             (if (not-eq percent last-percent) {
@@ -62,5 +63,6 @@
         (print (str-merge "Reboot result: " (to-str result)))
     })
 
+    (if (not-eq f nil) (f-close f))
     result
 })

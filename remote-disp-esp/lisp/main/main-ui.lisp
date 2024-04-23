@@ -234,6 +234,8 @@
 ; True when input tick has ran to completion at least once.
 (def input-has-ran false)
 
+(def firmware-updating false)
+
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
 (def small-rssi-buf (create-sbuf 'indexed4 30 30 24 16))
@@ -269,7 +271,7 @@
 ; Communication
 (def m-connection-tick-ms 0.0)
 (spawn 200 (fn ()
-    (loopwhile t {
+    (loopwhile (not firmware-updating) {
         (setq m-connection-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-connection-start)
@@ -288,7 +290,7 @@
 
 ; Throttle handling
 (def m-thr-tick-ms 0.0)
-(spawn 200 (fn () (loopwhile t {
+(spawn 200 (fn () (loopwhile (not firmware-updating) {
     (setq m-thr-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-thr-start)
@@ -311,7 +313,7 @@
 ; Input read and filter
 (def m-input-tick-ms 0.0)
 (spawn 200 (fn ()
-    (loopwhile t {
+    (loopwhile (not firmware-updating) {
         (setq m-input-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-input-start)
@@ -336,7 +338,7 @@
 ; Vibration playback
 (def m-vibration-tick-ms 0.0)
 (spawn 120 (fn ()
-    (loopwhile t {
+    (loopwhile (not firmware-updating) {
         (def m-vibration-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-vibration-start)
@@ -358,7 +360,7 @@
 ; Slow updates
 (def m-slow-updates-tick-ms 0.0)
 (spawn 120 (fn ()
-    (loopwhile t {
+    (loopwhile (not firmware-updating) {
         (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-slow-updates-start)
@@ -398,8 +400,8 @@
 
 ; Tick UI
 (def m-main-tick-ms 0.0)
-(spawn 200 (fn ()
-    (loopwhile t {
+(spawn 200 (fn () {
+    (loopwhile (not firmware-updating) {
         (def m-main-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-main-start)
@@ -425,6 +427,12 @@
             }
         )
     })
-))
+
+    ; NOTE: Draw Firmware during LBM Update
+    (disp-clear)
+    (view-init-firmware)
+    (view-draw-firmware)
+    (view-render-firmware)
+}))
 
 (connect-start-events)

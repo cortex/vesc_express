@@ -18,14 +18,15 @@
 
 (def fw-update-ready false)
 
-(def fw-types (list 'fw-vesc 'fw-lisp))
-(def fw-devices (list 'bat-ant-esp 'bat-ant-stm 'bat-bms-esp 'bat-bms-stm 'bat-esc-stm 'jet-if-esp))
+(def fw-types (list 'fw-vesc 'fw-lisp 'fw-vesc-espnow 'fw-lisp-espnow))
+(def fw-devices (list 'bat-ant-esp 'bat-ant-stm 'bat-bms-esp 'bat-bms-stm 'bat-esc-stm 'jet-if-esp 'remote-disp-esp))
 
 ; TODO: This can be delivered via code-server or populated locally from wifi connection?
 (def update-description (list
     '(bat-esc-stm . fw-vesc)
     ;'(bat-ant-esp . fw-lisp)
-    '(bat-ant-esp . fw-vesc)
+    ;'(bat-ant-esp . fw-vesc)
+    '(remote-disp-esp . fw-lisp-espnow)
 ))
 
 ; Set fw-update-ready to begin updates
@@ -48,6 +49,7 @@
                     (bat-bms-stm 20)
                     (bat-esc-stm (list 10 11))
                     (jet-if-esp 40)
+                    (remote-disp-esp 50)
                     (_ nil)
                 ))
 
@@ -58,6 +60,7 @@
                     (bat-bms-stm "bat-bms-stm")
                     (bat-esc-stm "bat-esc-stm")
                     (jet-if-esp "jet-if-esp")
+                    (remote-disp-esp "remote-disp-esp")
                     (_ nil)
                 ))
 
@@ -75,6 +78,20 @@
                         (if (is-list can-id) 
                             (setq update-result (update-lisp file-name (first can-id)))
                             (setq update-result (update-lisp file-name can-id))
+                        )
+                    })
+                    (fw-vesc-espnow {
+                        (setq file-name (str-merge file-name ".bin"))
+                        (match can-id
+                            (50 (setq update-result (update-vesc-espnow file-name remote-addr)))
+                            (_ (setq update-result false))
+                        )
+                    })
+                    (fw-lisp-espnow {
+                        (setq file-name (str-merge file-name ".lpkg"))
+                        (match can-id
+                            (50 (setq update-result (update-lisp-espnow file-name remote-addr)))
+                            (_ (setq update-result false))
                         )
                     })
                     (_ (print "Invalid fw-type"))

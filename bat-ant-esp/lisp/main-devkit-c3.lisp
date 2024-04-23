@@ -1,3 +1,18 @@
+(def strip1 (rgbled-buffer 1 0))
+(rgbled-init 8)
+(rgbled-color strip1 0 0x000011)
+(rgbled-update strip1)
+
+(defun connect-event () {
+    (rgbled-color strip1 0 0x001100)
+    (rgbled-update strip1)
+})
+
+(defun disconnect-event () {
+    (rgbled-color strip1 0 0x110000)
+    (rgbled-update strip1)
+})
+
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
@@ -11,6 +26,7 @@
 (read-eval-program code-update-processor)
 
 (def broadcast-addr '(255 255 255 255 255 255))
+
 (def remote-addr broadcast-addr)
 
 (esp-now-start)
@@ -26,6 +42,7 @@
 
 (def zero-rx-rime (systime))
 (def rx-timeout-ms 1000)
+(def dummy-soc 0.0)
 (def disable-connection-timeout nil)
 
 (def throttle-rx-timestamp (- (systime) 20000))
@@ -65,6 +82,7 @@
             (def remote-addr src)
             (esp-now-add-peer src)
             (eval (read data))
+            (connect-event)
         }
         {
             ; Broadcast data
@@ -118,7 +136,11 @@
                     (def remote-addr broadcast-addr)
                     (disconnect-event)
                 })
-            })
+            } {
+                (send-code (str-from-n dummy-soc "(def soc-bms %.3f)"))
+                (setq dummy-soc (+ dummy-soc 0.001))
+                (if (> dummy-soc 1.0) (setq dummy-soc 0.0))
+            }) ; TODO: Do not use in production, this is a hack for missing CAN data from ESC on DevKit
         })
         (sleep 0.1) ; Rate limit to 10Hz
     })

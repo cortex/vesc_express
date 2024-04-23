@@ -23,6 +23,16 @@
 
 (esp-now-start)
 
+@const-end
+
+; LBM Update Handling
+(def fw-bytes-remaining 0)
+(def fw-offset 0)
+(def first-chunk true)
+; NOTES: Polling in vesc_tool after lbm-erase will crash the esp32
+; NOTES: Creating new symbols via (eval (read data)) after lbm-erase will crash the esp32
+
+; ESP-NOW RX Handler
 (defun proc-data (src des data rssi) {
     (if (and (eq des broadcast-addr) (not is-connected)){
         (def broadcast-rx-timestamp (systime))
@@ -45,14 +55,27 @@
     (if (eq des my-addr){
         ; Handle data sent directly to us
         (def esp-rx-rssi rssi)
-        (eval (read data))
+        (if (> fw-bytes-remaining 0) {
+            (if first-chunk {
+                (setq first-chunk nil)
+                (print "erasing lbm on first chunk")
+                (lbm-erase)
+            })
+            (print (list "writing" (buflen data) "bytes"))
+            (lbm-write fw-offset data)
+            (setq fw-offset (+ fw-offset (buflen data)))
+            (setq fw-bytes-remaining (- fw-bytes-remaining (buflen data)))
+            (send-code (str-merge "(def remote-pos " (str-from-n fw-offset "%d") ")"))
+        } {
+            (print data)
+            (eval (read data))
+        })
+
         (def esp-rx-cnt (+ esp-rx-cnt 1))
         (def battery-rx-timestamp (systime))
     })
     (free data)
 })
-
-@const-end
 
 (defun event-handler () {
     (loopwhile t
@@ -62,13 +85,13 @@
     ))
 })
 
-@const-start
-
 (defun send-code (str)
     (if batt-addr-rx
         (esp-now-send batt-addr str)
         nil
 ))
+
+@const-start
 
 (defun str-crc-add (str)
     (str-merge str (str-from-n (crc16 str) "%04x"))
