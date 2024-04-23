@@ -304,7 +304,12 @@ static THD_FUNCTION(hw_thd_mon, p) {
 float hw_temp_cell_max(void) {
 	float res = -250.0;
 
-	for (int i = 1;i < HW_TEMP_SENSORS;i++) {
+	// We skip the first and last four sensors for the purpose of 
+	// measuring the cell temperature, because they are close to  
+	// components that generate heat, i.e. 
+	// fuses and shunts (N-4) and the antenna board (1-5)
+
+	for (int i = 1 + 4; i < HW_TEMP_SENSORS - 4;i++) {
 		if (bms_if_get_temp(i) > res) {
 			res = bms_if_get_temp(i);
 		}
