@@ -116,7 +116,6 @@
                 (if (not disable-connection-timeout) {
                     ; Timeout, clear remote-addr
                     (def remote-addr broadcast-addr)
-                    (disconnect-event)
                 })
             })
         })
