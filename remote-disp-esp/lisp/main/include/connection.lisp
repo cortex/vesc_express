@@ -56,18 +56,23 @@
         ; Handle data sent directly to us
         (def esp-rx-rssi rssi)
         (if (> fw-bytes-remaining 0) {
-            (if first-chunk {
-                (setq first-chunk nil)
-                (print "erasing lbm on first chunk")
-                (lbm-erase)
+            ;(print (list "writing" (buflen data) "bytes"))
+            (if vesc-fw-updating {
+                (fw-write fw-offset data)
+            } {
+                (if first-chunk {
+                    (setq first-chunk nil)
+                    (print "erasing lbm on first chunk")
+                    (lbm-erase)
+                })
+                (lbm-write fw-offset data)
             })
-            (print (list "writing" (buflen data) "bytes"))
-            (lbm-write fw-offset data)
+
             (setq fw-offset (+ fw-offset (buflen data)))
             (setq fw-bytes-remaining (- fw-bytes-remaining (buflen data)))
             (send-code (str-merge "(def remote-pos " (str-from-n fw-offset "%d") ")"))
         } {
-            (print data)
+            ;(print data)
             (eval (read data))
         })
 

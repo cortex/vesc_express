@@ -22,7 +22,7 @@
 
 @const-start
 
-(def version-str "v0.4")
+(def version-str "v0.5")
 
 ;;; Colors
 (import "include/theme.lisp" code-theme)
@@ -234,7 +234,12 @@
 ; True when input tick has ran to completion at least once.
 (def input-has-ran false)
 
+; When True the threads will stop to allow a LBM update to take place
 (def firmware-updating false)
+
+; When True display the Firmware update View, also controls esp-now reception
+; logic
+(def vesc-fw-updating false)
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
@@ -271,7 +276,7 @@
 ; Communication
 (def m-connection-tick-ms 0.0)
 (spawn 200 (fn ()
-    (loopwhile (not firmware-updating) {
+    (loopwhile (and (not firmware-updating) (not vesc-fw-updating)) {
         (setq m-connection-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-connection-start)

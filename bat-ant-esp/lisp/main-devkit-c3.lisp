@@ -133,6 +133,7 @@
             (if (> (- (systime) throttle-rx-timestamp) rx-timeout-ms) {
                 (if (not disable-connection-timeout) {
                     ; Timeout, clear remote-addr
+                    (print "Remote Disconnected due to Timeout")
                     (def remote-addr broadcast-addr)
                     (disconnect-event)
                 })

@@ -24,19 +24,25 @@
 ; TODO: This can be delivered via code-server or populated locally from wifi connection?
 (def update-description (list
     '(bat-esc-stm . fw-vesc)
-    ;'(bat-ant-esp . fw-lisp)
     ;'(bat-ant-esp . fw-vesc)
+    ;'(bat-ant-esp . fw-lisp)
+    '(remote-disp-esp . fw-vesc-espnow) ; vesc before lisp
     '(remote-disp-esp . fw-lisp-espnow)
 ))
+
+; Populated by the update-processor
+(def update-results nil)
 
 ; Set fw-update-ready to begin updates
 (defun fw-update-processor () {
     (loopwhile t {
         (if fw-update-ready {
+            (setq update-results (range 0 (length update-description)))
             ; Process update_description
             (print (str-merge "Processing update_description with " (to-str (length update-description)) " entries."))
             (var i 0)
             (loopwhile (< i (length update-description)) {
+                (var start-time (systime))
                 (var update-result nil)
                 (var fw-device (first (ix update-description i)))
                 (var fw-type (cdr (ix update-description i)))
@@ -99,12 +105,15 @@
 
                 (if update-result (print "Success") (print "Fail"))
 
-                (setassoc update-description fw-device (if update-result "Success" "Fail"))
+                (var ms (- (systime) start-time))
+                (print (str-from-n ms "Update time: %d ms"))
+
+                (setix update-results i (list fw-device fw-type (if update-result "Success" "Fail") ms))
 
                 (setq i (+ i 1))
             })
 
-            (print update-description)
+            (print update-results)
             ; TODO: Log Progress
             ; TODO: Report to Server
 

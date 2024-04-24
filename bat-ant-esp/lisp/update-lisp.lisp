@@ -51,7 +51,6 @@
 })
 
 
-
 (defun update-lisp-espnow (fname peer-addr) {
     (print (str-merge "update-lisp sending file: " (to-str fname) " to Peer: " (to-str peer-addr)))
 
@@ -66,7 +65,7 @@
         ; Disable connection timeout
         (def disable-connection-timeout true)
 
-        ; TODO: Testing a way to stop the threads on the remote
+        ; Stop the threads on the remote before LBM is erased
         (setq result (send-code "(def firmware-updating true)"))
     })
 
@@ -85,7 +84,7 @@
     })
 
     (if result {
-        ; NOTE: We cannot setq or def after lbm-erase because the vector table is gone and the esp faults
+        ; NOTE: We cannot setq or def after lbm-erase
         (setq result (send-code (str-merge "(setq fw-bytes-remaining " (str-from-n fsize "%d") ")")))
         ; NOTE: lbm-erase will execute locally on the remote when the first file chunk is received
     })
@@ -96,7 +95,7 @@
         (var offset 0)
         (var retries 5)
         (var last-percent 0)
-        (var buf-len 10) ; TODO: Determine optimal buffer size for esp-now-send
+        (var buf-len 250)
 
         (loopwhile t {
             (def data (f-read f buf-len))
