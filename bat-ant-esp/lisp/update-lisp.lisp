@@ -61,11 +61,14 @@
         (setq result false)
     })
 
+    (def f (f-open fname "r"))
+    (if (not f) (setq result nil))
+
     (if result {
         ; Disable connection timeout
         (def disable-connection-timeout true)
 
-        ; Stop the threads on the remote before LBM is erased
+        ; Indicate an update is about to begin
         (setq result (send-code "(def firmware-updating true)"))
     })
 
@@ -75,18 +78,20 @@
         (sleep 1)
     }))
 
-    (def f (f-open fname "r"))
-    (if (not f) (setq result nil))
-
     (if result {
         (def fsize (f-size f))
         (print (str-merge "File size: " (to-str fsize)))
     })
 
     (if result {
-        ; NOTE: We cannot setq or def after lbm-erase
+        (setq result (send-code (str-from-n fsize "(fw-erase %d)")))
+        (print (str-merge "Erase result: " (to-str result)))
+    })
+
+    (if result {
+        ; Indicate to the remote data is inbound
         (setq result (send-code (str-merge "(setq fw-bytes-remaining " (str-from-n fsize "%d") ")")))
-        ; NOTE: lbm-erase will execute locally on the remote when the first file chunk is received
+        ; NOTE: lbm-erase & lbm-write will execute locally on the remote after the transfer is successful
     })
 
 
@@ -127,7 +132,7 @@
     })
 
     (if result {
-        (setq result (send-code "(lbm-run 1)"))
+        (setq result (send-code (str-from-n fsize "(lbm-update-ready %d)")))
         (print (str-merge "Run result: " (to-str result)))
     })
 

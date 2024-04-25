@@ -23,10 +23,10 @@
 
 ; TODO: This can be delivered via code-server or populated locally from wifi connection?
 (def update-description (list
-    '(bat-esc-stm . fw-vesc)
+    ;'(bat-esc-stm . fw-vesc)
     ;'(bat-ant-esp . fw-vesc)
     ;'(bat-ant-esp . fw-lisp)
-    '(remote-disp-esp . fw-vesc-espnow) ; vesc before lisp
+    ;'(remote-disp-esp . fw-vesc-espnow) ; vesc before lisp
     '(remote-disp-esp . fw-lisp-espnow)
 ))
 

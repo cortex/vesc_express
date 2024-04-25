@@ -33,6 +33,8 @@
 #include "esp_wifi.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
+#include "esp_ota_ops.h"
+#include "esp_partition.h"
 #include "soc/ledc_struct.h"
 #include "soc/ledc_reg.h"
 
@@ -49,7 +51,7 @@
 
 #ifndef LB_HC_CONF_EXPRESS_VERION
 	// Check this version in LBM to validate compatibility
-	#define LB_HC_CONF_EXPRESS_VERION 3
+	#define LB_HC_CONF_EXPRESS_VERION 4
 #endif
 
 // LBM Utilities
@@ -1767,10 +1769,38 @@ static lbm_value ext_conf_express_version(lbm_value *args, lbm_uint argn) {
 	return lbm_enc_i(LB_HC_CONF_EXPRESS_VERION);
 }
 
+static lbm_value ext_read_update_partition(lbm_value *args, lbm_uint argn) {
+    LBM_CHECK_ARGN_NUMBER(2);
+
+    lbm_uint offset = lbm_dec_as_u32(args[0]);
+    lbm_uint len = lbm_dec_as_u32(args[1]);
+
+    const esp_partition_t* update_partition = esp_ota_get_next_update_partition(NULL);
+    if (update_partition == NULL) {
+        return ENC_SYM_EERROR;
+    }
+
+    lbm_value res;
+    if (lbm_create_array(&res, len)) {
+        lbm_array_header_t *arr = (lbm_array_header_t*)lbm_car(res);
+
+        esp_err_t err = esp_partition_read(update_partition, offset, arr->data, len);
+        if (err != ESP_OK) {
+            return ENC_SYM_EERROR;
+        }
+
+        return res;
+    } else {
+        return ENC_SYM_MERROR;
+    }
+}
+
 static void load_extensions(void) {
 	register_symbols_hc();
 
 	lbm_add_extension("conf-express-version", ext_conf_express_version);
+
+	lbm_add_extension("read-update-partition", ext_read_update_partition);
 	
 	lbm_add_extension("mag-get-x", ext_mag_get_x);
 	lbm_add_extension("mag-get-y", ext_mag_get_y);

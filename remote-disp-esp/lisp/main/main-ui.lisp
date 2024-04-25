@@ -4,7 +4,7 @@
 ; On occasion there is an additional 600ms delay noticed in the startup animation
 
 (defun version-check () {
-    (var compatible-version 3)
+    (var compatible-version 4)
     (if (!= (conf-express-version) compatible-version) {
         (loopwhile t {
             (print (str-merge
@@ -235,11 +235,10 @@
 (def input-has-ran false)
 
 ; When True the threads will stop to allow a LBM update to take place
-(def firmware-updating false)
+(def stop-threads false)
 
-; When True display the Firmware update View, also controls esp-now reception
-; logic
-(def vesc-fw-updating false)
+; When True display the Firmware update View
+(def firmware-updating false)
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
@@ -276,7 +275,7 @@
 ; Communication
 (def m-connection-tick-ms 0.0)
 (spawn 200 (fn ()
-    (loopwhile (and (not firmware-updating) (not vesc-fw-updating)) {
+    (loopwhile (and (not stop-threads) (not firmware-updating)) {
         (setq m-connection-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-connection-start)
@@ -295,7 +294,7 @@
 
 ; Throttle handling
 (def m-thr-tick-ms 0.0)
-(spawn 200 (fn () (loopwhile (not firmware-updating) {
+(spawn 200 (fn () (loopwhile (not stop-threads) {
     (setq m-thr-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-thr-start)
@@ -318,7 +317,7 @@
 ; Input read and filter
 (def m-input-tick-ms 0.0)
 (spawn 200 (fn ()
-    (loopwhile (not firmware-updating) {
+    (loopwhile (not stop-threads) {
         (setq m-input-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-input-start)
@@ -343,7 +342,7 @@
 ; Vibration playback
 (def m-vibration-tick-ms 0.0)
 (spawn 120 (fn ()
-    (loopwhile (not firmware-updating) {
+    (loopwhile (not stop-threads) {
         (def m-vibration-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-vibration-start)
@@ -365,7 +364,7 @@
 ; Slow updates
 (def m-slow-updates-tick-ms 0.0)
 (spawn 120 (fn ()
-    (loopwhile (not firmware-updating) {
+    (loopwhile (not stop-threads) {
         (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-slow-updates-start)
@@ -433,7 +432,7 @@
         )
     })
 
-    ; NOTE: Draw Firmware during LBM Update
+    ; NOTE: Draw Firmware view before finishing
     (disp-clear)
     (view-init-firmware)
     (view-draw-firmware)

@@ -28,9 +28,19 @@
 ; LBM Update Handling
 (def fw-bytes-remaining 0)
 (def fw-offset 0)
-(def first-chunk true)
-; NOTES: Polling in vesc_tool after lbm-erase will crash the esp32
-; NOTES: Creating new symbols via (eval (read data)) after lbm-erase will crash the esp32
+
+(defun lbm-update-ready (fw-size) {
+    (var len 250)
+    (var offset 0)
+    (setq stop-threads true) ;TODO: Necessary?
+    (lbm-erase)
+    (loopwhile (< offset fw-size) {
+        (lbm-write offset (read-update-partition offset len))
+        (setq offset (+ offset len))
+        (if (> (+ offset len) fw-size) (setq len (- fw-size offset)))
+    })
+    (lbm-run 1)
+})
 
 ; ESP-NOW RX Handler
 (defun proc-data (src des data rssi) {
@@ -56,17 +66,8 @@
         ; Handle data sent directly to us
         (def esp-rx-rssi rssi)
         (if (> fw-bytes-remaining 0) {
-            ;(print (list "writing" (buflen data) "bytes"))
-            (if vesc-fw-updating {
-                (fw-write fw-offset data)
-            } {
-                (if first-chunk {
-                    (setq first-chunk nil)
-                    (print "erasing lbm on first chunk")
-                    (lbm-erase)
-                })
-                (lbm-write fw-offset data)
-            })
+            ; Write data to vesc update partition
+            (fw-write fw-offset data)
 
             (setq fw-offset (+ fw-offset (buflen data)))
             (setq fw-bytes-remaining (- fw-bytes-remaining (buflen data)))

@@ -78,12 +78,15 @@
         (setq result false)
     })
 
+    (def f (f-open fname "r"))
+    (if (not f) (setq result nil))
+
     (if result {
         ; Disable connection timeout
         (def disable-connection-timeout true)
 
         ; Indicate an update is about to begin
-        (setq result (send-code "(def vesc-fw-updating true)"))
+        (setq result (send-code "(def firmware-updating true)"))
     })
 
     (if result (loopwhile log-running {
@@ -91,9 +94,6 @@
         (print "waiting for log to stop")
         (sleep 1)
     }))
-
-    (def f (f-open fname "r"))
-    (if (not f) (setq result nil))
 
     (if result {
         (def fsize (f-size f))

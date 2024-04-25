@@ -1,7 +1,7 @@
 ;;; firmware
 
 (defun view-is-visible-firmware () {
-    vesc-fw-updating ; Defined in main-ui
+    firmware-updating ; Defined in main-ui
 })
 
 (defun view-init-firmware () {
