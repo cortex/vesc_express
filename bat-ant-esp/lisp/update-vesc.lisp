@@ -87,6 +87,8 @@
 
         ; Indicate an update is about to begin
         (setq result (send-code "(def firmware-updating true)"))
+        ; Update the display on the remote
+        (send-code "(request-view-change)")
     })
 
     (if result {

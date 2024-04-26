@@ -81,6 +81,8 @@
         ;   Haults extra esp-now communications remotely
         ;   Remote can display firmware update view
         (setq result (send-code "(def firmware-updating true)"))
+        ; Update the display on the remote
+        (send-code "(request-view-change)")
     })
 
     (if result {
@@ -109,8 +111,6 @@
         (setq result (send-code (str-merge "(setq fw-bytes-remaining " (str-from-n fsize "%d") ")")))
         ; NOTE: lbm-erase & lbm-write will execute locally on the remote after the transfer is successful
     })
-
-    (sleep 5.0) ; TODO: Testing giving the remote time to render before streaming
 
     (if result {
         (setq result nil)

@@ -87,15 +87,15 @@
         (var kw (/ (bufget-i16 data 6) 100.0))
         (def rx-cnt-can (+ rx-cnt-can 1))
         ; Send CAN data only when connected to a remote
-        (if (not-eq remote-addr broadcast-addr) {
+        ; and not performing a firmware update
+        (if (and (not-eq remote-addr broadcast-addr) (not fw-update-ready)){
             (send-code (str-from-n soc-bms "(def soc-bms %.3f)"))
             (send-code (str-from-n duty "(def duty %.3f)"))
             (send-code (str-from-n kmh "(def kmh %.2f)"))
             (send-code (str-from-n kw "(def motor-kw %.3f)"))
-            (gc)
-            (free data)
         })
-    } (free data))
+    })
+    (free data)
 })
 
 (defun event-handler ()
