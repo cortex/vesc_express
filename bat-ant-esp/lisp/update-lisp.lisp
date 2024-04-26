@@ -10,11 +10,11 @@
 
     (var result true)
 
-    (def f (f-open fname "r"))
-    (if (not f) (setq result nil))
+    (def update-file (f-open fname "r"))
+    (if (not update-file) (setq result nil))
 
     (if result {
-        (def fsize (f-size f))
+        (def fsize (f-size update-file))
         (print (str-merge "File size: " (to-str fsize)))
     })
 
@@ -27,7 +27,7 @@
         (setq result nil)
         (def offset 0)
         (loopwhile t {
-            (var data (f-read f 256))
+            (var data (f-read update-file 256))
             (if (eq data nil) {
                 (print "Upload done")
                 (setq result true)
@@ -46,30 +46,46 @@
         (print (str-merge "Run result: " (to-str result)))
     })
 
-    (if (not-eq f nil) (f-close f))
+    (if (not-eq update-file nil) (f-close update-file))
     result
 })
 
-
+; update-lisp-espnow process:
+; Send lpkg to peer, storing in vesc ota partition.
+; After sending update stop the lisp threads on the peer.
+; Indicate to peer it is time to install the update, copying
+; data from vesc ota partition to active LBM parition
 (defun update-lisp-espnow (fname peer-addr) {
-    (print (str-merge "update-lisp sending file: " (to-str fname) " to Peer: " (to-str peer-addr)))
+    (print (str-merge "update-lisp-espnow sending file: " (to-str fname) " to Peer: " (to-str peer-addr)))
 
     (var result true)
+
+    ; This is a surprise offset found when storing the lisp update in
+    ; the spare VESC partition, normally used for vesc_express updates
+    (var lbm-on-vesc-part-offset 6)
 
     (if (eq peer-addr '(255 255 255 255 255 255)) {
         (print "Cannot send to broadcast address")
         (setq result false)
     })
 
-    (def f (f-open fname "r"))
-    (if (not f) (setq result nil))
+    ; Attempt to open the update file
+    (def update-file (f-open fname "r"))
+    (if (not update-file) (setq result nil))
 
     (if result {
         ; Disable connection timeout
         (def disable-connection-timeout true)
 
         ; Indicate an update is about to begin
+        ;   Haults extra esp-now communications remotely
+        ;   Remote can display firmware update view
         (setq result (send-code "(def firmware-updating true)"))
+    })
+
+    (if result {
+        ; Send a special buffer offset for writing LBM data to spare VESC partition
+        (setq result (send-code (str-from-n lbm-on-vesc-part-offset "(def fw-offset %d)")))
     })
 
     (if result (loopwhile log-running {
@@ -79,7 +95,7 @@
     }))
 
     (if result {
-        (def fsize (f-size f))
+        (def fsize (f-size update-file))
         (print (str-merge "File size: " (to-str fsize)))
     })
 
@@ -94,6 +110,7 @@
         ; NOTE: lbm-erase & lbm-write will execute locally on the remote after the transfer is successful
     })
 
+    (sleep 5.0) ; TODO: Testing giving the remote time to render before streaming
 
     (if result {
         (setq result nil)
@@ -103,7 +120,7 @@
         (var buf-len 250)
 
         (loopwhile t {
-            (def data (f-read f buf-len))
+            (def data (f-read update-file buf-len))
             (if (eq data nil) {
                 (print "Upload done")
                 (setq result true)
@@ -132,12 +149,18 @@
     })
 
     (if result {
+        ; Stop the remote threads before performing the update
+        (setq result (send-code "(def stop-threads true)"))
+    })
+    (sleep 3.0) ; TODO: Testing giving time for threads to stop
+
+    (if result {
         (setq result (send-code (str-from-n fsize "(lbm-update-ready %d)")))
         (print (str-merge "Run result: " (to-str result)))
     })
 
     (def disable-connection-timeout false)
 
-    (if (not-eq f nil) (f-close f))
+    (if (not-eq update-file nil) (f-close update-file))
     result
 })

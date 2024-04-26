@@ -28,14 +28,15 @@
 ; LBM Update Handling
 (def fw-bytes-remaining 0)
 (def fw-offset 0)
-
 (defun lbm-update-ready (fw-size) {
     (var len 250)
     (var offset 0)
-    (setq stop-threads true) ;TODO: Necessary?
+    (var data nil)
     (lbm-erase)
     (loopwhile (< offset fw-size) {
-        (lbm-write offset (read-update-partition offset len))
+        (setq data (read-update-partition offset len))
+        (lbm-write offset data)
+        (free data)
         (setq offset (+ offset len))
         (if (> (+ offset len) fw-size) (setq len (- fw-size offset)))
     })

@@ -23,6 +23,7 @@
 @const-start
 
 (def version-str "v0.5")
+(print (str-merge "Booting " version-str))
 
 ;;; Colors
 (import "include/theme.lisp" code-theme)
@@ -405,7 +406,7 @@
 ; Tick UI
 (def m-main-tick-ms 0.0)
 (spawn 200 (fn () {
-    (loopwhile (not firmware-updating) {
+    (loopwhile (not stop-threads) {
         (def m-main-tick-ms (if dev-smooth-tick-ms
             (smooth-filter
                 (ms-since thread-main-start)

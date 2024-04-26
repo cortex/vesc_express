@@ -69,7 +69,7 @@
 
 
 (defun update-vesc-espnow (fname peer-addr) {
-    (print (str-merge "update-vesc sending file: " (to-str fname) " to Peer: " (to-str peer-addr)))
+    (print (str-merge "update-vesc-espnow sending file: " (to-str fname) " to Peer: " (to-str peer-addr)))
 
     (var result true)
 
@@ -87,6 +87,11 @@
 
         ; Indicate an update is about to begin
         (setq result (send-code "(def firmware-updating true)"))
+    })
+
+    (if result {
+        ; Set the fw-offset to the beginning on the remote
+        (setq result (send-code "(def fw-offset 0)"))
     })
 
     (if result (loopwhile log-running {
