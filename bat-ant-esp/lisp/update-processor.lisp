@@ -21,13 +21,26 @@
 (def fw-types (list 'fw-vesc 'fw-lisp 'fw-vesc-espnow 'fw-lisp-espnow))
 (def fw-devices (list 'bat-ant-esp 'bat-ant-stm 'bat-bms-esp 'bat-bms-stm 'bat-esc-stm 'jet-if-esp 'remote-disp-esp))
 
-; TODO: This can be delivered via code-server or populated locally from wifi connection?
+; Update description can be delivered via code-server prior
+; to setting fw-update-ready to true
 (def update-description (list
-    ;'(bat-esc-stm . fw-vesc)
-    ;'(bat-ant-esp . fw-vesc)
-    ;'(bat-ant-esp . fw-lisp)
+    ;'(jet-if-esp . fw-vesc)
+
+    ;'(bat-ant-stm . fw-vesc)
+
+    ;'(bat-bms-stm . fw-vesc)
+
+    ;'(bat-bms-esp . fw-vesc)
+    ;'(bat-bms-esp . fw-lisp) ; WiFi / App Connected Device
+
+    ;'(bat-esc-stm . fw-vesc) ; installs to CAN IDs 10 & 11
+    ;'(bat-esc-stm . fw-lisp) ; installs to CAN ID 10
+
     ;'(remote-disp-esp . fw-vesc-espnow) ; vesc before lisp
-    '(remote-disp-esp . fw-lisp-espnow)
+    ;'(remote-disp-esp . fw-lisp-espnow)
+
+    ;'(bat-ant-esp . fw-vesc) ; remote before self
+    ;'(bat-ant-esp . fw-lisp) ; lisp after vesc for lisp restart
 ))
 
 ; Populated by the update-processor

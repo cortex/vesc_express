@@ -50,6 +50,8 @@
     result
 })
 
+@const-start
+
 ; update-lisp-espnow process:
 ; Send lpkg to peer, storing in vesc ota partition.
 ; After sending update stop the lisp threads on the peer.
@@ -164,3 +166,5 @@
     (if (not-eq update-file nil) (f-close update-file))
     result
 })
+
+@const-end

@@ -67,7 +67,7 @@
     result
 })
 
-
+@const-start
 (defun update-vesc-espnow (fname peer-addr) {
     (print (str-merge "update-vesc-espnow sending file: " (to-str fname) " to Peer: " (to-str peer-addr)))
 
@@ -160,6 +160,18 @@
 
     (def disable-connection-timeout false)
 
+    ; TODO: At this time the remote is displaying Firmware Update view
+    ; This is ok if lisp is updating next. Otherwise we'll need to
+    ; update the display on the remote.
+    ;(if result {
+    ;    ; Indicate update is complete
+    ;    (setq result (send-code "(def firmware-updating false)"))
+    ;    ; Update the display on the remote
+    ;    (send-code "(request-view-change)")
+    ;})
+
     (if (not-eq f nil) (f-close f))
     result
 })
+
+@const-end
