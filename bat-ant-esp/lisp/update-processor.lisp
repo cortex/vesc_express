@@ -9,6 +9,19 @@
 ;
 ; Update results are stored in the update-description for reporting to API
 
+; TODO: Uploading fw-vesc leaves fw-lisp in an erased state on bat-esc-stm
+; TODO: remote will disconnect when fw-vesc is updated due to ^
+; TODO: When lisp updates on self (lbm-run 1) will reset
+;       the device before reporting update-results
+
+; NOTE: Useful information when performing updates:
+;
+; update fw-vesc before fw-lisp on same device
+; update remote-disp-esp before bat-ant-esp
+; bat-bms-esp is WiFi / App Connected Device
+; bat-esc-stm fw-vesc installs to CAN IDs 10 & 11
+; bat-esc-stm fw-lisp installs to CAN ID 10
+
 (defun is-list (value)
     (or
         (eq (type-of value) 'type-list)
@@ -31,16 +44,16 @@
     ;'(bat-bms-stm . fw-vesc)
 
     ;'(bat-bms-esp . fw-vesc)
-    ;'(bat-bms-esp . fw-lisp) ; WiFi / App Connected Device
+    ;'(bat-bms-esp . fw-lisp)
 
-    ;'(bat-esc-stm . fw-vesc) ; installs to CAN IDs 10 & 11
-    ;'(bat-esc-stm . fw-lisp) ; installs to CAN ID 10
+    ;'(bat-esc-stm . fw-vesc)
+    ;'(bat-esc-stm . fw-lisp)
 
-    ;'(remote-disp-esp . fw-vesc-espnow) ; vesc before lisp
+    ;'(remote-disp-esp . fw-vesc-espnow)
     ;'(remote-disp-esp . fw-lisp-espnow)
 
-    ;'(bat-ant-esp . fw-vesc) ; remote before self
-    ;'(bat-ant-esp . fw-lisp) ; lisp after vesc for lisp restart
+    ;'(bat-ant-esp . fw-vesc)
+    ;'(bat-ant-esp . fw-lisp)
 ))
 
 ; Populated by the update-processor
