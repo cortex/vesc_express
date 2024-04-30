@@ -1,5 +1,8 @@
 (import "pkg::font_16_26@://vesc_packages/lib_files/files.vescpkg" 'font)
 
+(import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
+(read-eval-program code-server)
+
 (define bms-boot-timeout-secs 0.25) ; Time to wait for first BMS message on boot
 (define bms-timeout-secs 3000.0)    ; Time without BMS message before going to sleep
 
@@ -21,13 +24,25 @@
 
 ; Go to sleep if not getting bms package for timeout
 (loopwhile-thd 100 t {
-    (if (> (get-bms-val 'bms-msg-age) bms-timeout-secs) (sleep-deep 10))
-    (sleep 1)
+        (if (> (get-bms-val 'bms-msg-age) bms-timeout-secs) (sleep-deep 10))
+        (sleep 1)
 })
 
 (loopwhile (not (main-init-done)) (sleep 0.1))
 
 ;(wifi-connect "Lindboard" "endless_summer")
+
+; For receiving throttle from qml
+(def throttle-rx-timestamp (- (systime) 20000))
+(def rx-cnt 0)
+(defun thr-rx (thr) {
+        (setq throttle-rx-timestamp (systime))
+        (def thr-val thr)
+        (def rx-cnt (+ rx-cnt 1))
+        (canset-current-rel 10 thr)
+        (canset-current-rel 11 thr)
+        (rcode-run-noret 10 `{(setq rem-thr ,thr) (setq rem-cnt ,rx-cnt)})
+})
 
 ; Oled enable
 (gpio-configure 4 'pin-mode-out)
