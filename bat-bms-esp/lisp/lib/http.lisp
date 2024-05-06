@@ -61,3 +61,11 @@
         "\n\n"
         body "\n")
 )
+
+(defun http-get (url)
+    (str-merge
+        "GET " (url-path url) " HTTP/1.1\r\n"
+        "Host: " (url-host url) "\r\n"
+        "\r\n\r\n"
+    )
+)

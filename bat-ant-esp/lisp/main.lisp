@@ -1,6 +1,9 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
+(import "lib/file-server.lisp" 'code-file-server)
+(read-eval-program code-file-server)
+
 (import "update-lisp.lisp" 'code-update-lisp)
 (read-eval-program code-update-lisp)
 
