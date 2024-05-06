@@ -1,3 +1,5 @@
+; TODO: Move this to vesc_pkg repo?
+
 @const-end
 
 (def file-served nil)
@@ -20,9 +22,8 @@
                     (f-close file-served)
                     (def file-served nil)
                     (send parent (list 'complete true))
-                    (print "file is closed")
                 })
-                (_ (print "unknown operation"))
+                (_ (print "file-server: unknown operation"))
             )
 
             ; Return the current file position
@@ -58,7 +59,6 @@
                             })
 
                             ((complete (? yes)) {
-                                (print "end of loop")
                                 (setq transfer-complete yes)
                             })
                         )
