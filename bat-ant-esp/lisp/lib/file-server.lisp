@@ -32,10 +32,11 @@
 
 (defun start-file-server (file-name)
     (spawn 50 (fn () {
+                (print (str-merge "start-file-server: " file-name))
                 (var last-id 0)
                 (var respawn true)
 
-                (def file-served (f-open file-name "w+"))
+                (def file-served (f-open file-name "w+")) ; TODO: Make sure this works!
                 (var transfer-complete false)
 
                 (loopwhile (not transfer-complete) {
@@ -58,6 +59,7 @@
 
                             ((complete (? yes)) {
                                 (setq transfer-complete yes)
+                                (print "file received")
                             })
                         )
                 })

@@ -1,3 +1,5 @@
+(loopwhile (not (main-init-done)) (sleep 0.1))
+
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
@@ -132,3 +134,5 @@
 
 (spawn connection-monitor)
 (spawn fw-update-processor)
+
+(start-code-server) ; to receive update information

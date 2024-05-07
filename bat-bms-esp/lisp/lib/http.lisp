@@ -51,6 +51,21 @@
         (list status headers)
 })
 
+(defunret http-parse-content-length (http-response) {
+    (var i 0)
+    (loopwhile (< i (length http-response)) {
+        (var j 0)
+        (loopwhile (< j (length (ix http-response i))) {
+            (if (eq (first (ix (ix http-response i) j)) "Content-Length") {
+                (return (str-to-i (second (ix (ix http-response i) j))))
+            })
+            (setq j (+ j 1))
+        })
+        (setq i (+ i 1))
+    })
+    (return nil)
+})
+
 (defun http-post-json (url body)
     (str-merge
         "POST " (url-path url) " HTTP/1.1\n"

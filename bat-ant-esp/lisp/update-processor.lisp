@@ -63,6 +63,13 @@
 (defun fw-update-processor () {
     (loopwhile t {
         (if fw-update-ready {
+            ; Extract zip file contents
+            (var unzip-result (fw-update-unzip-files)) ; TODO: Relocate? Don't necessarialy want this here
+            (if (not unzip-result) {
+                (def fw-update-ready false) ; TODO: Stopping during testing, might need a retry limit in unzip fun
+                (break)
+            })
+
             (setq update-results (range 0 (length update-description)))
             ; Process update_description
             (print (str-merge "Processing update_description with " (to-str (length update-description)) " entries."))
@@ -140,11 +147,31 @@
             })
 
             (print update-results)
-            ; TODO: Log Progress
+
             ; TODO: Report to Server
 
             (def fw-update-ready false)
         })
         (sleep 1) ; Rate limit to 1Hz
     })
+})
+
+(defunret fw-update-unzip-files () {
+    (var start-time (systime))
+    ; TODO: Make sure file size is reasonable as well
+    (def fw-files (zip-list-files "ota_update.zip")) ; TODO: Handle (eval_error "No such file or directory")
+    (print fw-files)
+    (var unzip-retries 10)
+    (var i 0)
+    (loopwhile (< i (length fw-files)) {
+        ; TODO: Retries? Zip extract sometimes fails to start, not sure why but might be lowzip state
+        (if (not (zip-extract-file "ota_update.zip" (ix fw-files i))) {
+            (print (str-merge "zip-extract-file failed on " (ix fw-files i)))
+            (setq unzip-retries (- unzip-retries 1))
+            (if (eq unzip-retries 0) (return nil))
+            (sleep 1)
+        } (setq i (+ i 1)))
+    })
+    (print (str-from-n (secs-since start-time) "Unzip time: %0.2f seconds"))
+    (return true)
 })
