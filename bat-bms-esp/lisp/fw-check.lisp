@@ -1,11 +1,23 @@
+@const-end
+
+; TODO: Get the firmware IDs from the connected components, likely via codeserver
+(def fw-id-battery 0)
+(def fw-id-remote 0)
+(def fw-id-jet 0)
+
+(def firmware-versions nil)
 (def fw-file nil)
+
+@const-start
 
 (defun fw-check-json () (cond
     ((not registration-id) 'no-registration-id)
     (t (str-merge
             "{" (kv "registrationId" (q registration-id)) ", "
                 (q "hardwareIdentifiers" ) ":["
-                (q serial-number-battery)
+                (q serial-number-battery) ","
+                (q serial-number-remote) ","
+                (q serial-number-jet)
             "]}"
         )
     )
@@ -17,6 +29,73 @@
     (def vt-0 (systime))
     (fw-download)
     (print (str-from-n (secs-since vt-0) "Download time: %0.2f seconds"))
+})
+
+(defun print-big-string (arr) {
+    (var printable-len 128)
+    (var len (buflen arr))
+    (var i 0)
+    (loopwhile (< i len) {
+        (var out-str (array-create (+ printable-len 1)))
+        (bufcpy out-str 0 arr i printable-len)
+        (print out-str)
+        (free out-str)
+        (setq i (+ i printable-len))
+    })
+})
+
+(defunret parse-key-val (line) {
+    (var key (take-until line ":"))
+    (list (car key) (after key))
+})
+
+
+(defunret parse-json-firmware (json-array) {
+    (var json-response (take-exact json-array "["))
+    (if (eq (car json-response) 'parse-error) (return 'parse-error))
+
+    (var parsed-json-count 0)
+    (var parsed-json-list (list))
+
+    (loopwhile t {
+        (var parsed-item-count 0)
+        (var parsed-item (list))
+
+        (var is-next-item (take-exact (after json-response) "{"))
+
+        (var next-item (take-until (after is-next-item) "}"))
+        (var next-item-list (str-split (first next-item) ","))
+        (var i 0)
+        (loopwhile (< i (length next-item-list)) {
+            (var this-item (parse-key-val (ix next-item-list i)))
+            (var this-cleaned (list
+                (str-replace (first this-item) "\"")
+                (str-replace (second this-item) "\"")
+                ))
+            ;(print this-cleaned)
+
+            (setq parsed-item (append parsed-item (list 'temp)))
+            (setix parsed-item parsed-item-count this-cleaned)
+            (setq parsed-item-count (+ parsed-item-count 1))
+            (setq i (+ i 1))
+            (gc)
+        })
+
+        (setq parsed-json-list (append parsed-json-list (list 'temp)))
+        (setix parsed-json-list parsed-json-count parsed-item)
+        (setq parsed-json-count (+ parsed-json-count 1))
+
+        (if (eq (second next-item) "]") {
+            ;(print "next-item second is ]")
+            (break) ; End of list
+        })
+
+        (var next-val (take-exact (after next-item) "{"))
+        (setq json-response next-val)
+        (gc)
+    })
+
+    parsed-json-list
 })
 
 (defun fw-check () {
@@ -35,14 +114,19 @@
             (var response (http-parse-response conn))
             (var result (ix (ix response 0) 1))
 
-            ; Get fw update filename from body
+            ; Parse fw-ids and fw-files from response
             (if (eq "200" result) {
                 (var content-length (http-parse-content-length response))
                 (if (not-eq content-length nil) {
                     (var resp-body (tcp-recv conn content-length))
-                    (var url-part (second (take-until resp-body "url\":\"")))
-                    (def fw-file (first (take-until url-part "\"")))
-                    (print fw-file)
+                    ;(print-big-string resp-body)
+
+                    (setq firmware-versions (parse-json-firmware resp-body))
+                    (print firmware-versions)
+
+                    ;(var filename-part (second (take-until resp-body "fileName\":\"")))
+                    ;(def fw-file (str-merge "http://lindfiles.blob.core.windows.net/firmware/" (first (take-until filename-part "\""))))
+                    ;(print fw-file)
                 })
             })
 
@@ -70,13 +154,13 @@
                 (var content-length (http-parse-content-length response))
                 (print (str-from-n content-length "Downloading %d bytes"))
 
-                ; TODO: rcode-run will not work flatten this command here
+                ; TODO: rcode-run will not flatten this command here
                 ;***   Error: nil
                 ;***   In:    flatten
                 ;***   After: code
 
                 ; Start file server remotely
-                (why-above-file-server)
+                (start-server-workaround)
                 ;(def fserve-start-result (rcode-run 31 2 '(start-file-server "ota_update.zip")))
                 ;(match fserve-start-result
                 ;    (timeout {
