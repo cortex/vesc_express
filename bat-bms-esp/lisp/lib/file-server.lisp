@@ -34,11 +34,21 @@
 
 (defun start-file-server (file-name)
     (spawn 50 (fn () {
+                (print (str-merge "start-file-server: " file-name))
+                (if (not-eq file-served nil) {
+                    (f-close file-served)
+                    (def file-served nil)
+                })
                 (var last-id 0)
                 (var respawn true)
 
-                (def file-served (f-open file-name "w+"))
                 (var transfer-complete false)
+
+                (def file-served (f-open file-name "w+"))
+                (if (eq file-served nil) {
+                    (print "Unable to open file for writing")
+                    (setq transfer-complete true)
+                })
 
                 (loopwhile (not transfer-complete) {
                         (if respawn {
