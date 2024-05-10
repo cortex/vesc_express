@@ -106,48 +106,35 @@
                         (var action-data (second (ix (ix hw-actions i) 4)))
                         ;(print (str-merge action-id ", " action-type ", " action-data))
 
-                        ; TODO: Is not working (no match):
-                        ;(match (str-to-i action-type)
-                        ;    (1 (print "Need to start charging"))
-                        ;    (2 (print "Need to stop charging"))
-                        ;    (3 {
-                        ;        (print (list "Need to set charge limit" action-data))
-                        ;        ; TODO: change the charge limit somehow
-                        ;        (confirm-action action-id)
-                        ;    })
-                        ;    (4 {
-                        ;        (print "Need to install firmware")
-                        ;        ;TODO: notify bat-ant-esp it's time to begin
-                        ;        (rcode-run 31 2 '(def fw-update-install true))
-                        ;    })
-                        ;    (_ (print "Unexpected action-type"))
-                        ;)
-                        (if (eq action-type "1") {
-                            (print "Action: Start Charging")
-                            ; TODO: Start charging
-                            (def fake-charge-status 2)
-                            (confirm-action action-id)
-                        })
-                        (if (eq action-type "2") {
-                            (print "Action: Stop Charging")
-                            ; TODO: Stop charging
-                            (def fake-charge-status 1)
-                            (confirm-action action-id)
-                        })
-                        (if (eq action-type "3") {
-                            (print (str-merge "Action: Charge Limit to " action-data))
-                            ; TODO: change the charge limit somehow
-                            (def charge-limit (str-to-i action-data))
-                            (confirm-action action-id)
-                        })
-                        (if (eq action-type "4") {
-                            (print "Action: Install FW")
-                            ; Notify bat-ant-esp it's time to begin
-                            (var res (rcode-run 31 2 '(def fw-update-install true)))
-                            (if (not-eq res 'timeout)
+                        (cond
+                            ((eq action-type "1") {
+                                (print "Action: Start Charging")
+                                ; TODO: Start charging
+                                (def fake-charge-status 2)
                                 (confirm-action action-id)
-                            )
-                        })
+                            })
+                            ((eq action-type "2") {
+                                (print "Action: Stop Charging")
+                                ; TODO: Stop charging
+                                (def fake-charge-status 1)
+                                (confirm-action action-id)
+                            })
+                            ((eq action-type "3") {
+                                (print (str-merge "Action: Charge Limit to " action-data))
+                                ; TODO: change the charge limit somehow
+                                (def charge-limit (str-to-i action-data))
+                                (confirm-action action-id)
+                            })
+                            ((eq action-type "4") {
+                                (print "Action: Install FW")
+                                ; Notify bat-ant-esp it's time to begin
+                                (var res (rcode-run 31 2 '(def fw-update-install true)))
+                                (if (not-eq res 'timeout)
+                                    (confirm-action action-id)
+                                )
+                            })
+                            (_ (print (str-merge "Unexpected action-type: " action-type)))
+                        )
 
                         (setq i (+ i 1))
                     })
