@@ -1,3 +1,5 @@
+(def charge-limit 100) ; TODO: This should come from the bms I suspect
+(def fake-charge-status 1) ; TODO: This is just for testing, use (charge-status)
 @const-start
 
 (def api-url "http://lindboard-staging.azurewebsites.net/api/esp")
@@ -20,21 +22,21 @@
             "{" (kv "registrationId" (q registration-id)) ", "
                 (q "units" ) ":["
                 "{" 
-                    (kv "hardwareIdentifier"     (q (str-merge "BA" (mac-addr-string)))) ","
+                    (kv "hardwareIdentifier"     (q (str-merge "BAD4F98D2CFD21"))) "," ; TODO: Was: "BA" (mac-addr-string)
                     (kv "serialNumber"           (q serial-number-battery)) ","
                     (kv "hardwareTypeId" "1") ","
-                    (kv "firmwareId"             (q "test")) "," ; TODO: needs lispbm implementation
-                    (kv "chargeLevel"            (int (* (get-bms-val 'bms-soc) 100))) ","
+                    (kv "firmwareId"             (int fw-id-board)) ","
+                    (kv "chargeLevel"            (int 64)) "," ; TODO: Was: (int (* (get-bms-val 'bms-soc) 100))) ","
                     (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
-                    (kv "chargeStatus"           (charge-status)) ","
-                    (kv "chargeLimit"            "100") ","
+                    (kv "chargeStatus"           (str-from-n fake-charge-status)) "," ; TODO: Was: (charge-status)
+                    (kv "chargeLimit"            (str-from-n charge-limit)) ","
                     (kv "latitude"               (str-from-n 59.3293)) "," ; TODO: what to do in case of error
                     (kv "longitude"              (str-from-n 18.0686)) "," ; TODO: what to do in case of error
                     (kv "celcius"                (int (get-bms-val 'bms-temp-hum)))
                 "}"
-            ;",{" (kv "hardwareIdentifier" (q serial-number-remote)) "," (kv "serialNumber" (q serial-number-remote)) "," (kv "chargeLevel" (int 42)) "," (kv "chargeStatus" (int 2)) "}"
-            ;",{" (kv "hardwareIdentifier" (q serial-number-jet))    "," (kv "serialNumber" (q serial-number-jet))    "," (kv "chargeStatus" (int 1)) "}"
-            ;",{" (kv "hardwareIdentifier" (q serial-number-board))  "," (kv "serialNumber" (q serial-number-board))  "," (kv "chargeStatus" (int 1)) "}"
+            ",{" (kv "hardwareIdentifier" (q serial-number-remote)) "," (kv "serialNumber" (q serial-number-remote)) "," (kv "chargeLevel" (int 42)) "," (kv "chargeStatus" (int 2)) "}"
+            ",{" (kv "hardwareIdentifier" (q serial-number-jet))    "," (kv "serialNumber" (q serial-number-jet))    "," (kv "chargeStatus" (int 1)) "}"
+            ",{" (kv "hardwareIdentifier" (q serial-number-board))  "," (kv "serialNumber" (q serial-number-board))  "," (kv "chargeStatus" (int 1)) "}"
             "]}"
         )
     )
@@ -42,6 +44,37 @@
 
 (define registration-id nil) ; TODO: This should be stored somewhere
 (define registration-id "69c1446a-2b16-4449-8a56-9a97a17e1736")
+
+(defun confirm-action-json (action-id) (cond
+    ((not registration-id) 'no-registration-id)
+    (t (str-merge
+            "{" (kv "registrationId" (q registration-id)) ", "
+                (kv "hardwareActionId" (q action-id))
+            "}"
+        )
+    )
+))
+
+(defun confirm-action (action-id) {
+    (var url (str-merge api-url "/confirmAction"))
+    (var conn (tcp-connect (url-host url) (url-port url)))
+    (if (or (eq conn nil) (eq conn 'unknown-host))
+        (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
+        {
+            (var to-post (confirm-action-json action-id))
+            (if (not (eq (type-of to-post) 'type-array)) {
+                (tcp-close conn)
+                (return to-post)
+            })
+            (var req (http-post-json url to-post))
+            (var res (tcp-send conn req))
+            (var response (http-parse-response conn))
+            (var result (second (first response)))
+            (tcp-close conn)
+            (if (eq "200" result) 'ok 'error)
+        }
+    )
+})
 
 (defunret send-status (){
     (var url (str-merge api-url "/batteryStatusUpdate"))
@@ -67,8 +100,55 @@
                     (def hw-actions (parse-json-firmware resp-body))
                     (var i 0)
                     (loopwhile (< i (length hw-actions)) {
-                        ; TODO: Perform hardware actions, such as initiating fw install
-                        (print (second (ix hw-actions i)))
+                        ; Perform hardware actions, such as initiating fw install
+                        (var action-id (second (second (ix hw-actions i))))
+                        (var action-type (second (third (ix hw-actions i))))
+                        (var action-data (second (ix (ix hw-actions i) 4)))
+                        ;(print (str-merge action-id ", " action-type ", " action-data))
+
+                        ; TODO: Is not working (no match):
+                        ;(match (str-to-i action-type)
+                        ;    (1 (print "Need to start charging"))
+                        ;    (2 (print "Need to stop charging"))
+                        ;    (3 {
+                        ;        (print (list "Need to set charge limit" action-data))
+                        ;        ; TODO: change the charge limit somehow
+                        ;        (confirm-action action-id)
+                        ;    })
+                        ;    (4 {
+                        ;        (print "Need to install firmware")
+                        ;        ;TODO: notify bat-ant-esp it's time to begin
+                        ;        (rcode-run 31 2 '(def fw-update-install true))
+                        ;    })
+                        ;    (_ (print "Unexpected action-type"))
+                        ;)
+                        (if (eq action-type "1") {
+                            (print "Action: Start Charging")
+                            ; TODO: Start charging
+                            (def fake-charge-status 2)
+                            (confirm-action action-id)
+                        })
+                        (if (eq action-type "2") {
+                            (print "Action: Stop Charging")
+                            ; TODO: Stop charging
+                            (def fake-charge-status 1)
+                            (confirm-action action-id)
+                        })
+                        (if (eq action-type "3") {
+                            (print (str-merge "Action: Charge Limit to " action-data))
+                            ; TODO: change the charge limit somehow
+                            (def charge-limit (str-to-i action-data))
+                            (confirm-action action-id)
+                        })
+                        (if (eq action-type "4") {
+                            (print "Action: Install FW")
+                            ; Notify bat-ant-esp it's time to begin
+                            (var res (rcode-run 31 2 '(def fw-update-install true)))
+                            (if (not-eq res 'timeout)
+                                (confirm-action action-id)
+                            )
+                        })
+
                         (setq i (+ i 1))
                     })
                 })
@@ -82,7 +162,7 @@
     ((not registration-id) 'no-registration-id)
     (t (str-merge
             "{" (kv "registrationId" (q registration-id)) ", "
-                ((kv "hardwareIdentifier" (q (str-merge "BA" (mac-addr-string)))) ","
+                (kv "hardwareIdentifier" (q (str-merge "BAD4F98D2CFD21"))) "," ;TODO: (kv "hardwareIdentifier"     (q (str-merge "BA" (mac-addr-string)))) ","
                 (kv "firmwareId" (int fw-id-board-downloaded))
             "}"
         )
