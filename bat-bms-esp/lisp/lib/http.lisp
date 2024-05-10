@@ -81,6 +81,7 @@
     (str-merge
         "GET " (url-path url) " HTTP/1.1\r\n"
         "Host: " (url-host url) "\r\n"
+        "Connection: keep-alive\r\n"
         "\r\n\r\n"
     )
 )

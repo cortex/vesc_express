@@ -1,13 +1,14 @@
 ; Firmware Update Processor
 ;
 ; Populate update-description with a list of fw-devices paired with a fw-types
-; Set fw-update-ready to true for the processor to begin
+; Set fw-update-extract to true to decompress the zip file
+; Set fw-update-install to true for the processor to begin
 ;
 ; Files are expected to be on the SD card with pre-defined naming
 ; <fw-device-name>.bin when updating fw-vesc
 ; <fw-device-name>.lpkg when updating fw-lisp
 ;
-; Update results are stored in the update-description for reporting to API
+; Update results are stored in update-results for reporting to API
 
 ; TODO: Uploading fw-vesc leaves fw-lisp in an erased state on bat-esc-stm
 ; TODO: remote will disconnect when fw-vesc is updated due to ^
@@ -29,13 +30,15 @@
     )
 )
 
-(def fw-update-ready false)
+(def fw-update-extract false) ; Flag received from CAN device after file is downloaded
+(def fw-update-install false) ; Flag received from CAN device when the user requests install
 
 (def fw-types (list 'fw-vesc 'fw-lisp 'fw-vesc-espnow 'fw-lisp-espnow))
 (def fw-devices (list 'bat-ant-esp 'bat-ant-stm 'bat-bms-esp 'bat-bms-stm 'bat-esc-stm 'jet-if-esp 'remote-disp-esp))
 
-; Update description can be delivered via code-server prior
-; to setting fw-update-ready to true
+; Update description describes the order and types of firmwares to be installed
+; Bundle this as a file named "update-description.lisp" in the zip archive
+; See update-descriptions directory for examples
 (def update-description (list
     ;'(jet-if-esp . fw-vesc)
 
@@ -59,20 +62,39 @@
 ; Populated by the update-processor
 (def update-results nil)
 
-; Set fw-update-ready to begin updates
+; Set fw-update-extract to unzip ota_update.zip
+; Set fw-update-install to begin updates
 (defun fw-update-processor () {
     (loopwhile t {
-        (if fw-update-ready {
+        ; Watch for extract flag
+        (if fw-update-extract {
             ; Extract zip file contents
-            (var unzip-result (fw-update-unzip-files)) ; TODO: Relocate? Don't necessarialy want this here
+            (var unzip-result (fw-update-unzip-files))
             (if (not unzip-result) {
-                (def fw-update-ready false) ; TODO: Stopping during testing, might need a retry limit in unzip fun
-                (break)
+                (print "TODO: Unzip failed.") ; TODO: what now?
+            } {
+                ; Notify fw-install-ready true
+                (print "Notifying devices install is ready")
+                (rcode-run 21 2 '(def fw-install-ready true)) ; bat-bms-esp (WiFi)
+                (rcode-run 10 2 '(def fw-install-ready true)) ; bat-esc-stm (GSM)
             })
+            ; Clear flag
+            (def fw-update-extract false)
+        })
 
+        ; Watch for installation flag
+        (if fw-update-install {
+            ; Read update-description.lisp
+            (var f (f-open "update-description.lisp" "r"))
+            (if (not-eq f nil) {
+                (def contents (f-read f 512))
+                (read-eval-program contents)
+                (f-close f)
+            } (print "Error: update-description.lisp was not found"))
+
+            ; Process update-description
             (setq update-results (range 0 (length update-description)))
-            ; Process update_description
-            (print (str-merge "Processing update_description with " (to-str (length update-description)) " entries."))
+            (print (str-merge "Processing update-description with " (to-str (length update-description)) " entries."))
             (var i 0)
             (loopwhile (< i (length update-description)) {
                 (var start-time (systime))
@@ -150,7 +172,7 @@
 
             ; TODO: Report to Server
 
-            (def fw-update-ready false)
+            (def fw-update-install false)
         })
         (sleep 1) ; Rate limit to 1Hz
     })
@@ -158,20 +180,27 @@
 
 (defunret fw-update-unzip-files () {
     (var start-time (systime))
-    ; TODO: Make sure file size is reasonable as well
-    (def fw-files (zip-list-files "ota_update.zip")) ; TODO: Handle (eval_error "No such file or directory")
+    (var f (f-open "ota_update.zip" "r"))
+    (if (not f) (return false))
+
+    (def fw-files (zip-ls f))
     (print fw-files)
-    (var unzip-retries 10)
+
+    (var unzip-retries 3)
     (var i 0)
     (loopwhile (< i (length fw-files)) {
-        ; TODO: Retries? Zip extract sometimes fails to start, not sure why but might be lowzip state
-        (if (not (zip-extract-file "ota_update.zip" (ix fw-files i))) {
-            (print (str-merge "zip-extract-file failed on " (ix fw-files i)))
+        (var f-name (first (ix fw-files i)))
+        (var f-out (f-open f-name "w"))
+        (if (not (unzip f f-name f-out)) {
+            (print (str-merge "unzip failed on " f-name))
             (setq unzip-retries (- unzip-retries 1))
             (if (eq unzip-retries 0) (return nil))
             (sleep 1)
         } (setq i (+ i 1)))
+        (f-close f-out)
     })
     (print (str-from-n (secs-since start-time) "Unzip time: %0.2f seconds"))
+
+    (f-close f)
     (return true)
 })
