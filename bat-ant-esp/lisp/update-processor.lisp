@@ -75,6 +75,7 @@
             } {
                 ; Notify fw-install-ready true
                 (print "Notifying devices install is ready")
+                ; TODO: Make sure these don't timeout
                 (rcode-run 21 2 '(def fw-install-ready true)) ; bat-bms-esp (WiFi)
                 (rcode-run 10 2 '(def fw-install-ready true)) ; bat-esc-stm (GSM)
             })
@@ -163,14 +164,25 @@
                 (var ms (- (systime) start-time))
                 (print (str-from-n ms "Update time: %d ms"))
 
-                (setix update-results i (list fw-device fw-type (if update-result "Success" "Fail") ms))
+                (setix update-results i (list fw-device fw-type (if update-result 'success 'fail) ms))
 
                 (setq i (+ i 1))
             })
 
             (print update-results)
 
-            ; TODO: Report to Server
+            ; Report to API
+            (var success true)
+            (var j 0)
+            (loopwhile (< j (length update-results)) {
+                (if (eq (third (ix update-results j)) 'fail) {
+                    (setq success false)
+                    (break)
+                })
+            })
+            ; TODO: Make sure these don't timeout
+            (rcode-run 21 2 `(fw-install-result ,success)) ; bat-bms-esp (WiFi)
+            (rcode-run 10 2 `(fw-install-result ,success)) ; bat-esc-stm (GSM)
 
             (def fw-update-install false)
         })

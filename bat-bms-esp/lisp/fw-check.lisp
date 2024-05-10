@@ -11,6 +11,40 @@
 
 @const-start
 
+(defun fw-result-json () (cond
+    ((not registration-id) 'no-registration-id)
+    (t (str-merge
+            "{" (kv "registrationId" (q registration-id)) ", "
+                (kv "hardwareIdentifier" (q serial-number-board)) ", " ; TODO: Using board S/N for all components
+                (kv "firmwareId" (int fw-id-board-downloaded))
+            "}"
+        )
+    )
+))
+
+(defun fw-install-result (success) {
+    (print (list "fw-install-result" success))
+    (if success {
+        (var url (str-merge api-url "/setInstalled"))
+        (var conn (tcp-connect (url-host url) (url-port url)))
+        (if (or (eq conn nil) (eq conn 'unknown-host))
+            (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
+            {
+                (var status-json (fw-ready-json))
+                (if (not (eq (type-of status-json) 'type-array)) {
+                    (tcp-close conn)
+                    (return status-json)
+                })
+                (var req (http-post-json url status-json))
+                (var res (tcp-send conn req))
+                (var response (http-parse-response conn))
+                (var result (second (first response)))
+                (tcp-close conn)
+                (if (eq "204" result) 'ok 'error)
+            })
+    })
+})
+
 ; JSON data used to retrieve firmware releases
 (defun fw-check-json () (cond
     ((not registration-id) 'no-registration-id)
