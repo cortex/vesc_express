@@ -3,7 +3,7 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
-@const-start
+(start-code-server) ; To receive firmware related information
 
 (import "lib/file-server.lisp" 'code-file-server)
 (read-eval-program code-file-server)
@@ -25,7 +25,3 @@
 
 (import "status.lisp" 'status)
 (read-eval-program status)
-
-@const-end
-
-(start-code-server) ; To receive firmware related information

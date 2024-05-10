@@ -1,3 +1,4 @@
+@const-start
 
 (defun url-host(url){
     (var parts (str-split url "/"))

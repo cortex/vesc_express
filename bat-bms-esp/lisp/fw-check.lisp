@@ -1,4 +1,3 @@
-@const-end
 
 (def fw-id-board 0) ; TODO: Move to flash - Firmware ID installed on device
 (def fw-id-board-downloaded 0) ; TODO: Move to flash - Firmware ID downloaded from server

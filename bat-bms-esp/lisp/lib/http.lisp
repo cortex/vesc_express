@@ -1,3 +1,5 @@
+@const-start
+
 (def char-lf 10b)
 (def crlf "\r\n")
 (defun strip-crlf (str) (str-part str 0 (buf-find str crlf)))

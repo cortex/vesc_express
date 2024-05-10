@@ -1,7 +1,5 @@
 ; TODO: Move this to vesc_pkg repo?
 
-@const-end
-
 (def file-served nil)
 
 @const-start
