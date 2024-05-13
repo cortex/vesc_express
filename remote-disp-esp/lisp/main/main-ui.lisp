@@ -22,7 +22,7 @@
 
 @const-start
 
-(def version-str "v0.5")
+(def version-str "v0.5.1")
 (print (str-merge "Booting " version-str))
 
 ;;; Colors

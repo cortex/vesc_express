@@ -1,3 +1,5 @@
+@const-start
+
 ;;; View tick functions
 
 (defun view-tick-main () {    

@@ -1,3 +1,5 @@
+@const-start
+
 ;;; Generic utility functions for drawing stuff.
 
 ;;; Smart draw buffer wrapper that keeps track of its position. This is defined
