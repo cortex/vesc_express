@@ -1,3 +1,5 @@
+@const-start
+
 ;;; Color definitions
 
 (def col-white 0xffffff)

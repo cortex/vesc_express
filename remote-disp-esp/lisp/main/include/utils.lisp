@@ -1,3 +1,5 @@
+@const-start
+
 ;;; Math Constants
 
 ;(def two-pi 6.28318530718)

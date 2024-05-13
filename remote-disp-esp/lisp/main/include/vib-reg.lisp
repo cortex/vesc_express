@@ -1,3 +1,5 @@
+@const-start
+
 ;;; This contains constants for the available vibration driver registers.
 
 (def vib-reg-list (list

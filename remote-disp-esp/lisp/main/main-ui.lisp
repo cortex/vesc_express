@@ -22,7 +22,8 @@
 
 @const-start
 
-(def version-str "v0.4")
+(def version-str "v0.5.1")
+(print (str-merge "Booting " version-str))
 
 ;;; Colors
 (import "include/theme.lisp" code-theme)
