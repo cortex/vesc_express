@@ -186,7 +186,7 @@
 })
 
 (defun fw-check () {
-    (print "fw-check starting")
+    (gc)
     (var url (str-merge api-url "/currentFirmwares"))
     (var conn (tcp-connect (url-host url) (url-port url)))
     (if (or (eq conn nil) (eq conn 'unknown-host))
@@ -211,7 +211,7 @@
 
                     ; Parse json into lists
                     (def firmware-releases (parse-json-firmware resp-body))
-                    (print firmware-releases)
+                    ;(print firmware-releases)
 
                     ; Iterate through response, checking version and downloading as necessary
                     (if (not-eq firmware-releases nil) {
@@ -290,7 +290,8 @@
     (print (str-from-n (secs-since start-time) "download successful: %0.2f seconds"))
 
     (if (eq 'timeout (fserve-send 31 2 'done nil))
-        (print "download complete, fserve timeout") ; TODO: Retry?
+        ; TODO: Investigate, this is successful but the response is never received, killing thread too early?
+        (print "download complete, fserve timeout but probably ok")
         (print "download complete, fserve notified")
     )
 
@@ -317,7 +318,6 @@
             (tcp-close conn)
         }
     )
-    (gc)
     content-length
 })
 
@@ -344,6 +344,7 @@
 
                 (var bytes-remaining content-length)
                 (loopwhile (> bytes-remaining 0) {
+                    (gc) ; TODO: If this is not here the program will crash
                     (var resp-bytes (tcp-recv conn (if (> bytes-remaining buf-len) buf-len bytes-remaining) 1.0 false))
                     (match resp-bytes
                         (no-data {
@@ -369,7 +370,6 @@
                     (setq bytes-remaining (- bytes-remaining (buflen resp-bytes)))
 
                     ; Send bytes to bat-ant-esp with file server
-                    (gc)
                     (var fserve-result (fserve-send 31 2 'wr resp-bytes))
                     (if (eq fserve-result 'timeout) {
                         (print "fserve transmit timeout, aborting")
@@ -387,5 +387,4 @@
             (return 'error)
         }
     )
-    (gc)
 })

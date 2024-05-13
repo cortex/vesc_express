@@ -183,12 +183,19 @@
 (charging 2))))
 
 (defun status-loop () {
+    (var i 0)
+    (loopwhile t {
         (print (str-merge "Status ping: " (to-str (send-status))))
-        (gc)
-        (if fw-install-ready (print (str-merge "FW ready ping: " (to-str (send-fw-ready)))))
-        (gc)
+        ; TODO: This may be complicating things but I've had a lot of trouble with random 
+        ;       errors if the status check runs during a firmware download.
+        ;       Checking for FW here and notifying server if something is ready to install.
+        (if (eq (mod i 10) 0) {
+            (print (str-merge "FW check: " (to-str (fw-check))))
+            (if fw-install-ready (print (str-merge "FW ready ping: " (to-str (send-fw-ready)))))
+        })
+        (setq i (+ i 1))
         (sleep 5)
-        (status-loop)
+    })
 })
 
-(status-loop)
+(spawn status-loop)
