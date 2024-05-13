@@ -83,7 +83,23 @@
     (str-merge
         "GET " (url-path url) " HTTP/1.1\r\n"
         "Host: " (url-host url) "\r\n"
-        "Connection: keep-alive\r\n"
+        "\r\n\r\n"
+    )
+)
+
+(defun http-head (url)
+    (str-merge
+        "HEAD " (url-path url) " HTTP/1.1\r\n"
+        "Host: " (url-host url) "\r\n"
+        "\r\n\r\n"
+    )
+)
+
+(defun http-get-range (url start len)
+    (str-merge
+        "GET " (url-path url) " HTTP/1.1\r\n"
+        "Host: " (url-host url) "\r\n"
+        "Range: bytes=" (str-from-n start "%d") "-" (str-from-n (+ start len -1) "%d") "\r\n"
         "\r\n\r\n"
     )
 )

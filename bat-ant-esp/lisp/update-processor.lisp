@@ -68,6 +68,7 @@
     (loopwhile t {
         ; Watch for extract flag
         (if fw-update-extract {
+            (print "Extacting firmware update")
             ; Extract zip file contents
             (var unzip-result (fw-update-unzip-files))
             (if (not unzip-result) {

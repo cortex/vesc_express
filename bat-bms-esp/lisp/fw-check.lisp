@@ -8,6 +8,7 @@
 ;(def fw-id-jet 0)
 
 (def firmware-releases nil) ; Latest firmware releases parsed from server
+(def fw-dl-progress nil)
 
 @const-start
 
@@ -37,8 +38,8 @@
                 })
                 (var req (http-post-json url status-json))
                 (var res (tcp-send conn req))
-                (var response (http-parse-response conn))
-                (var result (second (first response)))
+                (var resp (http-parse-response conn))
+                (var result (second (first resp)))
                 (tcp-close conn)
                 (if (eq "204" result) 'ok 'error)
             })
@@ -198,12 +199,12 @@
             })
             (var req (http-post-json url status-json))
             (var res (tcp-send conn req))
-            (var response (http-parse-response conn))
-            (var result (ix (ix response 0) 1))
+            (var resp (http-parse-response conn))
+            (var result (ix (ix resp 0) 1))
 
-            ; Parse fw-ids and fw-files from response
+            ; Parse fw-ids and fw-files from resp
             (if (eq "200" result) {
-                (var content-length (http-parse-content-length response))
+                (var content-length (http-parse-content-length resp))
                 (if (not-eq content-length nil) {
                     (var resp-body (tcp-recv conn content-length))
                     ;(print-big-string resp-body)
@@ -225,51 +226,121 @@
 })
 
 (defun fw-notify-extract () {
-    (rcode-run 31 2 '(def fw-update-extract true))
+    (var res (rcode-run 31 2 '(def fw-update-extract true)))
+    (if (eq res 'timeout) {
+        (print "fw-notify-extract timeout")
+    })
+    res
 })
 
 (defun fw-notify-install () {
-    (rcode-run 31 2 '(def fw-update-install true))
+    (var res (rcode-run 31 2 '(def fw-update-install true)))
+    (if (eq res 'timeout) {
+        (print "fw-notify-install timeout")
+    })
+    res
 })
 
 (defunret fw-download (url) {
-    (setq url "http://labrats.io/test-ota-update.zip") ; TODO: RREMOVE: hack to work around hosting timeout
-
-    (print (str-merge "downloading: " url))
+    (print (str-merge "Downloading: " url))
     (var start-time (systime))
+
+    ; Start file server remotely
+    (def fserve-start-result (rcode-run 31 2 '(start-file-server "ota_update.zip")))
+    (match fserve-start-result
+        (timeout {
+            (print "fserve did not start remotely, aborting")
+            (tcp-close conn)
+            (return 'fail)
+        })
+        (eerror {
+            (print "exit-error from the host, aborting")
+            (tcp-close conn)
+            (return 'fail)
+        })
+        (_ (print (str-from-n fserve-start-result "start-file-server remote thread id: %d")))
+    )
+    (sleep 1)
+
+    ; NOTE: Downloading firmware in chunks to prevent connection timeouts.
+    ;       Current host is 1 minute per megabyte.
+    ;       Sending to bat-ant-esp over CAN increases download times on
+    ;       an already limited connection.
+    (var chunk-size (* 250 1024)) ; 250KB ; TODO: We may want to +/- this depending on our download rates on GSM
+    (var chunk-pos 0)
+    (var bytes-total (fw-get-download-size url))
+    (var bytes-remaining bytes-total)
+    (loopwhile (> bytes-remaining 0) {
+        (var chunk-len (if (> chunk-size bytes-remaining) bytes-remaining chunk-size))
+
+        (var res (fw-download-chunk url chunk-pos chunk-len))
+
+        (if (eq res 'success) {
+            (setq bytes-remaining (- bytes-remaining chunk-len))
+            (setq chunk-pos (+ chunk-pos chunk-len))
+            (print (str-merge "Download " (str-from-n (* 100 (/ (- bytes-total bytes-remaining) (to-float bytes-total))) "%0.0f") "%"))
+        } {
+            (print (list "fw-download-chunk returned" res))
+            (print (str-from-n (secs-since start-time) "aborting download after %0.2f seconds"))
+            (return 'fail)
+        })
+
+    })
+
+    (print (str-from-n (secs-since start-time) "download successful: %0.2f seconds"))
+
+    (if (eq 'timeout (fserve-send 31 2 'done nil))
+        (print "download complete, fserve timeout") ; TODO: Retry?
+        (print "download complete, fserve notified")
+    )
+
+    ; TODO: Start the extraction process at this time?
+    (print "requesting unzip of download")
+    (fw-notify-extract)
+
+    (return 'success)
+})
+
+(defun fw-get-download-size (url) {
+    (var content-length nil)
+    (var conn (tcp-connect (url-host url) (url-port url)))
+    (if (or (eq conn nil) (eq conn 'unknown-host))
+        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
+        {
+            (var req (http-head url))
+            (var res (tcp-send conn req))
+            (var resp (http-parse-response conn))
+            (var result (ix (ix resp 0) 1))
+            (if (eq "200" result) {
+                (setq content-length (http-parse-content-length resp))
+            })
+            (tcp-close conn)
+        }
+    )
+    (gc)
+    content-length
+})
+
+(defunret fw-download-chunk (url start len) {
     ; Download file to SD card on bat-ant-esp
     (var conn (tcp-connect (url-host url) (url-port url)))
     (if (or (eq conn nil) (eq conn 'unknown-host))
         (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
         {
-            (var req (http-get url))
+            (var req (http-get-range url start len))
             (var res (tcp-send conn req))
-            (var response (http-parse-response conn))
-            (var result (ix (ix response 0) 1))
+            (var resp (http-parse-response conn))
+            (var result (ix (ix resp 0) 1))
 
             ; Iterate through response body, saving bytes to SD card
             (var buf-len 450)
-            (if (eq "200" result) {
-                (var content-length (http-parse-content-length response))
-                (print (str-from-n content-length "Downloading %d bytes"))
-
-                ; Start file server remotely
-                (def fserve-start-result (rcode-run 31 2 '(start-file-server "ota_update.zip")))
-                (match fserve-start-result
-                    (timeout {
-                        (print "fserve did not start remotely, aborting")
-                        (tcp-close conn)
-                        (return 'fail)
-                    })
-                    (eerror {
-                        (print "exit-error from the host, aborting")
-                        (tcp-close conn)
-                        (return 'fail)
-                    })
-                    (_ (print (str-from-n fserve-start-result "start-file-server remote thread id: %d")))
-                )
-                (print (str-from-n fserve-start-result "file-server remote thread id: %d"))
-                (sleep 1)
+            (if (eq "206" result) {
+                (var content-length (http-parse-content-length resp))
+                ;(print (str-merge
+                ;    (str-from-n content-length "Downloading %d bytes")
+                ;    (str-from-n start " from %d")
+                ;    (str-from-n (+ start len -1) " to %d")
+                ;))
 
                 (var bytes-remaining content-length)
                 (loopwhile (> bytes-remaining 0) {
@@ -298,6 +369,7 @@
                     (setq bytes-remaining (- bytes-remaining (buflen resp-bytes)))
 
                     ; Send bytes to bat-ant-esp with file server
+                    (gc)
                     (var fserve-result (fserve-send 31 2 'wr resp-bytes))
                     (if (eq fserve-result 'timeout) {
                         (print "fserve transmit timeout, aborting")
@@ -306,19 +378,8 @@
                     } {
                         (def fw-dl-progress (/ (- content-length bytes-remaining) (to-float content-length)))
                     })
-                    (gc)
                 })
-
-                (fserve-send 31 2 'done nil)
-                (print "download complete, fserve notified")
-
-                (sleep 5) ; TODO: Might need to get a signal that the file is finished writing to SD?
-
-                (fw-notify-extract); TODO: Start the extraction process at this time?
-                (print "requesting unzip of download")
-
                 (tcp-close conn)
-                (print (str-from-n (secs-since start-time) "successful after: %0.2f seconds"))
                 (return 'success)
             })
 
@@ -326,4 +387,5 @@
             (return 'error)
         }
     )
+    (gc)
 })
