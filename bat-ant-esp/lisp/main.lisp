@@ -93,7 +93,7 @@
         (def rx-cnt-can (+ rx-cnt-can 1))
         ; Send CAN data only when connected to a remote
         ; and not performing a firmware update
-        (if (and (not-eq remote-addr broadcast-addr) (not fw-update-ready)){
+        (if (and (not-eq remote-addr broadcast-addr) (not fw-update-install)){
             (send-code (str-from-n soc-bms "(def soc-bms %.3f)"))
             (send-code (str-from-n duty "(def duty %.3f)"))
             (send-code (str-from-n kmh "(def kmh %.2f)"))
