@@ -122,7 +122,7 @@
         (var buf-len 250)
 
         (loopwhile t {
-            (def data (f-read update-file buf-len))
+            (var data (f-read update-file buf-len))
             (if (eq data nil) {
                 (print "Upload done")
                 (setq result true)
@@ -130,12 +130,18 @@
             })
 
             (def remote-pos -1)
+            (var send-time (systime))
             (send-code data)
             ; Waiting for ACK
             (loopwhile (< remote-pos 0) {
-                ; TODO: Waiting forever when something unexpected happens would be bad
+                (if (> (- (systime) send-time) 10000) {
+                    (print "Upload timeout")
+                    (setq result nil)
+                    (break)
+                })
                 (sleep 0.01)
             })
+            (if (< remote-pos 0) (break))
 
             (setq offset (+ offset (buflen data)))
             (free data)
