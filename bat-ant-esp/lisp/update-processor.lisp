@@ -22,6 +22,8 @@
 ; bat-bms-esp is WiFi / App Connected Device
 ; bat-esc-stm fw-vesc installs to CAN IDs 10 & 11
 ; bat-esc-stm fw-lisp installs to CAN ID 10
+;
+; Do not Poll in VESC Tool on a device while it's receiving a lisp update
 
 (defun is-list (value)
     (or
@@ -171,7 +173,6 @@
             })
 
             (print update-results)
-
             ; Report to API
             (var success true)
             (var j 0)
@@ -180,6 +181,7 @@
                     (setq success false)
                     (break)
                 })
+                (setq j (+ j 1))
             })
             ; TODO: Make sure these don't timeout
             (rcode-run 21 2 `(fw-install-result ,success)) ; bat-bms-esp (WiFi)
