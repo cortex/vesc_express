@@ -45,6 +45,17 @@
 (defun fw-install-result (success) {
     (print (list "fw-install-result" success))
     (if success {
+        ; Update nv-data
+        (if (eq 'timeout (rcode-run 31 2 `(nv-set 'fw-id-battery ,(nv-get 'fw-id-battery-downloaded))))
+            (print "Timeout updating nv-data")
+        )
+        ; Clear install ready flag
+        (if (eq 'timeout (rcode-run 31 2 '(nv-set-save 'fw-install-ready false)))
+            (print "Timeout updating nv-data")
+        )
+        (fw-load-nv-data) ; Load latest nv-data
+
+        ; Notify server installation was successful
         (var url (str-merge api-url "/setInstalled"))
         (var conn (tcp-connect (url-host url) (url-port url)))
         (if (or (eq conn nil) (eq conn 'unknown-host))
