@@ -74,12 +74,14 @@
             ; Extract zip file contents
             (var unzip-result (fw-update-unzip-files))
             (if (not unzip-result) {
-                (print "TODO: Unzip failed.") ; TODO: what now?
+                (print "Unzip failed.") ; TODO: what now?
             } {
-                ; Notify fw-install-ready true
+                ; Update fw-install-ready to true
+                (nv-set 'fw-install-ready true)
+                (save-nv-data nv-data)
                 (print "Notifying devices install is ready")
                 ; TODO: Make sure these don't timeout
-                (rcode-run 21 2 '(def fw-install-ready true)) ; bat-bms-esp (WiFi)
+                (rcode-run 21 2 '(nv-set 'fw-install-ready true)) ; bat-bms-esp (Wifi)
                 (rcode-run 10 2 '(def fw-install-ready true)) ; bat-esc-stm (GSM)
             })
             ; Clear flag

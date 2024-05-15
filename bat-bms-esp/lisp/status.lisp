@@ -25,7 +25,7 @@
                     (kv "hardwareIdentifier"     (q (str-merge "BAD4F98D2CFD21"))) "," ; TODO: Was: "BA" (mac-addr-string)
                     (kv "serialNumber"           (q serial-number-battery)) ","
                     (kv "hardwareTypeId" "1") ","
-                    (kv "firmwareId"             (int fw-id-board)) ","
+                    (kv "firmwareId"             (int (nv-get 'fw-id-battery))) ","
                     (kv "chargeLevel"            (int 64)) "," ; TODO: Was: (int (* (get-bms-val 'bms-soc) 100))) ","
                     (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
                     (kv "chargeStatus"           (str-from-n fake-charge-status)) "," ; TODO: Was: (charge-status)
@@ -150,7 +150,7 @@
     (t (str-merge
             "{" (kv "registrationId" (q registration-id)) ", "
                 (kv "hardwareIdentifier" (q (str-merge "BAD4F98D2CFD21"))) "," ;TODO: (kv "hardwareIdentifier"     (q (str-merge "BA" (mac-addr-string)))) ","
-                (kv "firmwareId" (int fw-id-board-downloaded))
+                (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
             "}"
         )
     )
@@ -191,7 +191,7 @@
         ;       Checking for FW here and notifying server if something is ready to install.
         (if (eq (mod i 10) 0) {
             (print (str-merge "FW check: " (to-str (fw-check))))
-            (if fw-install-ready (print (str-merge "FW ready ping: " (to-str (send-fw-ready)))))
+            (if (nv-get 'fw-install-ready) (print (str-merge "FW ready ping: " (to-str (send-fw-ready)))))
         })
         (setq i (+ i 1))
         (sleep 5)

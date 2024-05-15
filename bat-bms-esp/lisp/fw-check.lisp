@@ -1,23 +1,42 @@
+(def nv-data (list
+    (cons 'fw-id-battery 0)
+    (cons 'fw-id-battery-downloaded 0)
+    (cons 'fw-install-ready false)
+))
 
-(def fw-id-board 0) ; TODO: Move to flash - Firmware ID installed on device
-(def fw-id-board-downloaded 0) ; TODO: Move to flash - Firmware ID downloaded from server
-(def fw-install-ready false) ; TODO: Move to flash - Flag indicating firmware is extracted and ready to install
-; TODO: Get the firmware IDs from the connected components?
-;(def fw-id-battery 0)
-;(def fw-id-remote 0)
-;(def fw-id-jet 0)
+(defun nv-set (key value)
+    (setassoc nv-data key value)
+)
+
+(defun nv-get (key)
+    (assoc nv-data key)
+)
 
 (def firmware-releases nil) ; Latest firmware releases parsed from server
 (def fw-dl-progress nil)
 
 @const-start
 
+(defunret fw-load-nv-data () {
+    (var new-data (rcode-run 31 2 '(load-nv-data)))
+    (if (not-eq new-data 'f-open-error)
+        (setq nv-data new-data)
+        {
+            (print "Failed to load nv-data")
+            (return 'error)
+        }
+    )
+})
+
+; Load NV data on boot
+(spawn fw-load-nv-data)
+
 (defun fw-result-json () (cond
     ((not registration-id) 'no-registration-id)
     (t (str-merge
             "{" (kv "registrationId" (q registration-id)) ", "
-                (kv "hardwareIdentifier" (q serial-number-board)) ", " ; TODO: Using board S/N for all components
-                (kv "firmwareId" (int fw-id-board-downloaded))
+                (kv "hardwareIdentifier" (q serial-number-battery)) ", " ; TODO: Using battery S/N for all components
+                (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
             "}"
         )
     )
@@ -29,7 +48,7 @@
         (var url (str-merge api-url "/setInstalled"))
         (var conn (tcp-connect (url-host url) (url-port url)))
         (if (or (eq conn nil) (eq conn 'unknown-host))
-            (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
+            (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
             {
                 (var status-json (fw-ready-json))
                 (if (not (eq (type-of status-json) 'type-array)) {
@@ -52,9 +71,9 @@
     (t (str-merge
             "{" (kv "registrationId" (q registration-id)) ", "
                 (q "hardwareIdentifiers" ) ":["
-                (q serial-number-board)
+                (q serial-number-battery)
                 ; TODO: Ask for more than just a single update file?
-                ;(q serial-number-battery) ","
+                ;(q serial-number-board) ","
                 ;(q serial-number-remote) ","
                 ;(q serial-number-jet)
             "]}"
@@ -87,8 +106,8 @@
     (loopwhile (< i (length fw-releases)) {
         (var hw-id (second (first (ix firmware-releases i))))
 
-        ; Is board firmware update?
-        (if (eq hw-id serial-number-board) {
+        ; Is battery firmware update?
+        (if (eq hw-id serial-number-battery) {
             ;(print (list "processing" hw-id))
             (var id (str-to-i (second (ix (ix firmware-releases i) 1))))
             (var dl-url (str-merge
@@ -97,16 +116,19 @@
             ))
 
             ; Check if released version is > than current version
-            (if (> id fw-id-board) {
+            (if (> id (nv-get 'fw-id-battery)) {
                 ;(print "version update available for download")
-                (if (> fw-id-board-downloaded 0) {
+                (if (= (nv-get 'fw-id-battery-downloaded) id) {
                     ; We have already downloaded this file
                     ;(print "file already downloaded")
                 } {
                     ; This is a new version not saved to SD card
                     (if (eq (fw-download dl-url) 'success) {
-                        ; Mark as pending
-                        (def fw-id-board-downloaded id)
+                        ; Download successful - Mark as downloaded (pending install)
+                        (if (eq 'timeout (rcode-run 31 2 `(nv-set-save 'fw-id-battery-downloaded ,id)))
+                            (print "Timeout updating nv-data")
+                            (fw-load-nv-data) ; No timeout, retrieve latest nv-data
+                        )
                     })
                 })
             })
@@ -185,7 +207,7 @@
     parsed-json-list
 })
 
-(defun fw-check () {
+(defunret fw-check () {
     (gc)
     (var url (str-merge api-url "/currentFirmwares"))
     (var conn (tcp-connect (url-host url) (url-port url)))
@@ -200,6 +222,12 @@
             (var req (http-post-json url status-json))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
+            (if (eq resp 'parse-error) {
+                (print "fw-check resp parse-error")
+                (tcp-close conn)
+                (return 'parse-error)
+            })
+            ;(print resp)
             (var result (ix (ix resp 0) 1))
 
             ; Parse fw-ids and fw-files from resp
@@ -212,6 +240,11 @@
                     ; Parse json into lists
                     (def firmware-releases (parse-json-firmware resp-body))
                     ;(print firmware-releases)
+                    (if (eq nil firmware-releases) {
+                        (print "fw-check fw-releases is nil")
+                        (tcp-close conn)
+                        (return 'error)
+                    })
 
                     ; Iterate through response, checking version and downloading as necessary
                     (if (not-eq firmware-releases nil) {
@@ -269,6 +302,10 @@
     (var chunk-size (* 250 1024)) ; 250KB ; TODO: We may want to +/- this depending on our download rates on GSM
     (var chunk-pos 0)
     (var bytes-total (fw-get-download-size url))
+    (if (not bytes-total) {
+        (print (list "Failed to retrieve download size" bytes-total))
+        (return 'error)
+    })
     (var bytes-remaining bytes-total)
     (loopwhile (> bytes-remaining 0) {
         (var chunk-len (if (> chunk-size bytes-remaining) bytes-remaining chunk-size))
@@ -311,9 +348,11 @@
             (var req (http-head url))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
-            (var result (ix (ix resp 0) 1))
-            (if (eq "200" result) {
-                (setq content-length (http-parse-content-length resp))
+            (if (not-eq resp 'parse-error) {
+                (var result (ix (ix resp 0) 1))
+                (if (eq "200" result) {
+                    (setq content-length (http-parse-content-length resp))
+                })
             })
             (tcp-close conn)
         }
@@ -330,12 +369,22 @@
             (var req (http-get-range url start len))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
+            (if (eq resp 'parse-error) {
+                (print "fw-dl-chk parse-error")
+                (tcp-close conn)
+                (return 'error)
+            })
             (var result (ix (ix resp 0) 1))
 
             ; Iterate through response body, saving bytes to SD card
             (var buf-len 450)
             (if (eq "206" result) {
                 (var content-length (http-parse-content-length resp))
+                (if (eq content-length nil) {
+                    (print "fw-dl-chk content-length is nil")
+                    (tcp-close conn)
+                    (return 'error)
+                })
                 ;(print (str-merge
                 ;    (str-from-n content-length "Downloading %d bytes")
                 ;    (str-from-n start " from %d")
@@ -343,9 +392,12 @@
                 ;))
 
                 (var bytes-remaining content-length)
+;(print "---> 0")
                 (loopwhile (> bytes-remaining 0) {
+;(print "---> 1")
                     (gc) ; TODO: If this is not here the program will crash
                     (var resp-bytes (tcp-recv conn (if (> bytes-remaining buf-len) buf-len bytes-remaining) 1.0 false))
+;(print "---> 2")
                     (match resp-bytes
                         (no-data {
                             (tcp-close conn)
@@ -370,7 +422,9 @@
                     (setq bytes-remaining (- bytes-remaining (buflen resp-bytes)))
 
                     ; Send bytes to bat-ant-esp with file server
+;(print "---> 3")
                     (var fserve-result (fserve-send 31 2 'wr resp-bytes))
+;(print "---> 4")
                     (if (eq fserve-result 'timeout) {
                         (print "fserve transmit timeout, aborting")
                         (tcp-close conn)
@@ -378,7 +432,9 @@
                     } {
                         (def fw-dl-progress (/ (- content-length bytes-remaining) (to-float content-length)))
                     })
+
                 })
+;(print "---> 5")
                 (tcp-close conn)
                 (return 'success)
             })
