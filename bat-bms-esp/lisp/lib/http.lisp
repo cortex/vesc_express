@@ -75,6 +75,7 @@
     (str-merge
         "POST " (url-path url) " HTTP/1.1\n"
         "Host: " (url-host url) "\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\n"
         "Content-Type: application/json\n"
         "Content-Length: " (str-from-n (buflen body)) "\n"
         "Connection: close" "\n"
@@ -86,6 +87,7 @@
     (str-merge
         "GET " (url-path url) " HTTP/1.1\r\n"
         "Host: " (url-host url) "\r\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\r\n"
         "\r\n\r\n"
     )
 )
@@ -94,6 +96,7 @@
     (str-merge
         "HEAD " (url-path url) " HTTP/1.1\r\n"
         "Host: " (url-host url) "\r\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\r\n"
         "\r\n\r\n"
     )
 )
@@ -102,6 +105,7 @@
     (str-merge
         "GET " (url-path url) " HTTP/1.1\r\n"
         "Host: " (url-host url) "\r\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\r\n"
         "Range: bytes=" (str-from-n start "%d") "-" (str-from-n (+ start len -1) "%d") "\r\n"
         "\r\n\r\n"
     )
