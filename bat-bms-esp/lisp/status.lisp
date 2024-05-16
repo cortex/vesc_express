@@ -42,6 +42,7 @@
     )
 ))
 
+; TODO: not registered? Use "00000000-0000-0000-0000-000000000000"
 (define registration-id nil) ; TODO: This should be stored somewhere
 (define registration-id "69c1446a-2b16-4449-8a56-9a97a17e1736")
 
@@ -76,11 +77,11 @@
     )
 })
 
-(defunret send-status (){
-    (var url (str-merge api-url "/batteryStatusUpdate"))
+(defunret pending-actions () {
+    (var url (str-merge api-url "/pendingActions"))
     (var conn (tcp-connect (url-host url) (url-port url)))
     (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
+        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
         {
             (var status-json (battery-status-json))
             (if (not (eq (type-of status-json) 'type-array)) {
@@ -91,6 +92,7 @@
             (var res (tcp-send conn req))
             (var response (http-parse-response conn))
             (var result (second (first response)))
+
             (if (eq "200" result) {
                 ; Read body for hardwareActionId processing
                 (var content-length (http-parse-content-length response))
@@ -145,6 +147,27 @@
         })
 })
 
+(defunret send-status (){
+    (var url (str-merge api-url "/statusUpdate"))
+    (var conn (tcp-connect (url-host url) (url-port url)))
+    (if (or (eq conn nil) (eq conn 'unknown-host))
+        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
+        {
+            (var status-json (battery-status-json))
+            (if (not (eq (type-of status-json) 'type-array)) {
+                (tcp-close conn)
+                (return status-json)
+            })
+            (var req (http-post-json url status-json))
+            (var res (tcp-send conn req))
+            (var response (http-parse-response conn))
+            (var result (second (first response)))
+
+            (tcp-close conn)
+            (if (eq "204" result) 'ok 'error)
+        })
+})
+
 (defun fw-ready-json () (cond
     ((not registration-id) 'no-registration-id)
     (t (str-merge
@@ -186,6 +209,7 @@
     (var i 0)
     (loopwhile t {
         (print (str-merge "Status ping: " (to-str (send-status))))
+        (print (str-merge "Pending actions: " (to-str (pending-actions))))
         ; TODO: This may be complicating things but I've had a lot of trouble with random 
         ;       errors if the status check runs during a firmware download.
         ;       Checking for FW here and notifying server if something is ready to install.
