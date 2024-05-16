@@ -144,11 +144,12 @@
         (if (eq (car is-next-item) 'parse-error) (return parsed-json-list))
 
         (var next-item-list (str-split (first next-item) ","))
-        (if (eq (car next-item) 'parse-error) (return 'parse-error))
+        (if (eq (car next-item-list) 'parse-error) (return 'parse-error))
 
         (var i 0)
         (loopwhile (< i (length next-item-list)) {
             (var this-item (parse-key-val (ix next-item-list i)))
+            (if (eq (car this-item) 'parse-error) (return 'parse-error))
             (var this-cleaned (list
                 (str-replace (first this-item) "\"")
                 (str-replace (second this-item) "\"")
@@ -172,6 +173,7 @@
         })
 
         (var next-val (take-exact (after next-item) "{"))
+        (if (eq (car next-val) 'parse-error) (return 'parse-error))
         (setq json-response next-val)
         (gc)
     })
@@ -194,7 +196,7 @@
             (var req (http-post-json url status-json))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
-            (if (eq resp 'parse-error) {
+            (if (eq (car resp) 'parse-error) {
                 (print "fw-check resp parse-error")
                 (tcp-close conn)
                 (return 'parse-error)
@@ -320,7 +322,7 @@
             (var req (http-head url))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
-            (if (not-eq resp 'parse-error) {
+            (if (not-eq (car resp) 'parse-error) {
                 (var result (ix (ix resp 0) 1))
                 (if (eq "200" result) {
                     (setq content-length (http-parse-content-length resp))
@@ -341,7 +343,7 @@
             (var req (http-get-range url start len))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
-            (if (eq resp 'parse-error) {
+            (if (eq (car resp) 'parse-error) {
                 (print "fw-dl-chk parse-error")
                 (tcp-close conn)
                 (return 'error)
