@@ -138,9 +138,12 @@
                     (disconnect-event)
                 })
             } {
-                (send-code (str-from-n dummy-soc "(def soc-bms %.3f)"))
-                (setq dummy-soc (+ dummy-soc 0.001))
-                (if (> dummy-soc 1.0) (setq dummy-soc 0.0))
+                (if (not fw-update-install) {
+                    (send-code (str-from-n dummy-soc "(def soc-bms %.3f)"))
+                    (send-code (str-from-n dummy-soc "(def soc-bms %.3f)"))
+                    (setq dummy-soc (+ dummy-soc 0.001))
+                    (if (> dummy-soc 1.0) (setq dummy-soc 0.0))
+                })
             }) ; TODO: Do not use in production, this is a hack for missing CAN data from ESC on DevKit
         })
         (sleep 0.1) ; Rate limit to 10Hz
