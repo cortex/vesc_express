@@ -16,45 +16,37 @@
         'connected
 'disconnected)))
 
-(defunret battery-status-json () (cond
-    ((not registration-id) 'no-registration-id)
-    (t (str-merge
-            "{" (kv "registrationId" (q registration-id)) ", "
-                (q "units" ) ":["
-                "{" 
-                    (kv "hardwareIdentifier"     (q (str-merge "BAD4F98D2CFD21"))) "," ; TODO: Was: "BA" (mac-addr-string)
-                    (kv "serialNumber"           (q serial-number-battery)) ","
-                    (kv "hardwareTypeId" "1") ","
-                    (kv "firmwareId"             (int (nv-get 'fw-id-battery))) ","
-                    (kv "chargeLevel"            (int 64)) "," ; TODO: Was: (int (* (get-bms-val 'bms-soc) 100))) ","
-                    (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
-                    (kv "chargeStatus"           (str-from-n fake-charge-status)) "," ; TODO: Was: (charge-status)
-                    (kv "chargeLimit"            (str-from-n charge-limit)) ","
-                    (kv "latitude"               (str-from-n 59.3293)) "," ; TODO: what to do in case of error
-                    (kv "longitude"              (str-from-n 18.0686)) "," ; TODO: what to do in case of error
-                    (kv "celcius"                (int (get-bms-val 'bms-temp-hum)))
-                "}"
-            ",{" (kv "hardwareIdentifier" (q serial-number-remote)) "," (kv "serialNumber" (q serial-number-remote)) "," (kv "chargeLevel" (int 42)) "," (kv "chargeStatus" (int 2)) "}"
-            ",{" (kv "hardwareIdentifier" (q serial-number-jet))    "," (kv "serialNumber" (q serial-number-jet))    "," (kv "chargeStatus" (int 1)) "}"
-            ",{" (kv "hardwareIdentifier" (q serial-number-board))  "," (kv "serialNumber" (q serial-number-board))  "," (kv "chargeStatus" (int 1)) "}"
-            "]}"
-        )
-    )
-))
-
-; TODO: not registered? Use "00000000-0000-0000-0000-000000000000"
-(define registration-id nil) ; TODO: This should be stored somewhere
-(define registration-id "69c1446a-2b16-4449-8a56-9a97a17e1736")
-
-(defun confirm-action-json (action-id) (cond
-    ((not registration-id) 'no-registration-id)
-    (t (str-merge
-            "{" (kv "registrationId" (q registration-id)) ", "
-                (kv "hardwareActionId" (q action-id))
+(defunret battery-status-json ()
+    (str-merge
+        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
+            (q "units" ) ":["
+            "{"
+                (kv "hardwareIdentifier"     (q serial-number-battery)) ","
+                (kv "serialNumber"           (q serial-number-battery)) ","
+                (kv "hardwareTypeId" "1") ","
+                (kv "firmwareId"             (int (nv-get 'fw-id-battery))) ","
+                (kv "chargeLevel"            (int 64)) "," ; TODO: Was: (int (* (get-bms-val 'bms-soc) 100))) ","
+                (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
+                (kv "chargeStatus"           (str-from-n fake-charge-status)) "," ; TODO: Was: (charge-status)
+                (kv "chargeLimit"            (str-from-n charge-limit)) ","
+                (kv "latitude"               (str-from-n 59.3293)) "," ; TODO: what to do in case of error
+                (kv "longitude"              (str-from-n 18.0686)) "," ; TODO: what to do in case of error
+                (kv "celcius"                (int (get-bms-val 'bms-temp-hum)))
             "}"
-        )
+        ",{" (kv "hardwareIdentifier" (q serial-number-remote)) "," (kv "serialNumber" (q serial-number-remote)) "," (kv "chargeLevel" (int 42)) "," (kv "chargeStatus" (int 2)) "}"
+        ",{" (kv "hardwareIdentifier" (q serial-number-jet))    "," (kv "serialNumber" (q serial-number-jet))    "," (kv "chargeStatus" (int 1)) "}"
+        ",{" (kv "hardwareIdentifier" (q serial-number-board))  "," (kv "serialNumber" (q serial-number-board))  "," (kv "chargeStatus" (int 1)) "}"
+        "]}"
     )
-))
+)
+
+(defun confirm-action-json (action-id)
+    (str-merge
+        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
+            (kv "hardwareActionId" (q action-id))
+        "}"
+    )
+)
 
 (defun confirm-action (action-id) {
     (var url (str-merge api-url "/confirmAction"))
@@ -168,16 +160,14 @@
         })
 })
 
-(defun fw-ready-json () (cond
-    ((not registration-id) 'no-registration-id)
-    (t (str-merge
-            "{" (kv "registrationId" (q registration-id)) ", "
-                (kv "hardwareIdentifier" (q (str-merge "BAD4F98D2CFD21"))) "," ;TODO: (kv "hardwareIdentifier"     (q (str-merge "BA" (mac-addr-string)))) ","
-                (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
-            "}"
-        )
+(defun fw-ready-json ()
+    (str-merge
+        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
+            (kv "hardwareIdentifier" (q (str-merge "BAD4F98D2CFD21"))) "," ;TODO: (kv "hardwareIdentifier"     (q (str-merge "BA" (mac-addr-string)))) ","
+            (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
+        "}"
     )
-))
+)
 
 (defunret send-fw-ready (){
     (var url (str-merge api-url "/readyToInstallFirmware"))

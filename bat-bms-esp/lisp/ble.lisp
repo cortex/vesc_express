@@ -203,12 +203,10 @@ out
         ))
 })
 
-(def registration-id nil)
-(defun handle-registration (data){
-        (print (str-merge "registered with id" data))
-        (set 'registration-id data)
-    }
-)
+(defun handle-registration (data) {
+    (print (str-merge "registered with id" data))
+    (nv-update 'registration-id data)
+})
 
 (event-register-handler (spawn event-handler))
 (event-enable 'event-ble-rx)

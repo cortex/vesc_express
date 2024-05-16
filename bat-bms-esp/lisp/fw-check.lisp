@@ -1,59 +1,25 @@
-(def nv-data (list
-    (cons 'fw-id-battery 0)
-    (cons 'fw-id-battery-downloaded 0)
-    (cons 'fw-install-ready false)
-))
-
-(defun nv-set (key value)
-    (setassoc nv-data key value)
-)
-
-(defun nv-get (key)
-    (assoc nv-data key)
-)
-
 (def firmware-releases nil) ; Latest firmware releases parsed from server
-(def fw-dl-progress nil)
+(def fw-dl-progress nil) ; Progress of the current chunk download, useful for debugging
 
 @const-start
 
-(defunret fw-load-nv-data () {
-    (var new-data (rcode-run 31 2 '(load-nv-data)))
-    (if (not-eq new-data 'f-open-error)
-        (setq nv-data new-data)
-        {
-            (print "Failed to load nv-data")
-            (return 'error)
-        }
+(defun fw-result-json ()
+    (str-merge
+        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
+            (kv "hardwareIdentifier" (q serial-number-battery)) ", " ; TODO: Using battery S/N for all components
+            (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
+        "}"
     )
-})
-
-; Load NV data on boot
-(spawn fw-load-nv-data)
-
-(defun fw-result-json () (cond
-    ((not registration-id) 'no-registration-id)
-    (t (str-merge
-            "{" (kv "registrationId" (q registration-id)) ", "
-                (kv "hardwareIdentifier" (q serial-number-battery)) ", " ; TODO: Using battery S/N for all components
-                (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
-            "}"
-        )
-    )
-))
+)
 
 (defun fw-install-result (success) {
     (print (list "fw-install-result" success))
     (if success {
         ; Update nv-data
         (if (eq 'timeout (rcode-run 31 2 `(nv-set 'fw-id-battery ,(nv-get 'fw-id-battery-downloaded))))
-            (print "Timeout updating nv-data")
+            (print "Timeout setting nv-data")
         )
-        ; Clear install ready flag
-        (if (eq 'timeout (rcode-run 31 2 '(nv-set-save 'fw-install-ready false)))
-            (print "Timeout updating nv-data")
-        )
-        (fw-load-nv-data) ; Load latest nv-data
+        (nv-update 'fw-install-ready false)
 
         ; Notify server installation was successful
         (var url (str-merge api-url "/setInstalled"))
@@ -77,20 +43,18 @@
 })
 
 ; JSON data used to retrieve firmware releases
-(defun fw-check-json () (cond
-    ((not registration-id) 'no-registration-id)
-    (t (str-merge
-            "{" (kv "registrationId" (q registration-id)) ", "
-                (q "hardwareIdentifiers" ) ":["
-                (q serial-number-battery)
-                ; TODO: Ask for more than just a single update file?
-                ;(q serial-number-board) ","
-                ;(q serial-number-remote) ","
-                ;(q serial-number-jet)
-            "]}"
-        )
+(defun fw-check-json ()
+    (str-merge
+        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
+            (q "hardwareIdentifiers" ) ":["
+            (q serial-number-battery)
+            ; TODO: Ask for more than just a single update file?
+            ;(q serial-number-board) ","
+            ;(q serial-number-remote) ","
+            ;(q serial-number-jet)
+        "]}"
     )
-))
+)
 
 (defun print-big-string (arr) { ; TODO: This is just for debugging
     (var printable-len 128)
@@ -136,10 +100,7 @@
                     ; This is a new version not saved to SD card
                     (if (eq (fw-download dl-url) 'success) {
                         ; Download successful - Mark as downloaded (pending install)
-                        (if (eq 'timeout (rcode-run 31 2 `(nv-set-save 'fw-id-battery-downloaded ,id)))
-                            (print "Timeout updating nv-data")
-                            (fw-load-nv-data) ; No timeout, retrieve latest nv-data
-                        )
+                        (nv-update 'fw-id-battery-downloaded id)
                     })
                 })
             })
@@ -403,12 +364,9 @@
                 ;))
 
                 (var bytes-remaining content-length)
-;(print "---> 0")
                 (loopwhile (> bytes-remaining 0) {
-;(print "---> 1")
-                    (gc) ; TODO: If this is not here the program will crash
+                    (gc) ; TODO: If this is not here the program will run out of memory
                     (var resp-bytes (tcp-recv conn (if (> bytes-remaining buf-len) buf-len bytes-remaining) 1.0 false))
-;(print "---> 2")
                     (match resp-bytes
                         (no-data {
                             (tcp-close conn)
@@ -433,9 +391,7 @@
                     (setq bytes-remaining (- bytes-remaining (buflen resp-bytes)))
 
                     ; Send bytes to bat-ant-esp with file server
-;(print "---> 3")
                     (var fserve-result (fserve-send 31 2 'wr resp-bytes))
-;(print "---> 4")
                     (if (eq fserve-result 'timeout) {
                         (print "fserve transmit timeout, aborting")
                         (tcp-close conn)
@@ -445,7 +401,6 @@
                     })
 
                 })
-;(print "---> 5")
                 (tcp-close conn)
                 (return 'success)
             })

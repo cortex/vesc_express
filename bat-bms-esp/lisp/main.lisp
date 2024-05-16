@@ -8,6 +8,9 @@
 (import "lib/file-server.lisp" 'code-file-server)
 (read-eval-program code-file-server)
 
+(import "lib/nv-data.lisp" 'code-nv-data)
+(read-eval-program code-nv-data)
+
 (import "fw-check.lisp" 'fw-check)
 (read-eval-program fw-check)
 
