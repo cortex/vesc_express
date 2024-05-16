@@ -1,11 +1,14 @@
+; Host for non volatile data stored on sd card
+
 (def nv-data (list
     (cons 'fw-id-battery 0)
     (cons 'fw-id-battery-downloaded 0)
     (cons 'fw-install-ready false)
+    (cons 'registration-id "00000000-0000-0000-0000-000000000000")
 ))
 
 (defun nv-set (key value)
-    (setassoc nv-data key value)
+    (def nv-data (setassoc nv-data key value))
 )
 
 (defun nv-get (key)
@@ -13,7 +16,7 @@
 )
 
 (defun nv-set-save (key value) {
-    (setassoc nv-data key value)
+    (nv-set key value)
     (save-nv-data nv-data)
 })
 
