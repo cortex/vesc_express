@@ -16,10 +16,9 @@
         'connected
 'disconnected)))
 
-(defunret battery-status-json ()
+(defunret status-update-json ()
     (str-merge
-        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
-            (q "units" ) ":["
+        "{" (q "units" ) ":["
             "{"
                 (kv "hardwareIdentifier"     (q serial-number-battery)) ","
                 (kv "serialNumber"           (q serial-number-battery)) ","
@@ -42,7 +41,7 @@
 
 (defun confirm-action-json (action-id)
     (str-merge
-        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) ", "
             (kv "hardwareActionId" (q action-id))
         "}"
     )
@@ -69,18 +68,24 @@
     )
 })
 
+(defun pending-actions-json ()
+    (str-merge
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) "}"
+    )
+)
+
 (defunret pending-actions () {
     (var url (str-merge api-url "/pendingActions"))
     (var conn (tcp-connect (url-host url) (url-port url)))
     (if (or (eq conn nil) (eq conn 'unknown-host))
         (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
         {
-            (var status-json (battery-status-json))
-            (if (not (eq (type-of status-json) 'type-array)) {
+            (var request-json (pending-actions-json))
+            (if (not (eq (type-of request-json) 'type-array)) {
                 (tcp-close conn)
-                (return status-json)
+                (return request-json)
             })
-            (var req (http-post-json url status-json))
+            (var req (http-post-json url request-json))
             (var res (tcp-send conn req))
             (var response (http-parse-response conn))
             (var result (second (first response)))
@@ -145,7 +150,7 @@
     (if (or (eq conn nil) (eq conn 'unknown-host))
         (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
         {
-            (var status-json (battery-status-json))
+            (var status-json (status-update-json))
             (if (not (eq (type-of status-json) 'type-array)) {
                 (tcp-close conn)
                 (return status-json)
