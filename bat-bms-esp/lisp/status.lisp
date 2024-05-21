@@ -24,7 +24,7 @@
                 (kv "serialNumber"           (q serial-number-battery)) ","
                 (kv "hardwareTypeId" "1") ","
                 (kv "firmwareId"             (int (nv-get 'fw-id-battery))) ","
-                (kv "chargeLevel"            (int 64)) "," ; TODO: Was: (int (* (get-bms-val 'bms-soc) 100))) ","
+                (kv "chargeLevel"            (int (* (get-bms-val 'bms-soc) 100))) ","
                 (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
                 (kv "chargeStatus"           (str-from-n fake-charge-status)) "," ; TODO: Was: (charge-status)
                 (kv "chargeLimit"            (str-from-n charge-limit)) ","
