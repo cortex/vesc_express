@@ -1,3 +1,8 @@
+@const-start
+
+(def display-y-offset 25)
+(def display-x-offset 3)
+
 ;;; Generic utility functions for drawing stuff.
 
 ;;; Smart draw buffer wrapper that keeps track of its position. This is defined

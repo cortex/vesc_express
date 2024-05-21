@@ -69,7 +69,7 @@
         (ix shade-start-times 13)
     ))
 
-    (var rising-sun-buf (create-sbuf 'indexed2 50 59 141 142))
+    (var rising-sun-buf (create-sbuf 'indexed2 50 (+ 50 display-y-offset) 141 142))
 
     (var logo (img-buffer-from-bin icon-lind-logo))
 
@@ -192,7 +192,7 @@
     (var x (/ (- screen-w w) 2))
     (var version-buf (img-buffer 'indexed2 w 16))
     (img-text version-buf 0 0 1 0 font-b3 version-str)
-    (disp-render version-buf x 265 (list 0x0 0x676767))
+    (disp-render version-buf x 275 (list 0x0 0x676767))
 
     (setq rising-sun-buf nil)
     (gc)

@@ -145,6 +145,7 @@
         (state-set-current 'soc-bar-visible (not (or
             (eq view 'charging)
             (eq view 'low-battery)
+            (eq view 'board-info)
         )))
     }))
 
@@ -227,9 +228,9 @@
     ;     (def script-start nil)
     ; })
     
-    (state-with-changed '(is-connected) (fn (is-connected) {
-        (render-is-connected is-connected)
-    }))
+    ;(state-with-changed '(is-connected) (fn (is-connected) {
+    ;    (render-is-connected is-connected)
+    ;}))
 
     ; (def ui-state-last (copy-alist ui-state))
     (state-store-last)

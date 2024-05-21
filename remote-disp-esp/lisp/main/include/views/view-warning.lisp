@@ -5,8 +5,8 @@
 })
 
 (defun view-init-warning () {
-    (def view-icon-buf (create-sbuf 'indexed4 (- 120 70) 60 141 141))
-    (def view-text-buf (create-sbuf 'indexed4 (- 120 70) 230 140 78))
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 70) (+ 50 display-y-offset) 141 141))
+    (def view-text-buf (create-sbuf 'indexed4 (- 120 70) (+ 220 display-y-offset) 140 25))
 
     ; Red Circle
     (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(filled)))
@@ -46,8 +46,8 @@
 })
 
 (defun view-render-warning () {
-    (sbuf-render-changes view-icon-buf (list col-bg col-error col-fg))
-    (sbuf-render-changes view-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
+    (sbuf-render-changes view-icon-buf (list col-black col-lind-red col-white))
+    (sbuf-render-changes view-text-buf (list col-black col-text-aa1 col-text-aa2 col-white))
 })
 
 (defun view-cleanup-warning () {

@@ -64,7 +64,7 @@
 
 (defun view-render-thr-activation () {
     (sbuf-render-changes view-graphic-buf (list 0x0 0x7f9a0d 0x262626 0xffffff))
-    (sbuf-render-changes view-status-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
+    (sbuf-render-changes view-status-text-buf (list col-black col-text-aa1 col-text-aa2 col-white))
 })
 
 (defun view-cleanup-thr-activation () {
