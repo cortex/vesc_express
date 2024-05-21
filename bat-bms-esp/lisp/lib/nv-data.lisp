@@ -22,12 +22,19 @@
 
 (defunret nv-data-load () {
     (var new-data (rcode-run 31 2 '(load-nv-data)))
-    (if (not-eq new-data 'f-open-error)
-        (setq nv-data new-data)
-        {
-            (print "Failed to load nv-data")
+    (match new-data
+        (timeout {
+            (print "Error loading nv-data due to timeout")
             (return 'error)
-        }
+        })
+        (f-open-error {
+            (print "Error loading nv-data due to file open error")
+            (return 'error)
+        })
+        (_ {
+            (print "Succesfully loaded nv-data")
+            (setq nv-data new-data)
+        })
     )
 })
 
