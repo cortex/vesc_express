@@ -14,9 +14,10 @@
 )
 
 (defun nv-update (key value) {
-    (if (eq 'timeout (rcode-run 31 2 `(nv-set-save key ,value)))
-        (print "Error: Timeout updating nv-data")
-        (nv-data-load) ; No timeout, load nv-data
+    (match (rcode-run 31 2 `(nv-set-save ,(flatten (list key value))))
+        (timeout (print "Error: Timeout updating nv-data"))
+        (eerror (print "EERROR updating nv-data"))
+        (_  (nv-data-load)) ; No problems, load nv-data
     )
 })
 

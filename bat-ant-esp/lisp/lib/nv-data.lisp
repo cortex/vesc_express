@@ -8,14 +8,16 @@
 ))
 
 (defun nv-set (key value)
-    (def nv-data (setassoc nv-data key value))
+    (setq nv-data (setassoc nv-data key value))
 )
 
 (defun nv-get (key)
     (assoc nv-data key)
 )
 
-(defun nv-set-save (key value) {
+(defun nv-set-save (flat-pair) {
+    (var key (first (unflatten flat-pair)))
+    (var value (second (unflatten flat-pair)))
     (nv-set key value)
     (save-nv-data nv-data)
 })
