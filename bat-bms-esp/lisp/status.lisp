@@ -168,7 +168,7 @@
 (defun fw-ready-json ()
     (str-merge
         "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
-            (kv "hardwareIdentifier" (q (str-merge "BAD4F98D2CFD21"))) "," ;TODO: (kv "hardwareIdentifier"     (q (str-merge "BA" (mac-addr-string)))) ","
+            (kv "hardwareIdentifier" (q serial-number-battery)) ","
             (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
         "}"
     )

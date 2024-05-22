@@ -9,6 +9,10 @@
 
 @const-start
 
+(defun nv-set (key value)
+    (setq nv-data (setassoc nv-data key value))
+)
+
 (defun nv-get (key)
     (assoc nv-data key)
 )

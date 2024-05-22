@@ -76,9 +76,11 @@
             (if (not unzip-result) {
                 (print "Unzip failed.") ; TODO: what now?
             } {
-                ; Update fw-install-ready to true
+                ; Update fw-install-ready to true locally
                 (nv-set 'fw-install-ready true)
                 (save-nv-data nv-data)
+
+                ; Update fw-install-ready remotely as well
                 (print "Notifying devices install is ready")
                 ; TODO: Make sure these don't timeout
                 (rcode-run 21 2 '(nv-set 'fw-install-ready true)) ; bat-bms-esp (Wifi)
