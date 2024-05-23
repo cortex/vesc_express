@@ -125,7 +125,13 @@
                                 (confirm-action action-id)
                             })
                             ((eq action-type "4") {
-                                (print "Action: Install FW")
+                                (var hwid (first (str-split action-data "|")))
+                                (var fwvr (second (str-split action-data "|")))
+                                (print (str-merge "Action: Install FW " fwvr " on " hwid))
+                                ; TODO: There is a bit to think about here.
+                                ;       A board may receive a request to install multiple updates
+                                ;       Many update files would have to be saved to the SD Card
+                                ;       The current logic assumes the latest update will encapsulate all previous updates =/
                                 ; Notify bat-ant-esp it's time to begin
                                 (var res (rcode-run 31 2 '(def fw-update-install true)))
                                 (if (not-eq res 'timeout)
