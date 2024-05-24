@@ -28,3 +28,6 @@
 
 (import "status.lisp" 'status)
 (read-eval-program status)
+
+(import "api-log.lisp" 'api-log)
+(read-eval-program api-log)

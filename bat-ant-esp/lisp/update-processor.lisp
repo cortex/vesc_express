@@ -74,17 +74,25 @@
             ; Extract zip file contents
             (var unzip-result (fw-update-unzip-files))
             (if (not unzip-result) {
-                (print "Unzip failed.") ; TODO: what now?
+                (print "Unzip failed.")
+                ; Report failure to API
+                (setq update-results (list 0))
+                (setix update-results 0 (list 'unzip-ota 'unzip-ota 'fail 0))
+                (fw-update-send-results update-results)
             } {
-                ; Update fw-install-ready to true locally
+                ; Update fw-install-ready locally
                 (nv-set 'fw-install-ready true)
                 (save-nv-data nv-data)
 
                 ; Update fw-install-ready remotely as well
                 (print "Notifying devices install is ready")
-                ; TODO: Make sure these don't timeout
-                (rcode-run 21 2 '(nv-set 'fw-install-ready true)) ; bat-bms-esp (Wifi)
-                (rcode-run 10 2 '(def fw-install-ready true)) ; bat-esc-stm (GSM)
+
+                (print (str-merge "BMS ESP Install Ready: " (to-str
+                    (rcode-run 21 2 '(nv-set 'fw-install-ready true)) ; bat-bms-esp (Wifi)
+                )))
+                (print (str-merge "ESC STM Install Ready: " (to-str
+                    (rcode-run 10 2 '(def fw-install-ready true)) ; bat-esc-stm (GSM)
+                )))
             })
             ; Clear flag
             (def fw-update-extract false)
@@ -145,7 +153,7 @@
                     (fw-lisp {
                         (setq file-name (str-merge file-name ".lpkg"))
                         (if (is-list can-id) 
-                            (setq update-result (update-lisp file-name (first can-id)))
+                            (setq update-result ((date-lisp file-name (first can-id)))
                             (setq update-result (update-lisp file-name can-id))
                         )
                     })
@@ -177,24 +185,23 @@
             })
 
             (print update-results)
+
             ; Report to API
-            (var success true)
-            (var j 0)
-            (loopwhile (< j (length update-results)) {
-                (if (eq (third (ix update-results j)) 'fail) {
-                    (setq success false)
-                    (break)
-                })
-                (setq j (+ j 1))
-            })
-            ; TODO: Make sure these don't timeout
-            (rcode-run 21 2 `(fw-install-result ,success)) ; bat-bms-esp (WiFi)
-            (rcode-run 10 2 `(fw-install-result ,success)) ; bat-esc-stm (GSM)
+            (fw-update-send-results update-results)
 
             (def fw-update-install false)
         })
         (sleep 1) ; Rate limit to 1Hz
     })
+})
+
+(defun fw-update-send-results (update-results) {
+    (print (str-merge "BMS ESP Notify: " (to-str
+        (rcode-run 21 2 `(fw-install-result ,(flatten update-results))) ; bat-bms-esp (WiFi)
+    )))
+    (print (str-merge "ESC STM Notify: " (to-str
+        (rcode-run 10 2 `(fw-install-result ,(flatten update-results))) ; bat-esc-stm (GSM)
+    )))
 })
 
 (defunret fw-update-unzip-files () {

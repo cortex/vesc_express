@@ -12,37 +12,71 @@
     )
 )
 
-(defun fw-install-result (success) {
-    (print (list "fw-install-result" success))
+(defun fw-install-result (update-results) {
+    (setq update-results (unflatten update-results))
+
+    ; Check if all results are 'success
+    (var success true)
+    (var i 0)
+    (loopwhile (< i (length update-results)) {
+        (if (eq (third (ix update-results i)) 'fail) {
+            (setq success false)
+            (break)
+        })
+        (setq i (+ i 1))
+    })
+    (print (str-merge "fw-install-result " (if success "successful" "has failures")))
+
     (if success {
         ; Update nv-data
         (if (eq 'timeout (rcode-run 31 2 `(nv-set 'fw-id-battery ,(nv-get 'fw-id-battery-downloaded))))
-            (print "Timeout setting nv-data")
+            (print "Timeout setting nv-data during fw-install-result")
         )
         (nv-update 'fw-install-ready false)
 
         ; Notify server installation was successful
         (var url (str-merge api-url "/setInstalled"))
-        (var conn (tcp-connect (url-host url) (url-port url)))
+        (var conn (tcp-conn url))
         (if (or (eq conn nil) (eq conn 'unknown-host))
             (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
             {
-                (var status-json (fw-ready-json))
-                (if (not (eq (type-of status-json) 'type-array)) {
+                (var post-json (fw-result-json))
+                (if (not (eq (type-of post-json) 'type-array)) {
                     (tcp-close conn)
-                    (return status-json)
+                    (return post-json)
                 })
-                (var req (http-post-json url status-json))
+                (var req (http-post-json url post-json))
                 (var res (tcp-send conn req))
                 (var resp (http-parse-response conn))
                 (var result (second (first resp)))
                 (tcp-close conn)
                 (if (eq "204" result)
                     (print "Server notified of successful install")
-                    (print (str-merge "Error with /setInstalled: " result))
+                    (print (str-merge "/setInstalled returned: " result))
                 )
             })
+    } {
+        ; Log failures to server
+        (var log-level 1) ; 1 = debug
+        (setq i 0)
+        (loopwhile (< i (length update-results)) {
+            (if (eq (third (ix update-results i)) 'fail) {
+                (var message (str-merge
+                    "Install "
+                    (to-str (second (ix update-results i)))
+                    " on "
+                    (to-str (first (ix update-results i)))
+                    " failed in "
+                    (str-from-n (ix (ix update-results i) 3) "%d ms")
+                ))
+                (print message)
+                ; TODO: (api-log-add "timestamp???" message (str-from-n log-level "%d"))
+            })
+            (setq i (+ i 1))
+        })
     })
+
+    'ok
 })
 
 ; JSON data used to retrieve firmware releases
@@ -187,10 +221,8 @@
 (defunret fw-check () {
     (gc)
     (var url (str-merge api-url "/currentFirmwares"))
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
-        {
+    (var conn (tcp-conn url))
+    (if conn {
             (var status-json (fw-check-json))
             (if (not (eq (type-of status-json) 'type-array)) {
                 (tcp-close conn)
@@ -318,10 +350,8 @@
 
 (defun fw-get-download-size (url) {
     (var content-length nil)
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
-        {
+    (var conn (tcp-conn url))
+    (if conn {
             (var req (http-head url))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
@@ -339,10 +369,8 @@
 
 (defunret fw-download-chunk (url start len) {
     ; Download file to SD card on bat-ant-esp
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
-        {
+    (var conn (tcp-conn url))
+    (if conn {
             (var req (http-get-range url start len))
             (var res (tcp-send conn req))
             (var resp (http-parse-response conn))
