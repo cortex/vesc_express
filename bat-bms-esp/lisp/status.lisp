@@ -39,6 +39,24 @@
     )
 )
 
+; TCP Connection Helper (could be relocated to a better home)
+(defun tcp-conn (url) {
+    (var conn (tcp-connect (url-host url) (url-port url)))
+    ; NOTE: tcp-connect may return many things, only type-i is successful.
+    ; For example:
+    ;   nil
+    ;   unknown-host
+    ;   (connect-error "errval")
+    ;   (symbol_socket_error "errval")
+    (if (not-eq (type-of conn) 'type-i)
+    {
+        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
+        nil
+    }
+        conn
+    )
+})
+
 (defun confirm-action-json (action-id)
     (str-merge
         "{" (kv "hardwareIdentifier" (q serial-number-battery)) ", "
@@ -49,10 +67,8 @@
 
 (defun confirm-action (action-id) {
     (var url (str-merge api-url "/confirmAction"))
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
-        {
+    (var conn (tcp-conn url))
+    (if conn {
             (var to-post (confirm-action-json action-id))
             (if (not (eq (type-of to-post) 'type-array)) {
                 (tcp-close conn)
@@ -76,8 +92,8 @@
 
 (defunret pending-actions () {
     (var url (str-merge api-url "/pendingActions"))
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
+    (var conn (tcp-conn url))
+    (if (or (eq conn nil) (eq conn 'unknown-host) (eq (type-of conn) 'type-list))
         (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
         {
             (var request-json (pending-actions-json))
@@ -152,10 +168,8 @@
 
 (defunret send-status (){
     (var url (str-merge api-url "/statusUpdate"))
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
-        {
+    (var conn (tcp-conn url))
+    (if conn {
             (var status-json (status-update-json))
             (if (not (eq (type-of status-json) 'type-array)) {
                 (tcp-close conn)
@@ -182,10 +196,8 @@
 
 (defunret send-fw-ready (){
     (var url (str-merge api-url "/readyToInstallFirmware"))
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
-        {
+    (var conn (tcp-conn url))
+    (if conn {
             (var status-json (fw-ready-json))
             (if (not (eq (type-of status-json) 'type-array)) {
                 (tcp-close conn)
