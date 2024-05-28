@@ -18,7 +18,7 @@
 
 @const-start
 
-(def rx-timeout-ms 1000)
+(def rx-timeout-ms 2000)
 
 (esp-now-start)
 
@@ -71,7 +71,9 @@
 
             (setq fw-offset (+ fw-offset (buflen data)))
             (setq fw-bytes-remaining (- fw-bytes-remaining (buflen data)))
-            (send-code (str-merge "(def remote-pos " (str-from-n fw-offset "%d") ")"))
+            (if (not (send-code (str-merge "(def remote-pos " (str-from-n fw-offset "%d") ")"))) {
+                (print "Error sending update position to bat-ant-esp. This is not good. Sorry")
+            })
         } {
             ;(print data)
             (eval (read data))
@@ -110,10 +112,10 @@
 (defun send-thr-rf (thr)
     (progn
         (var str (str-from-n (clamp01 thr) "(thr-rx %.2f)"))
-        
+
         ; HACK: Send io-board message to trick esc that the jet is plugged in
         ;(send-code "(can-send-eid (+ 108 (shl 32 8)) '(0 0 0 0 0 0 0 0))")
-        
+
         (send-code str)
 ))
 
@@ -132,7 +134,7 @@
 
 (defun connection-tick () {
         (var start (systime))
-        
+
         ; normal communication
         (def thr (thr-apply-gear thr-input))
 
@@ -141,42 +143,49 @@
             (print "Remote inactive for 1 hour. Going to sleep")
             (enter-sleep)
         })
-        
+
         (if (and (> (secs-since last-input-time) 30.0) (not dev-disable-inactivity-check)) {
                 (set-thr-is-active false)
         })
         (if (and (not is-connected) (not dev-disable-connection-check))
             (set-thr-is-active false)
         )
-        
+
         (if dev-force-thr-enable {
                 (set-thr-is-active true)
         })
-        
+
         (if (not (send-thr (if thr-active thr 0)))
             (setq thr-fail-cnt (+ thr-fail-cnt 1))
         )
 
         ; Update is-connected status
         (if (> (- (systime) battery-rx-timestamp) rx-timeout-ms) {
-            ; Timeout, clear battery address
-            (def batt-addr-rx false)
-            (def is-connected false)
-            (if (state-get 'was-connected) (state-set 'conn-lost true))
+            ; Do not timeout during update please
+            (if (not firmware-updating) {
+                (print "Battery disconnected due to timeout")
+                ; Timeout, clear battery address
+                (def batt-addr-rx false)
+                (def is-connected false)
+                (if (state-get 'was-connected) (state-set 'conn-lost true))
+            })
         } (def is-connected true))
 
         ; Timeout broadcast reception
-        (if (and (not-eq broadcast-rx-timestamp nil) (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms)) {
-            (def esp-rx-rssi -99)
-            (def broadcast-rx-timestamp nil)
-        })
+        (if (not-eq broadcast-rx-timestamp nil)
+            (if (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms) {
+                (def esp-rx-rssi -99)
+                (def broadcast-rx-timestamp nil)
+            })
+        )
+
 ;        (if (not is-connected) (def thr-active false))
-        
+
         (var tick-secs (if any-ping-has-failed
                 0.004 ; 4 ms
                 0.01 ; 10 ms
         ))
-        
+
         (var secs (- tick-secs (secs-since start)))
         (sleep (if (< secs 0.0) 0 secs))
 })

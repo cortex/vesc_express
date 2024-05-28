@@ -87,8 +87,11 @@
 
         ; Indicate an update is about to begin
         (setq result (send-code "(def firmware-updating true)"))
+    })
+
+    (if result {
         ; Update the display on the remote
-        (send-code "(request-view-change)")
+        (setq result (send-code "(request-view-change)"))
     })
 
     (if result {
@@ -116,6 +119,7 @@
         ; Indicate file data is inbound
         (setq result (send-code (str-merge "(setq fw-bytes-remaining " (str-from-n fsize "%d") ")")))
     })
+    (def vt-bugs 0) ; TODO: Testing to count tx attempts
 
     (if result {
         (setq result nil)
@@ -135,12 +139,19 @@
             (def remote-pos -1)
             (var send-time (systime))
             (send-code data)
+(setq vt-bugs (+ vt-bugs 1)) ; TODO: Temporary
             ; Waiting for ACK
             (loopwhile (< remote-pos 0) {
                 (if (> (- (systime) send-time) 10000) {
-                    (print "Upload timeout")
-                    (setq result nil)
-                    (break)
+                    (if (= vt-bugs 1) {
+                        (print "Debug me please! (a timeout is likely involved)")
+                        (setq send-time (systime))
+                        (send-code data)
+                    } {
+                        (print "Upload timeout")
+                        (setq result nil)
+                        (break)
+                    })
                 })
                 (sleep 0.01)
             })
@@ -164,7 +175,7 @@
         (print (str-merge "Reboot result: " (to-str result)))
     })
 
-    (def disable-connection-timeout false)
+    ; TODO: timing out here.. (def disable-connection-timeout false)
 
     ; TODO: At this time the remote is displaying Firmware Update view
     ; This is ok if lisp is updating next. Otherwise we'll need to

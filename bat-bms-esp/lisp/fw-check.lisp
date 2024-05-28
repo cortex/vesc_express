@@ -3,16 +3,80 @@
 
 @const-start
 
-(defun fw-result-json ()
+
+; firmwareInstallationProgress
+; {
+; "hardwareIdentifier": "string",
+; "firmwareId": 0,
+; "progress": 0
+; }
+(defun fw-progress-json (progress)
     (str-merge
-        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
-            (kv "hardwareIdentifier" (q serial-number-battery)) ", " ; TODO: Using battery S/N for all components
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) ", " ; TODO: Using battery S/N for all components
+            (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded))) ", "
+            (kv "progress" (int progress))
+        "}"
+    )
+)
+
+(defun fw-install-progress-helper (progress) {
+    ; Notify server of installation progress
+    (var url (str-merge api-url "/firmwareInstallationProgress"))
+    (var conn (tcp-conn url))
+    (if conn {
+            (var post-json (fw-progress-json progress))
+            (if (not (eq (type-of post-json) 'type-array)) {
+                (tcp-close conn)
+                (return post-json)
+            })
+            (var req (http-post-json url post-json))
+            (var res (tcp-send conn req))
+            (var resp (http-parse-response conn))
+            (var result (second (first resp)))
+            (tcp-close conn)
+            (if (eq "204" result)
+                (print "Server notified of installation progress")
+                (print (str-merge "/firmwareInstallationProgress returned: " result))
+            )
+        })
+})
+
+(defun fw-install-progress (progress) {
+    ; Notify server of installation progress
+    ; Spawning because we require a quick response
+    (spawn fw-install-progress-helper progress)
+    'ok
+})
+
+; firmwareInstallationFailed
+; {
+; "hardwareIdentifier": "string",
+; "firmwareId": 0,
+; "errorCode": "string"
+; }
+(defun fw-fail-json (reason)
+    (str-merge
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) ", "
+            (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded))) ", "
+            (kv "errorCode" (q reason))
+        "}"
+    )
+)
+
+; setInstalled
+; {
+; "hardwareIdentifier": "string",
+; "firmwareId": 0,
+; }
+(defun fw-success-json ()
+    (str-merge
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) ", "
             (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
         "}"
     )
 )
 
-(defun fw-install-result (update-results) {
+(defun fw-install-result-helper (update-results) {
     (setq update-results (unflatten update-results))
 
     ; Check if all results are 'success
@@ -37,10 +101,8 @@
         ; Notify server installation was successful
         (var url (str-merge api-url "/setInstalled"))
         (var conn (tcp-conn url))
-        (if (or (eq conn nil) (eq conn 'unknown-host))
-            (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
-            {
-                (var post-json (fw-result-json))
+        (if conn {
+                (var post-json (fw-success-json))
                 (if (not (eq (type-of post-json) 'type-array)) {
                     (tcp-close conn)
                     (return post-json)
@@ -56,8 +118,7 @@
                 )
             })
     } {
-        ; Log failures to server
-        (var log-level 1) ; 1 = debug
+        ; Report failure(s) to server
         (setq i 0)
         (loopwhile (< i (length update-results)) {
             (if (eq (third (ix update-results i)) 'fail) {
@@ -69,8 +130,27 @@
                     " failed in "
                     (str-from-n (ix (ix update-results i) 3) "%d ms")
                 ))
-                (print message)
-                ; TODO: (api-log-add "timestamp???" message (str-from-n log-level "%d"))
+                ; (print message)
+
+                ; Notify server installation failed
+                (var url (str-merge api-url "/firmwareInstallationFailed"))
+                (var conn (tcp-conn url))
+                (if conn {
+                        (var post-json (fw-fail-json message))
+                        (if (not (eq (type-of post-json) 'type-array)) {
+                            (tcp-close conn)
+                            (return post-json)
+                        })
+                        (var req (http-post-json url post-json))
+                        (var res (tcp-send conn req))
+                        (var resp (http-parse-response conn))
+                        (var result (second (first resp)))
+                        (tcp-close conn)
+                        (if (eq "204" result)
+                            (print "Server notified of installation problem")
+                            (print (str-merge "/firmwareInstallationFailed returned: " result))
+                        )
+                    })
             })
             (setq i (+ i 1))
         })
@@ -79,11 +159,15 @@
     'ok
 })
 
+(defun fw-install-result (update-results) {
+    (spawn fw-install-result-helper update-results)
+    'ok
+})
+
 ; JSON data used to retrieve firmware releases
 (defun fw-check-json ()
     (str-merge
-        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
-            (q "hardwareIdentifiers" ) ":["
+        "{" (q "hardwareIdentifiers" ) ":["
             (q serial-number-battery)
             ; TODO: Ask for more than just a single update file?
             ;(q serial-number-board) ","
@@ -271,14 +355,6 @@
     (var res (rcode-run 31 2 '(def fw-update-extract true)))
     (if (eq res 'timeout) {
         (print "fw-notify-extract timeout")
-    })
-    res
-})
-
-(defun fw-notify-install () {
-    (var res (rcode-run 31 2 '(def fw-update-install true)))
-    (if (eq res 'timeout) {
-        (print "fw-notify-install timeout")
     })
     res
 })

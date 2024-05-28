@@ -111,6 +111,11 @@
             ; Process update-description
             (setq update-results (range 0 (length update-description)))
             (print (str-merge "Processing update-description with " (to-str (length update-description)) " entries."))
+
+            ; Notify server we are making progress with the update
+            ; TODO: spawning means this might talk while updating can device
+            (spawn fw-update-send-progress 10) ; 10% complete (estimate)
+
             (var i 0)
             (loopwhile (< i (length update-description)) {
                 (var start-time (systime))
@@ -155,7 +160,7 @@
                         (if (is-list can-id) 
                             (setq update-result ((date-lisp file-name (first can-id)))
                             (setq update-result (update-lisp file-name can-id))
-                        )
+                        ))
                     })
                     (fw-vesc-espnow {
                         (setq file-name (str-merge file-name ".bin"))
@@ -181,26 +186,51 @@
 
                 (setix update-results i (list fw-device fw-type (if update-result 'success 'fail) ms))
 
+                ; Report progress to the API
+                ; ONLY if we are not actively updating a device with API connectivity
+                (var progress (+ 10 (to-i (* 90 (/ (to-float (+ i 1)) (length update-description))))))
+                (if (and
+                        (not-eq fw-device 'bat-bms-esp)
+                        (not-eq fw-device 'bat-esc-stm)
+                        (!= i (length update-description))
+                    )
+                    (spawn fw-update-send-progress progress) ; TODO: spawning means this might talk while updating can device
+                )
+
                 (setq i (+ i 1))
             })
 
-            (print update-results)
+            (print (list "Update Results" update-results))
 
             ; Report to API
             (fw-update-send-results update-results)
 
-            (def fw-update-install false)
+            (def fw-update-install false) ; TODO: this is somehow true afterwards, investigate
+            (def fw-update-install false) ; TODO: this is somehow true afterwards, investigate
         })
         (sleep 1) ; Rate limit to 1Hz
     })
 })
 
 (defun fw-update-send-results (update-results) {
-    (print (str-merge "BMS ESP Notify: " (to-str
+    (print (str-merge "Send BMS ESP Results: " (to-str
         (rcode-run 21 2 `(fw-install-result ,(flatten update-results))) ; bat-bms-esp (WiFi)
     )))
-    (print (str-merge "ESC STM Notify: " (to-str
+
+    (print (str-merge "Send ESC STM Results: " (to-str
         (rcode-run 10 2 `(fw-install-result ,(flatten update-results))) ; bat-esc-stm (GSM)
+    )))
+})
+
+; NOTE: Be careful with rcode-run timeouts here. Too long and we
+;       may exceede the esp-now connection timeout and espnow fw updates
+;       will not work
+(defun fw-update-send-progress (progress) {
+    (print (str-merge "Send BMS ESP Progress: " (to-str
+        (rcode-run 21 0.25 `(fw-install-progress ,progress)) ; bat-bms-esp (WiFi)
+    )))
+    (print (str-merge "Send ESC STM Progress: " (to-str
+        (rcode-run 10 0.25 `(fw-install-progress ,progress)) ; bat-esc-stm (GSM)
     )))
 })
 

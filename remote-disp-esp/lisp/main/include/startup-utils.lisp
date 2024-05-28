@@ -129,7 +129,12 @@
     (view-cleanup-low-battery)
 })
 
+@const-end
+
 (def view-low-battery-loaded false)
+
+@const-start
+
 (defun check-battery-on-boot () {
     ; Once on startup, check remote battery soc
     (if (<= (get-remote-soc) 0.2) {

@@ -83,8 +83,11 @@
         ;   Haults extra esp-now communications remotely
         ;   Remote can display firmware update view
         (setq result (send-code "(def firmware-updating true)"))
+    })
+
+    (if result {
         ; Update the display on the remote
-        (send-code "(request-view-change)")
+        (setq result (send-code "(request-view-change)"))
     })
 
     (if result {
@@ -113,7 +116,7 @@
         (setq result (send-code (str-merge "(setq fw-bytes-remaining " (str-from-n fsize "%d") ")")))
         ; NOTE: lbm-erase & lbm-write will execute locally on the remote after the transfer is successful
     })
-
+(def vt-debug 0) ; TODO: Testing increased timeout and adding vt-debug to count tx attempts
     (if result {
         (setq result nil)
         (var offset 0)
@@ -132,12 +135,19 @@
             (def remote-pos -1)
             (var send-time (systime))
             (send-code data)
+(setq vt-debug (+ vt-debug 1)) ; TODO: Temporary
             ; Waiting for ACK
             (loopwhile (< remote-pos 0) {
                 (if (> (- (systime) send-time) 10000) {
-                    (print "Upload timeout")
-                    (setq result nil)
-                    (break)
+                    (if (= vt-debug 1) {
+                        (print "Debug me too, probably from a timeout on one end or the other")
+                        (setq send-time (systime))
+                        (send-code data)
+                    } {
+                        (print "Upload timeout")
+                        (setq result nil)
+                        (break)
+                    })
                 })
                 (sleep 0.01)
             })

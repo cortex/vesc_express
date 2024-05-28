@@ -93,9 +93,7 @@
 (defunret pending-actions () {
     (var url (str-merge api-url "/pendingActions"))
     (var conn (tcp-conn url))
-    (if (or (eq conn nil) (eq conn 'unknown-host) (eq (type-of conn) 'type-list))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
-        {
+    (if conn {
             (var request-json (pending-actions-json))
             (if (not (eq (type-of request-json) 'type-array)) {
                 (tcp-close conn)
@@ -187,8 +185,7 @@
 
 (defun fw-ready-json ()
     (str-merge
-        "{" (kv "registrationId" (q (nv-get 'registration-id))) ", "
-            (kv "hardwareIdentifier" (q serial-number-battery)) ","
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) ","
             (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
         "}"
     )

@@ -33,7 +33,7 @@
 (def rx-cnt-can 0)
 
 (def zero-rx-rime (systime))
-(def rx-timeout-ms 1000)
+(def rx-timeout-ms 2000)
 (def disable-connection-timeout nil)
 
 (def throttle-rx-timestamp (- (systime) 20000))
