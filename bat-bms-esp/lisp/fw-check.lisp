@@ -368,12 +368,10 @@
     (match fserve-start-result
         (timeout {
             (print "fserve did not start remotely, aborting")
-            (tcp-close conn)
             (return 'fail)
         })
         (eerror {
             (print "exit-error from the host, aborting")
-            (tcp-close conn)
             (return 'fail)
         })
         (_ (print (str-from-n fserve-start-result "start-file-server remote thread id: %d")))
