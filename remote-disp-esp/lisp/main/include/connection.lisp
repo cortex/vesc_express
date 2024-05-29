@@ -163,7 +163,6 @@
         (if (> (- (systime) battery-rx-timestamp) rx-timeout-ms) {
             ; Do not timeout during update please
             (if (not firmware-updating) {
-                (print "Battery disconnected due to timeout")
                 ; Timeout, clear battery address
                 (def batt-addr-rx false)
                 (def is-connected false)
