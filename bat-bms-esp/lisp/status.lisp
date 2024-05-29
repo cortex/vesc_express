@@ -40,20 +40,24 @@
 )
 
 ; TCP Connection Helper (could be relocated to a better home)
+(def shared-conn nil)
 (defun tcp-conn (url) {
-    (var conn (tcp-connect (url-host url) (url-port url)))
+    (if (not-eq shared-conn nil)
+        (tcp-close shared-conn)
+    )
+    (setq shared-conn (tcp-connect (url-host url) (url-port url)))
     ; NOTE: tcp-connect may return many things, only type-i is successful.
     ; For example:
     ;   nil
     ;   unknown-host
     ;   (connect-error "errval")
     ;   (symbol_socket_error "errval")
-    (if (not-eq (type-of conn) 'type-i)
+    (if (not-eq (type-of shared-conn) 'type-i)
     {
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn)))
-        nil
+        (print (str-merge "error connecting to " (url-host url) " " (to-str shared-conn)))
+        (def shared-conn nil)
     }
-        conn
+        shared-conn
     )
 })
 
@@ -69,19 +73,20 @@
     (var url (str-merge api-url "/confirmAction"))
     (var conn (tcp-conn url))
     (if conn {
-            (var to-post (confirm-action-json action-id))
-            (if (not (eq (type-of to-post) 'type-array)) {
+        (var to-post (confirm-action-json action-id))
+        (if (not (eq (type-of to-post) 'type-array))
+            (print "Error creating confirm-action-json")
+            {
+                (var req (http-post-json url to-post))
+                (var res (tcp-send conn req))
+                (var response (http-parse-response conn))
+                (var result (second (first response)))
+
                 (tcp-close conn)
-                (return to-post)
-            })
-            (var req (http-post-json url to-post))
-            (var res (tcp-send conn req))
-            (var response (http-parse-response conn))
-            (var result (second (first response)))
-            (tcp-close conn)
-            (if (eq "200" result) 'ok 'error)
-        }
-    )
+                (if (eq "204" result) 'ok 'error)
+            }
+        )
+    } 'no-connection)
 })
 
 (defun pending-actions-json ()
@@ -111,6 +116,10 @@
                     (var resp-body (tcp-recv conn content-length))
                     ;(print resp-body)
                     (def hw-actions (parse-json-firmware resp-body))
+
+                    ; Close the connection now that we are finished parsing
+                    (tcp-close conn)
+
                     (var i 0)
                     (loopwhile (< i (length hw-actions)) {
                         ; Perform hardware actions, such as initiating fw install
@@ -149,7 +158,7 @@
                                 ; Notify bat-ant-esp it's time to begin
                                 (var res (rcode-run 31 2 '(def fw-update-install true)))
                                 (if (not-eq res 'timeout)
-                                    (confirm-action action-id)
+                                    (print (str-merge "Action Confirm: " (to-str (confirm-action action-id))))
                                 )
                             })
                             (_ (print (str-merge "Unexpected action-type: " action-type)))
@@ -158,8 +167,8 @@
                         (setq i (+ i 1))
                     })
                 })
-            })
-            (tcp-close conn)
+            } (tcp-close conn))
+
             (if (eq "200" result) 'ok 'error)
         })
 })
@@ -216,23 +225,37 @@
 (charging 2))))
 
 (defun status-loop () {
-        (var i 0)
-        (loopwhile t {
-                (print (str-merge "Status ping: " (to-str (send-status))))
-                (if dev-enable-ota-actions {
+    (var i 0)
+    (loopwhile t {
+        (print (str-merge "Status ping: " (to-str (send-status))))
+        (if dev-enable-ota-actions {
 
-                        (print (str-merge "Pending actions: " (to-str (pending-actions))))
-                        ; TODO: This may be complicating things but I've had a lot of trouble with random
-                        ;       errors if the status check runs during a firmware download.
-                        ;       Checking for FW here and notifying server if something is ready to install.
-                        (if (eq (mod i 10) 0) {
-                                (print (str-merge "FW check: " (to-str (fw-check))))
-                                (if (nv-get 'fw-install-ready) (print (str-merge "FW ready ping: " (to-str (send-fw-ready)))))
-                        })
-                })
-                (setq i (+ i 1))
-                (sleep 5)
+            ; Send latest update progress if available
+            (if (not-eq fw-update-progress nil) {
+                (fw-install-progress-helper fw-update-progress)
+                ; TODO; if success def nil
+                (def fw-update-progress nil)
+            })
+
+            ; Send latest fw update result if available
+            (if (not-eq fw-update-results nil) {
+                (fw-install-result-helper fw-update-results)
+                ; TODO: if success def nil
+                (def fw-update-results nil)
+            })
+
+            ; Check for pending actions
+            (print (str-merge "Pending actions: " (to-str (pending-actions))))
+
+            ; Check for firmware releases less frequently
+            (if (eq (mod i 10) 0) {
+                    (print (str-merge "FW check: " (to-str (fw-check))))
+                    (if (nv-get 'fw-install-ready) (print (str-merge "FW ready ping: " (to-str (send-fw-ready)))))
+            })
         })
+        (setq i (+ i 1))
+        (sleep 5)
+    })
 })
 
 (spawn status-loop)

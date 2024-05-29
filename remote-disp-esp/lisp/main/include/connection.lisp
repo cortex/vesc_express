@@ -96,7 +96,10 @@
 (defun send-code (str)
     (if batt-addr-rx
         (esp-now-send batt-addr str)
-        nil
+        {
+            (print "Error: send-code failed: batt-addr-rx is nil")
+            nil
+        }
 ))
 
 @const-start

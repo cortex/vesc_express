@@ -20,31 +20,39 @@
 )
 
 (defun fw-install-progress-helper (progress) {
+    (print (str-from-n progress "Reporting FW Progress: %d"))
     ; Notify server of installation progress
     (var url (str-merge api-url "/firmwareInstallationProgress"))
     (var conn (tcp-conn url))
     (if conn {
-            (var post-json (fw-progress-json progress))
-            (if (not (eq (type-of post-json) 'type-array)) {
-                (tcp-close conn)
-                (return post-json)
-            })
-            (var req (http-post-json url post-json))
-            (var res (tcp-send conn req))
-            (var resp (http-parse-response conn))
-            (var result (second (first resp)))
-            (tcp-close conn)
-            (if (eq "204" result)
-                (print "Server notified of installation progress")
-                (print (str-merge "/firmwareInstallationProgress returned: " result))
-            )
-        })
+        (var post-json (fw-progress-json progress))
+        (if (not (eq (type-of post-json) 'type-array))
+            (print "Error creating fw-progress-json")
+            {
+                (var req (http-post-json url post-json))
+                (var res (tcp-send conn req))
+                (var resp (http-parse-response conn))
+                (if (eq (car resp) 'parse-error)
+                    (print "Parse error reporting fw progress")
+                {
+                    (var result (second (first resp)))
+
+                    (if (eq "204" result)
+                        (print "Server notified of installation progress")
+                        (print (str-merge "/firmwareInstallationProgress returned: " (to-str result)))
+                    )
+                })
+            }
+        )
+        (tcp-close conn)
+    })
 })
 
+; Notify server of installation progress
+(def fw-update-progress nil)
 (defun fw-install-progress (progress) {
-    ; Notify server of installation progress
-    ; Spawning because we require a quick response
-    (spawn fw-install-progress-helper progress)
+    ; Save latest progress and report in communication loop
+    (def fw-update-progress progress)
     'ok
 })
 
@@ -102,21 +110,26 @@
         (var url (str-merge api-url "/setInstalled"))
         (var conn (tcp-conn url))
         (if conn {
-                (var post-json (fw-success-json))
-                (if (not (eq (type-of post-json) 'type-array)) {
-                    (tcp-close conn)
-                    (return post-json)
-                })
-                (var req (http-post-json url post-json))
-                (var res (tcp-send conn req))
-                (var resp (http-parse-response conn))
-                (var result (second (first resp)))
-                (tcp-close conn)
-                (if (eq "204" result)
-                    (print "Server notified of successful install")
-                    (print (str-merge "/setInstalled returned: " result))
-                )
-            })
+            (var post-json (fw-success-json))
+            (if (not (eq (type-of post-json) 'type-array))
+                (print "Error creating fw-success-json")
+                {
+                    (var req (http-post-json url post-json))
+                    (var res (tcp-send conn req))
+                    (var resp (http-parse-response conn))
+                    (if (eq (car resp) 'parse-error)
+                        (print "Parse error reporting fw success")
+                    {
+                        (var result (second (first resp)))
+                        (if (eq "204" result)
+                            (print "Server notified of successful install")
+                            (print (str-merge "/setInstalled returned: " (to-str result)))
+                        )
+                    })
+                }
+            )
+            (tcp-close conn)
+        })
     } {
         ; Report failure(s) to server
         (setq i 0)
@@ -136,21 +149,26 @@
                 (var url (str-merge api-url "/firmwareInstallationFailed"))
                 (var conn (tcp-conn url))
                 (if conn {
-                        (var post-json (fw-fail-json message))
-                        (if (not (eq (type-of post-json) 'type-array)) {
-                            (tcp-close conn)
-                            (return post-json)
-                        })
-                        (var req (http-post-json url post-json))
-                        (var res (tcp-send conn req))
-                        (var resp (http-parse-response conn))
-                        (var result (second (first resp)))
-                        (tcp-close conn)
-                        (if (eq "204" result)
-                            (print "Server notified of installation problem")
-                            (print (str-merge "/firmwareInstallationFailed returned: " result))
-                        )
-                    })
+                    (var post-json (fw-fail-json message))
+                    (if (not (eq (type-of post-json) 'type-array))
+                        (print "Error creating fw-fail-json")
+                        {
+                            (var req (http-post-json url post-json))
+                            (var res (tcp-send conn req))
+                            (var resp (http-parse-response conn))
+                            (if (eq (car resp) 'parse-error)
+                                (print "Parse error reporting fw failed")
+                            {
+                                (var result (second (first resp)))
+                                (if (eq "204" result)
+                                    (print "Server notified of installation problem")
+                                    (print (str-merge "/firmwareInstallationFailed returned: " result))
+                                )
+                            })
+                        }
+                    )
+                    (tcp-close conn)
+                })
             })
             (setq i (+ i 1))
         })
@@ -159,8 +177,10 @@
     'ok
 })
 
+(def fw-update-results nil)
 (defun fw-install-result (update-results) {
-    (spawn fw-install-result-helper update-results)
+    ; Store update result and report in communication loop
+    (def fw-update-results update-results)
     'ok
 })
 

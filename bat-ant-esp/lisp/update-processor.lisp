@@ -113,8 +113,7 @@
             (print (str-merge "Processing update-description with " (to-str (length update-description)) " entries."))
 
             ; Notify server we are making progress with the update
-            ; TODO: spawning means this might talk while updating can device
-            (spawn fw-update-send-progress 10) ; 10% complete (estimate)
+            (fw-update-send-progress 10) ; 10% complete (estimate)
 
             (var i 0)
             (loopwhile (< i (length update-description)) {
@@ -192,21 +191,20 @@
                 (if (and
                         (not-eq fw-device 'bat-bms-esp)
                         (not-eq fw-device 'bat-esc-stm)
-                        (!= i (length update-description))
                     )
-                    (spawn fw-update-send-progress progress) ; TODO: spawning means this might talk while updating can device
+                    (fw-update-send-progress progress)
                 )
 
                 (setq i (+ i 1))
             })
 
-            (print (list "Update Results" update-results))
+            ; Clear FW installation flag
+            (def fw-update-install false)
+
+            (print (list "Update Results: " update-results))
 
             ; Report to API
             (fw-update-send-results update-results)
-
-            (def fw-update-install false) ; TODO: this is somehow true afterwards, investigate
-            (def fw-update-install false) ; TODO: this is somehow true afterwards, investigate
         })
         (sleep 1) ; Rate limit to 1Hz
     })
