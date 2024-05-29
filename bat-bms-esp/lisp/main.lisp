@@ -26,5 +26,7 @@
 (import "lib/http.lisp" 'http)
 (read-eval-program http)
 
+(define dev-enable-ota-action false)
+
 (import "status.lisp" 'status)
 (read-eval-program status)
