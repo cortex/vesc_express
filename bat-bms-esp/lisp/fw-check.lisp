@@ -412,7 +412,7 @@
     (var bytes-remaining bytes-total)
     (loopwhile (> bytes-remaining 0) {
         (var chunk-len (if (> chunk-size bytes-remaining) bytes-remaining chunk-size))
-
+        (gc) ; TODO: Needing to free memory here as well. Is this ok?
         (var res (fw-download-chunk url chunk-pos chunk-len))
 
         (if (eq res 'success) {
