@@ -1840,6 +1840,8 @@ static void load_extensions(void) {
 #endif
 	lbm_add_extension("conf-express-version", ext_conf_express_version);
 
+	// TODO: This extension could be removed with use of new vesc_express extensions:
+	//		 (fw-data) and (fw-write-raw) for use in the LBM FW update process
 	lbm_add_extension("read-update-partition", ext_read_update_partition);
 	
 	lbm_add_extension("mag-get-x", ext_mag_get_x);
