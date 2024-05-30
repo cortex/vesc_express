@@ -18,6 +18,7 @@
     (def view-last-angle 0.0)
     (def view-rssi-angle 90.0)
     (def view-timestamp -3000)
+    (def view-instructions (systime))
     (def view-pairing-state 'tap-show) ; 'tap-show 'tap-visible 'pairing-show 'pairing-visible
 
     ; Status text
@@ -94,7 +95,11 @@
         (match view-pairing-state
             (tap-visible {
                 ; Check if we have recently seen a good signal to show the pairing view
-                (if (< (secs-since view-timestamp) 1.0) {
+                ; and if tap instructions have been displayed for a reasonable amount of time
+                (if (and
+                    (< (secs-since view-timestamp) 1.0)
+                    (> (secs-since view-instructions) 2.5)
+                ) {
                     (setq view-pairing-state 'pairing-show)
                 })
             })
@@ -173,6 +178,7 @@
         (sbuf-blit view-status-text-buf text (/ (- 200 (ix (img-dims text) 0)) 2) 0 ())
 
         (setq view-pairing-state 'tap-visible)
+        (def view-instructions (systime))
     })
 
     ; Update text buffer
