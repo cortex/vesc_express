@@ -155,6 +155,7 @@
 
 ;;; Fonts
 
+(import "../assets/fonts/bin/SFProDisplay30x58x1.0.bin" 'font-sfpro-58h)
 (import "../assets/fonts/bin/SFProBold25x35x1.2.bin" 'font-sfpro-bold-35h)
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
 (import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)
