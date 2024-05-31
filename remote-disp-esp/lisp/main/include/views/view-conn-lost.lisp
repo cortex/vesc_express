@@ -11,7 +11,7 @@
 })
 
 (defun view-init-conn-lost () {
-    (def view-icon-buf (create-sbuf 'indexed4 (- 120 90) (+ 50 display-y-offset) 141 142))
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 70) (+ 50 display-y-offset) 141 142))
     (def view-text-buf (create-sbuf 'indexed4 (- 120 100) (+ 220 display-y-offset) 200 55))
     
     (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(filled)))
