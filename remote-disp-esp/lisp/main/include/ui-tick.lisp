@@ -141,14 +141,6 @@
         (request-view-change)
     }))
 
-    (state-with-changed '(soc-remote view) (fn (soc-remote view) {
-        (state-set-current 'soc-bar-visible (not (or
-            (eq view 'charging)
-            (eq view 'low-battery)
-            (eq view 'board-info)
-        )))
-    }))
-
     (var soc-bms (state-get 'soc-bms))
     (var soc-bms-last (state-last-get 'soc-bms))
     (if (and
@@ -215,12 +207,22 @@
     )
     (render-current-view)
     
+    (state-with-changed '(view) (fn (view) {
+        (state-set-current 'soc-bar-visible (not (or
+            (eq view 'charging)
+            (eq view 'low-battery)
+            (eq view 'thr-activation)
+            (eq view 'board-info)
+        )))
+    }))
+
     (state-with-changed '(soc-bar-visible soc-remote) (fn (soc-bar-visible soc-remote) {
         (render-status-battery soc-remote)
     }))
 
-    (state-with-changed '(is-connected rx-rssi) (fn (is-connected rx-rssi) {
-        (render-signal-strength rx-rssi is-connected)
+    (state-with-changed '(is-connected rx-rssi soc-bar-visible) (fn (is-connected rx-rssi soc-bar-visible) {
+        (if soc-bar-visible
+            (render-signal-strength rx-rssi is-connected))
     }))
 
     ; (if (not-eq script-start nil) {

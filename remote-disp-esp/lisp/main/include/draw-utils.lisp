@@ -70,6 +70,13 @@
     }
 ))
 
+(def sbuf-blit-w-tc (macro (sbuf src-img x y tc attrs)
+    `{
+        (apply img-blit (append (list (assoc ,sbuf 'buf) ,src-img ,x ,y ,tc) ',attrs))
+        (sbuf-flag-changed ,sbuf)
+    }
+))
+
 (defun sbuf-render (sbuf colors) {
     (setassoc sbuf 'changed false)
     (disp-render
