@@ -1,3 +1,5 @@
+@const-start
+
 ;;; Boot Animation V2
 
 (defun compute-start-times (num-shades) {

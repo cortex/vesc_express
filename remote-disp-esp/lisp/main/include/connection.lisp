@@ -1,4 +1,3 @@
-@const-end
 
 (def thr-active false)
 

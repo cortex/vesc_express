@@ -1,3 +1,5 @@
+@const-start
+
 ;;; View tick functions
 
 (defun view-tick-main () {    
@@ -50,7 +52,18 @@
 })
 
 (defun view-tick-thr-activation () {
-    (state-with-changed '(thr-activation-state thr-requested thr-input) (fn (thr-activation-state thr-requested thr-input) {
+    ; Check thr-input without change in case user is holding full throttle before attempting to activate
+    (if (is-thr-pressed (state-get 'thr-input)) {
+        (if (eq (state-get 'thr-activation-state) 'countdown)
+            (state-set-current 'thr-activation-state 'release-warning)
+        )
+    } {
+        (if (eq (state-get 'thr-activation-state) 'release-warning)
+            (activate-thr-countdown)
+        )
+    })
+
+    (state-with-changed '(thr-activation-state thr-requested) (fn (thr-activation-state thr-requested) {
         (if (and
             thr-requested
             (not-eq thr-activation-state 'release-warning)
@@ -58,17 +71,7 @@
         ) {
             (activate-thr-countdown)
         })
-        
-        (if (is-thr-pressed thr-input) {
-            (if (eq thr-activation-state 'countdown)
-                (state-set-current 'thr-activation-state 'release-warning)
-            )
-        } {
-            (if (eq thr-activation-state 'release-warning)
-                (activate-thr-countdown)
-            )
-        })
-        
+
         (if (not thr-requested) {
             (state-set-current 'thr-activation-state 'reminder)
         })

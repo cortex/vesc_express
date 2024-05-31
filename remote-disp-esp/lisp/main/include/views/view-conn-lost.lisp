@@ -1,3 +1,5 @@
+@const-start
+
 ;;; conn-lost
 
 (defun view-is-visible-conn-lost () {

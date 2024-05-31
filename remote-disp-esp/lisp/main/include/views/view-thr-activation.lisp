@@ -1,3 +1,5 @@
+@const-start
+
 ;;;; thr-activation
 
 (defun view-is-visible-thr-activation () {

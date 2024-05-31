@@ -1,7 +1,5 @@
 ;;; Specific functions for working with the ui state of the application
 
-@const-end
-
 ;;; UI state
 ;;; This is a thread safe abstraction for storing values used by the UI rendering.
 

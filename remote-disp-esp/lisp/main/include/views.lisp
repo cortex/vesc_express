@@ -1,3 +1,5 @@
+@const-start
+
 ;;; View input listeners
 ;;; This is a function to avoid undefined dependencies at initial parse time
 (defun get-view-handlers () (list

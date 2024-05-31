@@ -1,3 +1,5 @@
+@const-start
+
 (defun display-init () {
     ; disp size (total): 240x320
     (disp-load-st7789 6 5 7 8 0 40) ; sd0 clk cs reset dc mhz

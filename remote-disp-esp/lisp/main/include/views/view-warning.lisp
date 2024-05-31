@@ -1,3 +1,5 @@
+@const-start
+
 ;;; warning
 
 (defun view-is-visible-warning () {

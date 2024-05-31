@@ -1,3 +1,5 @@
+@const-start
+
 ;;; Color definitions
 
 (def col-lind-red 0xe4472f)

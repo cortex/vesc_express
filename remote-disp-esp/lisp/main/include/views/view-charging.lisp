@@ -1,3 +1,5 @@
+@const-start
+
 ;;; charging
 
 (defun view-is-visible-charging () {

@@ -1,3 +1,5 @@
+@const-start
+
 ;;; firmware
 
 (defun view-is-visible-firmware () {

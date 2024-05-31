@@ -1,3 +1,5 @@
+@const-start
+
 ;;; The generic safe state management library code
 
 ; Checks if value of the given key changed since the last frame.

@@ -1,3 +1,5 @@
+@const-start
+
 ;;; low-battery
 
 (defun view-is-visible-low-battery () 
