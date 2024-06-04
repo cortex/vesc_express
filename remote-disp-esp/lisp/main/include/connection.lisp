@@ -174,12 +174,14 @@
         } (def is-connected true))
 
         ; Timeout broadcast reception
-        (if (not-eq broadcast-rx-timestamp nil)
-            (if (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms) {
-                (def esp-rx-rssi -99)
-                (def broadcast-rx-timestamp nil)
-            })
-        )
+        (atomic ; Do not allow broadcast-rx-timestamp to change in ESP RX handler while evaluating
+            (if (and
+                (not-eq broadcast-rx-timestamp nil)
+                (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms))
+                {
+                    (def esp-rx-rssi -99)
+                    (def broadcast-rx-timestamp nil)
+                }))
 
 ;        (if (not is-connected) (def thr-active false))
 
