@@ -75,10 +75,17 @@
             (var unzip-result (fw-update-unzip-files))
             (if (not unzip-result) {
                 (print "Unzip failed.")
-                ; Report failure to API
-                (setq update-results (list 0))
-                (setix update-results 0 (list 'unzip-ota 'unzip-ota 'fail 0))
-                (fw-update-send-results update-results)
+
+                ; File is no good, clear downloaded flag to retry download
+                (nv-set 'fw-id-battery-downloaded (nv-get 'fw-id-battery))
+                (save-nv-data nv-data)
+                (print (str-merge "BMS ESP Unzip Failed: " (to-str
+                    (rcode-run 21 2 `(nv-set 'fw-id-battery-downloaded ,(nv-get 'fw-id-battery))) ; bat-bms-esp (Wifi)
+                )))
+                ; TODO: Notify ESC
+                ; (print (str-merge "ESC STM Unzip Failed: " (to-str
+                ;     (rcode-run 10 2 `(nv-set fw-id-battery-downloaded ,(nv-get 'fw-id-battery))) ; bat-esc-stm (GSM)
+                ; )))
             } {
                 ; Update fw-install-ready locally
                 (nv-set 'fw-install-ready true)
@@ -90,9 +97,10 @@
                 (print (str-merge "BMS ESP Install Ready: " (to-str
                     (rcode-run 21 2 '(nv-set 'fw-install-ready true)) ; bat-bms-esp (Wifi)
                 )))
-                (print (str-merge "ESC STM Install Ready: " (to-str
-                    (rcode-run 10 2 '(def fw-install-ready true)) ; bat-esc-stm (GSM)
-                )))
+                ; TODO: Notify ESC
+                ; (print (str-merge "ESC STM Install Ready: " (to-str
+                ;     (rcode-run 10 2 '(def fw-install-ready true)) ; bat-esc-stm (GSM)
+                ; )))
             })
             ; Clear flag
             (def fw-update-extract false)
@@ -240,20 +248,18 @@
     (def fw-files (zip-ls f))
     (print fw-files)
 
-    (var unzip-retries 3)
     (var i 0)
     (loopwhile (< i (length fw-files)) {
         (var f-name (first (ix fw-files i)))
         (var f-out (f-open f-name "w"))
         (if (not (unzip f f-name f-out)) {
-            (print (str-merge "unzip failed on " f-name))
-            (setq unzip-retries (- unzip-retries 1))
-            (if (eq unzip-retries 0) (return nil))
-            (sleep 1)
+            (print (str-merge "Unzip failed to extract " f-name))
+            (f-close f)
+            (return nil)
         } (setq i (+ i 1)))
         (f-close f-out)
     })
-    (print (str-from-n (secs-since start-time) "Unzip time: %0.2f seconds"))
+    (print (str-from-n (secs-since start-time) "Unzip successful: %0.2f seconds"))
 
     (f-close f)
     (return true)
