@@ -5,7 +5,7 @@
 
     (var result true)
 
-    (def f (f-open fname "r"))
+    (var f (f-open fname "r"))
     (if (not f) (setq result nil))
 
     (if result {
@@ -78,7 +78,7 @@
         (setq result false)
     })
 
-    (def f (f-open fname "r"))
+    (var f (f-open fname "r"))
     (if (not f) (setq result nil))
 
     (if result {
