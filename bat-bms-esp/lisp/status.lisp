@@ -80,7 +80,6 @@
                 (var req (http-post-json url to-post))
                 (var res (tcp-send conn req))
                 (var response (http-parse-response conn))
-                (gc) ; TODO: Finding http-parse-response can allocate up to 14% of Mem, this helps
                 (var result (second (first response)))
 
                 (tcp-close conn)
@@ -108,7 +107,6 @@
             (var req (http-post-json url request-json))
             (var res (tcp-send conn req))
             (var response (http-parse-response conn))
-            (gc) ; TODO: Finding http-parse-response can allocate up to 14% of Mem, this helps
             (var result (second (first response)))
 
             (if (eq "200" result) {
@@ -187,7 +185,6 @@
             (var req (http-post-json url status-json))
             (var res (tcp-send conn req))
             (var response (http-parse-response conn))
-            (gc) ; TODO: Finding http-parse-response can allocate up to 14% of Mem, this helps
             (var result (second (first response)))
 
             (tcp-close conn)
@@ -215,7 +212,6 @@
             (var req (http-post-json url status-json))
             (var res (tcp-send conn req))
             (var response (http-parse-response conn))
-            (gc) ; TODO: Finding http-parse-response can allocate up to 14% of Mem, this helps
             (var result (second (first response)))
             (tcp-close conn)
             (if (eq "204" result) 'ok 'error)

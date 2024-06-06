@@ -301,7 +301,6 @@
             (setix parsed-item parsed-item-count this-cleaned)
             (setq parsed-item-count (+ parsed-item-count 1))
             (setq i (+ i 1))
-            (gc)
         })
 
         (setq parsed-json-list (append parsed-json-list (list 'temp)))
@@ -316,14 +315,12 @@
         (var next-val (take-exact (after next-item) "{"))
         (if (eq (car next-val) 'parse-error) (return 'parse-error))
         (setq json-response next-val)
-        (gc)
     })
 
     parsed-json-list
 })
 
 (defunret fw-check () {
-    (gc)
     (var url (str-merge api-url "/currentFirmwares"))
     (var conn (tcp-conn url))
     (if conn {
@@ -412,7 +409,6 @@
     (var bytes-remaining bytes-total)
     (loopwhile (> bytes-remaining 0) {
         (var chunk-len (if (> chunk-size bytes-remaining) bytes-remaining chunk-size))
-        (gc) ; TODO: Needing to free memory here as well. Is this ok?
         (var res (fw-download-chunk url chunk-pos chunk-len))
 
         (if (eq res 'success) {
@@ -429,9 +425,8 @@
 
     (print (str-from-n (secs-since start-time) "download successful: %0.2f seconds"))
 
-    (if (eq 'timeout (fserve-send 31 2 'done nil))
-        ; TODO: Investigate, this is successful but the response is never received, killing thread too early?
-        (print "download complete, fserve timeout but probably ok")
+    (if (eq 'timeout (fserve-send 31 5 'done nil))
+        (print "download complete, fserve timeout closing file")
         (print "download complete, fserve notified")
     )
 
@@ -463,6 +458,7 @@
 
 (defunret fw-download-chunk (url start len) {
     ; Download file to SD card on bat-ant-esp
+    (var start-time (systime))
     (var conn (tcp-conn url))
     (if conn {
             (var req (http-get-range url start len))
@@ -492,7 +488,6 @@
 
                 (var bytes-remaining content-length)
                 (loopwhile (> bytes-remaining 0) {
-                    (gc) ; TODO: If this is not here the program will run out of memory
                     (var resp-bytes (tcp-recv conn (if (> bytes-remaining buf-len) buf-len bytes-remaining) 1.0 false))
                     (match resp-bytes
                         (no-data {

@@ -5,7 +5,7 @@
 (defun strip-crlf (str) (str-part str 0 (buf-find str crlf)))
 
 (defun http-read-line (conn) {
-    (var line (tcp-recv-to-char conn 4000 char-lf))
+    (var line (tcp-recv-to-char conn 128 char-lf))
     (if (eq line 'disconnected) "" (strip-crlf line))
 })
 
@@ -43,8 +43,13 @@
 (defun is-empty (str) (eq str "") )
 
 (defun map-until (conn pred f) {
+    (var result '())
     (var line (http-read-line conn))
-    (if (not (pred line)) (cons (f line) (map-until conn pred f)) nil)
+    (loopwhile (not (pred line)) {
+        (setq result (cons (f line) result))
+        (setq line (http-read-line conn))
+    })
+    (reverse result)
 })
 
 ; parse http response, leave conn at body
