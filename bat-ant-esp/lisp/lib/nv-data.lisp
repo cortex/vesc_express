@@ -23,10 +23,10 @@
 })
 
 (defunret load-nv-data () {
-    (def f (f-open "nv-data.lisp" "r"))
+    (var f (f-open "nv-data.lisp" "r"))
     (if (not f) (return 'f-open-error))
 
-    (def contents (f-read f 512))
+    (var contents (f-read f 512))
     (var new-data (unflatten contents))
 
     (f-close f)
