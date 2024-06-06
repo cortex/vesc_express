@@ -58,7 +58,7 @@
                             ((exit-error (? tid) (? v)) {
                                     (setq respawn true)
                                     (if (>= last-id 0)
-                                        (canmsg-send last-id 1 (flatten 'eerror))
+                                        (canmsg-send last-id 3 (flatten 'eerror))
                                     )
                             })
 
@@ -67,6 +67,8 @@
                             })
 
                             ((complete (? yes)) {
+                                (if (>= last-id 0)
+                                    (canmsg-send last-id 3 (flatten 'ok)))
                                 (setq transfer-complete yes)
                             })
                         )
