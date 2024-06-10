@@ -1,5 +1,8 @@
 @const-symbol-strings
 
+(import "sleep.lisp" 'idle-sleep)
+(read-eval-program idle-sleep)
+
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
@@ -26,7 +29,7 @@
 (import "lib/http.lisp" 'http)
 (read-eval-program http)
 
-(define dev-enable-ota-actions true)
+(define dev-enable-ota-actions false)
 
 (import "status.lisp" 'status)
 (read-eval-program status)
