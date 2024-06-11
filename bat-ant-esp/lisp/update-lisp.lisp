@@ -107,15 +107,24 @@
     })
 
     (if result {
-        (setq result (send-code (str-from-n fsize "(fw-erase %d)")))
-        (print (str-merge "Erase result: " (to-str result)))
+        ; Prepare host for firmware update
+        (def fw-update-prepared nil)
+        (setq result (send-code (str-merge "(fw-update-prepare " (str-from-n fsize "%d") ")")))
+        (print (str-merge "Update prepare result: " (to-str result)))
     })
 
     (if result {
-        ; Indicate to the remote data is inbound
-        (setq result (send-code (str-merge "(setq fw-bytes-remaining " (str-from-n fsize "%d") ")")))
-        ; NOTE: lbm-erase & lbm-write will execute locally on the remote after the transfer is successful
+        (var start-time (systime))
+        (loopwhile (not fw-update-prepared) {
+            (if (> (secs-since start-time) 10.0) {
+                (print "Timeout waiting for fw-update to prepare remotely.")
+                (setq result nil)
+                (break)
+            })
+            (sleep 0.1)
+        })
     })
+
 (def vt-debug 0) ; TODO: Testing increased timeout and adding vt-debug to count tx attempts
     (if result {
         (setq result nil)

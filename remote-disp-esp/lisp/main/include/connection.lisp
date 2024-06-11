@@ -24,6 +24,17 @@
 
 @const-end
 
+; FW Update Prepare
+; Erases OTA Parition and sets the incoming firmware size
+; NOTE: Estimated time to complete 5 seconds
+(defun fw-update-prepare (fw-size) {
+    ;(var start-time (systime))
+    (fw-erase fw-size)
+    ;(print (secs-since start-time))
+    (setq fw-bytes-remaining fw-size)
+    (print (str-merge "send code result: " (to-str (send-code "(def fw-update-prepared true)"))))
+})
+
 ; LBM Update Handling
 (def fw-bytes-remaining 0)
 (def fw-offset 0)
