@@ -91,7 +91,12 @@
     (loopwhile (< elapsed animation-time) {
 
         ; Watch for user input to skip animation
-        (if (> (get-adc 0) 0.5) {
+        (var skip-animation nil)
+        (if has-gpio-expander
+            (if (or (read-button 0) (read-button 1) (read-button 2) (read-button 3)) (setq skip-animation true))
+            (if (> (get-adc 0) 0.5) (setq skip-animation true))
+        )
+        (if skip-animation {
             ; Fast forward to the end of the animation
             (setq animation-percent 1.0)
             (setq sun-rise-percent 1.0)

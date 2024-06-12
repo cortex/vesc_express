@@ -225,18 +225,24 @@
 @const-start
 
 (defun input-tick () {
+    (var new-up false)
+    (var new-down false)
+    (var new-left false)
+    (var new-right false)
 
-    ; Median filter for get-adc
-    (setix adc-buf adc-buf-idx (get-adc 0))
-    (setq adc-buf-idx (mod (+ adc-buf-idx 1) 5))
-    (def btn-adc (ix (sort < adc-buf) 2))
+    (if has-gpio-expander {
+        ; Input from GPIO expander (Rev C and up)
+        (set 'new-left (read-button 3))
+        (set 'new-down (read-button 2))
+        (set 'new-right (read-button 1))
+        (set 'new-up (read-button 0))
+    }{
+        ; Input from ADC (Rev A & B)
+        (setix adc-buf adc-buf-idx (get-adc 0))
+        (setq adc-buf-idx (mod (+ adc-buf-idx 1) 5))
+        (def btn-adc (ix (sort < adc-buf) 2))
 
-    ; Buttons with counters for debouncing
-    (if (< btn-adc 4.0) {
-        (var new-up false)
-        (var new-down false)
-        (var new-left false)
-        (var new-right false)
+        ; Buttons with counters for debouncing
         (if (and (> btn-adc 0.8) (< btn-adc 1.1))
             (set 'new-left t)
         )
@@ -250,86 +256,78 @@
         (if (and (> btn-adc 2.55) (< btn-adc 2.7)) {
             (set 'new-up t)
         })
-
-        (if (or
-            new-left
-            new-right
-            new-up
-            new-down
-            (is-thr-pressed thr-input)
-        ) {
-            (def last-input-time (systime))
-        })
-
-        ; buttons are pressed on release
-        (if (and (>= btn-down input-debounce-count) (not new-down) (not btn-down-long-fired))
-            (maybe-call (on-down-pressed))
-        )
-        (if (and (>= btn-up input-debounce-count) (not new-up) (not btn-up-long-fired))
-            (maybe-call (on-up-pressed))
-        )
-        (if (and (>= btn-left input-debounce-count) (not new-left) (not btn-left-long-fired))
-            (maybe-call (on-left-pressed))
-        )
-        (if (and (>= btn-right input-debounce-count) (not new-right) (not btn-right-long-fired))
-            (maybe-call (on-right-pressed))
-        )
-
-
-        (def btn-down (if new-down (+ btn-down 1) 0))
-        (def btn-left (if new-left (+ btn-left 1) 0))
-        (def btn-right (if new-right (+ btn-right 1) 0))
-        (def btn-up (if new-up (+ btn-up 1) 0))
-
-        (state-set 'down-pressed (>= btn-down input-debounce-count))
-        (state-set 'up-pressed (>= btn-up input-debounce-count))
-        (state-set 'left-pressed (>= btn-left input-debounce-count))
-        (state-set 'right-pressed (>= btn-right input-debounce-count))
-
-        (if (= btn-up 1)
-            (def btn-up-start (systime))
-        )
-        (if (= btn-down 1)
-            (def btn-down-start (systime))
-        )
-        (if (= btn-left 1)
-            (def btn-left-start (systime))
-        )
-        (if (= btn-right 1)
-            (def btn-right-start (systime))
-        )
-
-        ; long presses fire as soon as possible and not on release
-        (if (and (>= btn-up input-debounce-count) (>= (secs-since btn-up-start) 1.0) (not btn-up-long-fired)) {
-            (def btn-up-long-fired true)
-            (maybe-call (on-up-long-pressed))
-        })
-        (if (and (>= btn-down input-debounce-count) (>= (secs-since btn-down-start) 1.0) (not btn-down-long-fired)) {
-            (def btn-down-long-fired true)
-            (maybe-call (on-down-long-pressed))
-        })
-        (if (and (>= btn-left input-debounce-count) (>= (secs-since btn-left-start) 1.0) (not btn-left-long-fired)) {
-            (def btn-left-long-fired true)
-            (maybe-call (on-left-long-pressed))
-        })
-        (if (and (>= btn-right input-debounce-count) (>= (secs-since btn-right-start) 1.0) (not btn-right-long-fired)) {
-            (def btn-right-long-fired true)
-            (maybe-call (on-right-long-pressed))
-        })
-
-        (if (= btn-up 0) (def btn-up-long-fired false))
-        (if (= btn-down 0) (def btn-down-long-fired false))
-        (if (= btn-left 0) (def btn-left-long-fired false))
-        (if (= btn-right 0) (def btn-right-long-fired false))
-
-        ; TODO: Revisit, no longer used
-        (if (or
-            (and (= btn-left 1) (>= btn-down 1))
-            (and (>= btn-left 1) (= btn-down 1))
-        )
-            (cycle-gear-justify)
-        )
     })
+
+    (if (or
+        new-left
+        new-right
+        new-up
+        new-down
+        (is-thr-pressed thr-input)
+    ) {
+        (def last-input-time (systime))
+    })
+
+    ; buttons are pressed on release
+    (if (and (>= btn-down input-debounce-count) (not new-down) (not btn-down-long-fired))
+        (maybe-call (on-down-pressed))
+    )
+    (if (and (>= btn-up input-debounce-count) (not new-up) (not btn-up-long-fired))
+        (maybe-call (on-up-pressed))
+    )
+    (if (and (>= btn-left input-debounce-count) (not new-left) (not btn-left-long-fired))
+        (maybe-call (on-left-pressed))
+    )
+    (if (and (>= btn-right input-debounce-count) (not new-right) (not btn-right-long-fired))
+        (maybe-call (on-right-pressed))
+    )
+
+
+    (def btn-down (if new-down (+ btn-down 1) 0))
+    (def btn-left (if new-left (+ btn-left 1) 0))
+    (def btn-right (if new-right (+ btn-right 1) 0))
+    (def btn-up (if new-up (+ btn-up 1) 0))
+
+    (state-set 'down-pressed (>= btn-down input-debounce-count))
+    (state-set 'up-pressed (>= btn-up input-debounce-count))
+    (state-set 'left-pressed (>= btn-left input-debounce-count))
+    (state-set 'right-pressed (>= btn-right input-debounce-count))
+
+    (if (= btn-up 1)
+        (def btn-up-start (systime))
+    )
+    (if (= btn-down 1)
+        (def btn-down-start (systime))
+    )
+    (if (= btn-left 1)
+        (def btn-left-start (systime))
+    )
+    (if (= btn-right 1)
+        (def btn-right-start (systime))
+    )
+
+    ; long presses fire as soon as possible and not on release
+    (if (and (>= btn-up input-debounce-count) (>= (secs-since btn-up-start) 1.0) (not btn-up-long-fired)) {
+        (def btn-up-long-fired true)
+        (maybe-call (on-up-long-pressed))
+    })
+    (if (and (>= btn-down input-debounce-count) (>= (secs-since btn-down-start) 1.0) (not btn-down-long-fired)) {
+        (def btn-down-long-fired true)
+        (maybe-call (on-down-long-pressed))
+    })
+    (if (and (>= btn-left input-debounce-count) (>= (secs-since btn-left-start) 1.0) (not btn-left-long-fired)) {
+        (def btn-left-long-fired true)
+        (maybe-call (on-left-long-pressed))
+    })
+    (if (and (>= btn-right input-debounce-count) (>= (secs-since btn-right-start) 1.0) (not btn-right-long-fired)) {
+        (def btn-right-long-fired true)
+        (maybe-call (on-right-long-pressed))
+    })
+
+    (if (= btn-up 0) (def btn-up-long-fired false))
+    (if (= btn-down 0) (def btn-down-long-fired false))
+    (if (= btn-left 0) (def btn-left-long-fired false))
+    (if (= btn-right 0) (def btn-right-long-fired false))
 })
 
 @const-end
