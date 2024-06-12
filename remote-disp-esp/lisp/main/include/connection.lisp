@@ -136,7 +136,8 @@
         } (def is-connected true))
 
         ; Timeout broadcast reception
-        (if (and (not-eq broadcast-rx-timestamp nil) (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms)) {
+        (var timestamp-check broadcast-rx-timestamp)
+        (if (and (not-eq timestamp-check nil) (> (- (systime) timestamp-check) rx-timeout-ms)) {
             (def esp-rx-rssi -99)
             (def broadcast-rx-timestamp nil)
         })

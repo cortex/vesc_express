@@ -7,15 +7,19 @@
 })
 
 (defun view-init-charging () {
-    (def charge-buf-w 180)
-    (var buf-height 180)
-    (def charge-buf (create-sbuf 'indexed16 (- 120 90) 46 (+ charge-buf-w 1) (+ buf-height 2)))
-    (def charge-msg-buf (create-sbuf 'indexed4 (- 120 50) 248 100 26))
+    (var buf-width 140)
+    (var buf-height 140)
+    (def charge-buf (create-sbuf 'indexed16 (- 120 (/ buf-width 2)) (+ 50 display-y-offset) (+ buf-width 1) (+ buf-height 1)))
+    (def charge-msg-buf (create-sbuf 'indexed4 (- 120 50) (+ 220 display-y-offset) 100 26))
+
 })
 
 (defun view-draw-charging () {
-
     (state-with-changed '(soc-remote) (fn (soc-remote) {
+        (var buf-width 140)
+        (var buf-height 140)
+        (var radius (/ buf-width 2))
+
         (sbuf-clear charge-buf)
         (sbuf-clear charge-msg-buf)
 
@@ -23,21 +27,35 @@
         (def angle-end (+ 90 (* 359 soc-remote)))
         (if (> angle-end 449) (setq angle-end 449))
 
-        ; Arc
-        (sbuf-exec img-arc charge-buf 90 90 (90 90 angle-end 4 '(thickness 17)))
-
-        ; Green Circle (Arc Fill)
-        (sbuf-exec img-circle charge-buf 90 90 (70 1 '(filled)))
+        (if (= 1.0 soc-remote)
+            ; Green Circle
+            (sbuf-exec img-circle charge-buf radius radius ( radius 1 '(filled)))
+            ; Arc
+            (sbuf-exec img-arc charge-buf radius radius ( radius 90 angle-end 4 '(thickness 16)))
+        )
 
         ; Icon
+        (var icon-w 46)
+        (var icon-h 70)
         ; Battery outline
-        (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 23) 62 (46 60 3 '(filled) '(rounded 4)))
-        (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 17) 68 ((- 46 12) (- 60 12) 1 '(filled)))
+        (sbuf-exec img-rectangle charge-buf
+            (- (/ buf-width 2) 23)
+            (- (/ buf-height 2) (/ icon-h 2) -10)
+            (icon-w 60 3 '(filled) '(rounded 4))) 
+        (sbuf-exec img-rectangle charge-buf
+            (- (/ buf-width 2) 17)
+            (+ (- (/ buf-height 2) (/ icon-h 2)) 16)
+            ((- icon-w 12) (- 60 12) (if (= 1.0 soc-remote) 1 0) '(filled)))
         ; Battery nub
-        (sbuf-exec img-rectangle charge-buf (- (/ charge-buf-w 2) 10) 52 (20 7 3 '(filled)))
+        (sbuf-exec img-rectangle charge-buf
+            (- (/ buf-width 2) 10)
+            (- (/ buf-height 2) (/ icon-h 2))
+            (20 7 3 '(filled))) 
         ; Charge icon
         (var icon (img-buffer-from-bin icon-charging))
-        (sbuf-blit charge-buf icon (- (/ charge-buf-w 2) 14) 70 ())
+        (sbuf-blit charge-buf
+            (if (= 1.0 soc-remote) (img-buffer-from-bin icon-charging-highlight) (img-buffer-from-bin icon-charging))
+            (- (/ buf-width 2) 14) (- (/ buf-height 2) (/ icon-h 2) -20) ())
 
         ; Draw charge percentage text
         (def text (str-from-n (to-i (* soc-remote 100.0))))

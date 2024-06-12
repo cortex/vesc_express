@@ -21,29 +21,11 @@
     ))
 
     (cons 'board-info (list
-        ; These are temporary for dev
         (cons 'up nil)
-        (cons 'down (fn () {
-            (print "tried to change view to main")
-            ; (change-view 'main)
-        }))
+        (cons 'down nil)
         (cons 'down-long enter-sleep)
-        (cons 'left (fn () {
-            (state-set 'board-info-msg (match (state-get-live 'board-info-msg)
-                (initiate-pairing 'pairing)
-                (pairing 'board-not-powered)
-                (board-not-powered 'pairing-failed)
-                (pairing-failed 'initiate-pairing)
-            ))
-        }))
-        (cons 'right (fn () {
-            (state-set 'board-info-msg (match (state-get-live 'board-info-msg)
-                (initiate-pairing 'pairing-failed)
-                (pairing 'initiate-pairing)
-                (board-not-powered 'pairing)
-                (pairing-failed 'board-not-powered)
-            ))
-        }))
+        (cons 'left nil)
+        (cons 'right nil)
     ))
 
     (cons 'thr-activation (list

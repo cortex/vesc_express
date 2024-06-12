@@ -6,7 +6,7 @@
 ; The live unstable UI state thats written to by multiple threads.
 (def ui-state (list
     ; Currently open view (one of 'main, 'board-info, 'thr-activation, or 'status-msg)
-    (cons 'view 'main)
+    (cons 'view 'board-info)
     ; What is currently being displayed on the top menu of the main view.
     ; Valid values are 'none
     ; With dev-enable-connection-dbg-menu additional valid values are 'timer 'dbg

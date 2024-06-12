@@ -22,7 +22,8 @@
 
 @const-start
 
-(def version-str "v0.5.1")
+(def version-str "v0.6")
+
 (print (str-merge "Booting " version-str))
 
 ;;; Colors
@@ -113,15 +114,17 @@
 
 ;;; Icons
 
-(import "../assets/icons/bin/icon-pair-inverted.bin" 'icon-pair-inverted) ; indexed4; bg: 3, fg: 0
-(import "../assets/icons/bin/icon-check-mark-inverted.bin" 'icon-check-mark-inverted) ; indexed4; bg: 3, fg: 0
-(import "../assets/icons/bin/icon-failed-inverted.bin" 'icon-failed-inverted) ; indexed4; bg: 3, fg: 0
 (import "../assets/icons/bin/icon-bolt-16color.bin" 'icon-bolt-16color)
 (import "../assets/icons/bin/icon-sync.bin" 'icon-sync) ;board-info
 (import "../assets/icons/bin/icon-pairing.bin" 'icon-pairing) ;board-info
+(import "../assets/icons/bin/icon-pairing-black-bg.bin" 'icon-pairing-black-bg) ;board-info
 (import "../assets/icons/bin/icon-not-powered.bin" 'icon-not-powered) ;board-info ;conn-lost
 (import "../assets/icons/bin/icon-pair-ok.bin" 'icon-pair-ok) ;board-info
-(import "../assets/icons/bin/icon-charging.bin" 'icon-charging) ;charging
+(import "../assets/icons/bin/icon-tap-board-l-4c.bin" 'icon-tap-l) ;board-info - pairing
+(import "../assets/icons/bin/icon-tap-board-r-4c.bin" 'icon-tap-r) ;board-info - pairing
+(import "../assets/icons/bin/icon-tap-board-r-symbol-4c.bin" 'icon-tap-r-symbol) ;board-info - pairing
+(import "../assets/icons/bin/icon-charging-4c.bin" 'icon-charging) ;charging
+(import "../assets/icons/bin/icon-charging-4c-highlight.bin" 'icon-charging-highlight) ;charging
 (import "../assets/icons/bin/icon-turtle-4c.bin" 'icon-turtle-4c) ;main
 (import "../assets/icons/bin/icon-fish-4c.bin" 'icon-fish-4c) ;main
 (import "../assets/icons/bin/icon-pro-4c.bin" 'icon-pro-4c) ;main
@@ -153,6 +156,7 @@
 
 ;;; Fonts
 
+(import "../assets/fonts/bin/SFProDisplay30x58x1.0.bin" 'font-sfpro-58h)
 (import "../assets/fonts/bin/SFProBold25x35x1.2.bin" 'font-sfpro-bold-35h)
 (import "../assets/fonts/bin/SFProBold16x22x1.2.bin" 'font-sfpro-bold-22h)
 (import "../assets/fonts/bin/SFProDisplay13x20x1.0.bin" 'font-sfpro-display-20h)
@@ -236,8 +240,8 @@
 (def input-has-ran false)
 
 ;;; Specific UI components
-(def small-battery-buf (create-sbuf 'indexed4 180 30 30 16))
-(def small-rssi-buf (create-sbuf 'indexed4 30 30 24 16))
+(def small-battery-buf (create-sbuf 'indexed4 188 (+ 20 display-y-offset) 30 16))
+(def small-rssi-buf (create-sbuf 'indexed4 30 (+ 20 display-y-offset) 24 16))
 
 ; Renders the signal strength at the top of the screen
 (defun render-signal-strength (rssi is-visible) {
@@ -260,8 +264,8 @@
     })
 
     (sbuf-render small-rssi-buf (list
-        col-bg
-        col-fg
+        col-black
+        col-white
         0x363636
         0x0
     ))
