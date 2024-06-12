@@ -1,8 +1,8 @@
 {
-    "text": "Press to activate\nthe throttle",
+    "text": "Press to activate",
     "width": 180,
     "font-file": "SF-Pro-Display-Regular.otf",
-    "font-size": 22,
+    "font-size": 18,
     "line-height": "110%",
     "font-weight": 500,
     "align": "middle"

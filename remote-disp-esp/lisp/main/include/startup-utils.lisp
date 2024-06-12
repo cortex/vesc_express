@@ -235,28 +235,3 @@
         0x0000ff
     ))
 })
-
-; Quick and dirty debug function.
-(defun render-is-connected (is-connected) {
-    (var connected-buf (create-sbuf 'indexed4 20 30 24 23))
-    (var connected-icon (img-buffer-from-bin icon-pair-inverted))
-    (img-clear (sbuf-img connected-buf) 3)
-    (sbuf-blit connected-buf connected-icon 0 0 ())
-
-    (var status-buf (create-sbuf 'indexed4 48 34 24 18))
-    (var status-icon (img-buffer-from-bin (if is-connected
-        icon-check-mark-inverted
-        icon-failed-inverted
-    )))
-    (img-clear (sbuf-img status-buf) 3)
-    (sbuf-blit status-buf status-icon 0 0 ())
-
-    ; These would draw outside the bounds of the new display!
-    ; (sbuf-render connected-buf (list col-fg 0 0 col-bg))
-    ; (sbuf-render status-buf (list
-    ;     (if is-connected col-accent col-error)
-    ;     0
-    ;     0
-    ;     col-bg
-    ; ))
-})

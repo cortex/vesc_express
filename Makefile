@@ -98,6 +98,7 @@ build/bat-bms-stm/firmware.bin: \
 	mkdir -p build/bat-bms-stm
 	cp ./bat-bms-stm/conf_bms/* ./dependencies/vesc_bms_fw/hwconf 
 	cd ./dependencies/vesc_bms_fw && make 
+	cp ./dependencies/vesc_bms_fw/build/*.elf build/bat-bms-stm/
 	cp ./dependencies/vesc_bms_fw/build/vesc_bms.bin $@
 
 build/bat-esc-stm/firmware.bin: \
@@ -161,7 +162,7 @@ flash-ant-openocd:
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/partition-table.bin 0x8000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/bootloader.bin 0 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x020000 verify reset exit"
-	$(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x1B000 verify reset exit"
+#	 $(OPENOCD) -c "program_esp build/bat-ant-esp/firmware.bin 0x1B000 verify reset exit"
 
 flash-jet-openocd:
 	$(OPENOCD) -c "program_esp build/jet-if-esp/bootloader.bin 0 verify reset exit"
@@ -180,3 +181,6 @@ flash-bat-bms-esp:
 	$(OPENOCD) -c "program_esp build/bat-bms-esp/partition-table.bin 0x8000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-bms-esp/firmware.bin 0x020000 verify reset exit"
 	$(OPENOCD) -c "program_esp build/bat-bms-esp/firmware.bin 0x1B0000 verify reset exit"
+
+flash-bat-bms-stm:
+	openocd -f dependencies/vesc_bms_fw/stm32l4_stlinkv2.cfg -c "program build/bat-bms-stm/vesc_bms.elf verify reset exit"

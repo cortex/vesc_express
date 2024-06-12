@@ -25,6 +25,8 @@
 #define HW_NAME "bat-bms-esp"
 #define HW_DEFAULT_ID 21
 
+#define HW_EARLY_LBM_INIT
+
 #define HW_INIT_HOOK() hw_init()
 #define HW_NO_UART
 

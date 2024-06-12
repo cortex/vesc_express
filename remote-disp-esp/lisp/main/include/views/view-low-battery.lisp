@@ -11,8 +11,8 @@
 )
 
 (defun view-init-low-battery () {
-    (def view-icon-buf (create-sbuf 'indexed4 50 59 141 142))
-    (def view-text-buf (create-sbuf 'indexed4 (- 120 100) 210 200 55))
+    (def view-icon-buf (create-sbuf 'indexed4 50 (+ 50 display-y-offset) 141 142))
+    (def view-text-buf (create-sbuf 'indexed4 (- 120 100) (+ 220 display-y-offset) 200 55))
 
     ; Red Circle
     (sbuf-exec img-circle view-icon-buf 70 70 (70 1 '(thickness 16)))
@@ -57,7 +57,7 @@
         0xffffff
     ))
 
-    (sbuf-render-changes view-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
+    (sbuf-render-changes view-text-buf (list col-black col-text-aa1 col-text-aa2 col-white))
 })
 
 (defun view-cleanup-low-battery () {

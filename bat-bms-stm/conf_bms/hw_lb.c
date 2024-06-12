@@ -274,7 +274,7 @@ static THD_FUNCTION(hw_thd, p) {
 static THD_FUNCTION(hw_thd_mon, p) {
 	(void)p;
 	chRegSetThreadName("HW Mon");
-
+	
 	for(;;) {
 		io_board_adc_values *adc = comm_can_get_io_board_adc_1_4_index(0);
 
@@ -282,7 +282,8 @@ static THD_FUNCTION(hw_thd_mon, p) {
 			sleep_reset();
 		}
 
-		sleep_reset();
+		// Uncomment to disable sleep
+		//sleep_reset();
 
 		if (hw_temp_cell_max() > 60.0 && 0) {
 			BUZZER_ON();
@@ -293,10 +294,9 @@ static THD_FUNCTION(hw_thd_mon, p) {
 			chThdSleepMilliseconds(1);
 		}
 
-		// Disable 12V output in case there is a short
+		// Check for IF board and disable 12V output in case there is a short
 		if (!awake_block && hw_get_v_12v() < 5.0) {
-			palClearLine(LINE_12V_EN);
-			palSetLine(LINE_12V_SENSE_EN);
+			hw_test_if_conn(false);
 		}
 	}
 }
@@ -304,7 +304,12 @@ static THD_FUNCTION(hw_thd_mon, p) {
 float hw_temp_cell_max(void) {
 	float res = -250.0;
 
-	for (int i = 1;i < HW_TEMP_SENSORS;i++) {
+	// We skip the first and last four sensors for the purpose of 
+	// measuring the cell temperature, because they are close to  
+	// components that generate heat, i.e. 
+	// fuses and shunts (N-4) and the antenna board (1-5)
+
+	for (int i = 1 + 4; i < HW_TEMP_SENSORS - 4;i++) {
 		if (bms_if_get_temp(i) > res) {
 			res = bms_if_get_temp(i);
 		}
@@ -377,6 +382,11 @@ static void terminal_test_if_conn(int argc, const char **argv) {
 	hw_test_if_conn(true);
 }
 
+// Check if interface is connected or we have a short
+// Enables 12v output if output is not shorted
+// Returns true if:
+// - Interface is detected
+// - Output is shorted (could be in charger)
 bool hw_test_if_conn(bool print) {
 	bool res = false;
 
@@ -403,6 +413,8 @@ bool hw_test_if_conn(bool print) {
 		sense_short = false;
 		palSetLine(LINE_12V_EN);
 		chThdSleepMilliseconds(100);
+	}else{
+		res = true;
 	}
 
 	float v_on = hw_get_v_12v();
@@ -415,7 +427,6 @@ bool hw_test_if_conn(bool print) {
 		commands_printf("Voltage off  : %.2f", v_off);
 		commands_printf("Voltage sense: %.2f", v_sense);
 		commands_printf("Voltage on   : %.2f", v_on);
-		commands_printf("Waiting for interface response...");
 
 		if (sense_short) {
 			commands_printf("Output shorted, could be in charger");
@@ -426,15 +437,24 @@ bool hw_test_if_conn(bool print) {
 
 	io_board_adc_values *adc = 0;
 
-	for (int i = 0;i < 250; i++) {
-		adc = comm_can_get_io_board_adc_1_4_index(0);
+	// < 0.5 V is a short
+	// > 3.0 V nothing plugged
+	// < 2.5 V and > 0.5 V means something is plugged in
 
-		if (adc && UTILS_AGE_S(adc->rx_time) < 0.7) {
-			res = true;
-			break;
+	if (v_sense > 0.5 && v_sense < 2.5 ) {
+		if (print){
+			commands_printf("Waiting for interface response...");
 		}
+		for (int i = 0;i < 2000; i++) {
+			adc = comm_can_get_io_board_adc_1_4_index(0);
 
-		chThdSleepMilliseconds(1);
+			if (adc && UTILS_AGE_S(adc->rx_time) < 0.7) {
+				res = true;
+				break;
+			}
+
+			chThdSleepMilliseconds(1);
+		}
 	}
 
 	if (print) {

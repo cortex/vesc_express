@@ -45,7 +45,7 @@
         })
 })
 
-(defun rotate (ax ay) {
+(defun rotate-x-y (ax ay) {
         (var sx (sin ax))
         (var cx (cos ax))
         (var sy (sin ay))
@@ -83,7 +83,7 @@
             (img-text img 0 230 1 0 font (str-merge (str-from-n (bme-hum) "HUM %.1f") (str-from-n (bme-temp) " %.1fC")))
             (img-text img 0 250 1 0 font (str-from-n (bme-pres) "PRES %.2f "))
             (draw-edges)
-            (rotate 0.1 0.05)
+            (rotate-x-y 0.1 0.05)
             (disp-render img 0 0 '(0 0xff0000))
             (img-clear img)
             (def fps (/ 1 (secs-since t-start)))

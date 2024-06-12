@@ -7,15 +7,14 @@
 )
 
 (defun view-init-main () {
-    (def buf-width-main 196)
-    (def buf-height-main 196)
+    (def buf-width-main 204)
+    (def buf-height-main 204)
 
-    (def view-main-buf (create-sbuf 'indexed16 (- 120 (/ 195 2)) 46 (+ 195 1) (+ 195 2)))
+    (def view-main-buf (create-sbuf 'indexed16 (- 120 (/ buf-width-main 2)) (+ 36 display-y-offset) (+ buf-width-main 1) (+ buf-height-main 2)))
     (def show-time 0.0)
-    (def speed-visible false)
+    (def center-value-visible false)
     (def first-pass true)
 
-    (def gear-buf (create-sbuf 'indexed16 (- 120 (/ 162 2)) (- 320 64) 162 (+ 32 3)))
     (def main-previous-gear 1)
 })
 
@@ -35,7 +34,6 @@
 
     ; Watch for gear select
     (state-with-changed '(gear) (fn (gear) {
-        (view-draw-gear-select main-current-gear)
         (view-draw-inner-arc main-current-gear main-thr-input)
 
         ; Flag showing animal icon after changing gears
@@ -51,18 +49,20 @@
     }))
 
     ; Watch for speed changes
-    (state-with-changed '(kmh) (fn (kmh) {
-        (if speed-visible {
-            (view-draw-center-speed main-current-gear (to-i kmh))
-            (setq view-updated true)
-        })
-    }))
+    ; NOTE: Asked to show gear instead.
+    ; (state-with-changed '(kmh) (fn (kmh) {
+    ;     (if center-value-visible {
+    ;         (view-draw-center-speed (to-i kmh))
+    ;         (setq view-updated true)
+    ;     })
+    ; }))
 
     ; Switch back to drawing speed if it's hidden and the animal timer is expired
-    (if (not speed-visible) {
+    (if (not center-value-visible) {
         (if (< show-time (secs-since view-timeline-start)) (setq show-time 0))
         (if (eq show-time 0)
-            (view-draw-center-speed main-current-gear main-speed-kph)
+            ; NOTE: Asked to show gear instead. (view-draw-center-speed main-speed-kph)
+            (view-draw-center-gear main-current-gear)
             (setq view-updated true)
         )
     })
@@ -81,12 +81,7 @@
 
     ; Watch for Throttle changes
     (state-with-changed '(thr-input) (fn (thr-input) {
-        (view-update-inner-arc-throttle main-current-gear main-thr-input)
-        ; Check if we should draw the debug timer view
-        (if (eq (state-get 'view-main-subview) 'timer) {
-            (sbuf-clear gear-buf)
-            (subview-draw-timer)
-        })
+        (view-draw-inner-arc main-current-gear main-thr-input)
         (setq view-updated true)
     }))
 
@@ -94,7 +89,6 @@
     (if (not first-pass) {
         (state-with-changed '(view-main-subview) (fn (view-main-subview) {
             (if (eq view-main-subview 'timer) {
-                (sbuf-clear gear-buf)
                 (subview-draw-timer)
 
                 (sbuf-clear view-main-buf)
@@ -105,15 +99,13 @@
                 )
                 (view-draw-outer-arc main-soc-bms)
                 (view-draw-inner-arc main-current-gear main-thr-input)
-                (view-draw-center-speed main-current-gear main-speed-kph)
+                ; NOTE: Asked to show gear instead. (view-draw-center-speed main-speed-kph)
+                (view-draw-center-gear main-current-gear)
             })
             (if (eq view-main-subview 'dbg) {
                 (subview-draw-dbg)
-                (sbuf-clear gear-buf)
-                (view-draw-gear-select main-current-gear)
             })
             (if (eq view-main-subview 'none) {
-                (sbuf-clear gear-buf)
                 (sbuf-clear view-main-buf)
                 (var main-soc-bms (state-get 'soc-bms))
                 (if (< main-soc-bms 0.001)
@@ -122,8 +114,8 @@
                 )
                 (view-draw-outer-arc main-soc-bms)
                 (view-draw-inner-arc main-current-gear main-thr-input)
-                (view-draw-center-speed main-current-gear main-speed-kph)
-                (view-draw-gear-select main-current-gear)
+                ; NOTE: Asked to show gear instead. (view-draw-center-speed main-current-gear main-speed-kph)
+                (view-draw-center-gear main-current-gear)
             })
         }))
     })
@@ -132,6 +124,11 @@
     (if (eq (state-get 'view-main-subview) 'dbg)
         (subview-draw-dbg)
     )
+
+    ; Check if we should draw the debug timer view
+    (if (eq (state-get 'view-main-subview) 'timer) {
+        (subview-draw-timer)
+    })
 
     (setq first-pass false)
 })
@@ -159,8 +156,8 @@
     ; Determine color for charge arc
     (def charge-arc-color 0x7f9a0d)
     (if (< main-soc-bms 0.5)
-        (setq charge-arc-color (lerp-color 0xe72a62 0xffa500 (ease-in-out-quint (* main-soc-bms 2))))
-        (setq charge-arc-color (lerp-color 0xffa500 0x7f9a0d (ease-in-out-quint (* (- main-soc-bms 0.5) 2))))
+        (setq charge-arc-color (lerp-color col-lind-red col-lind-yellow (ease-in-out-quint (* main-soc-bms 2))))
+        (setq charge-arc-color (lerp-color col-lind-yellow col-lind-green (ease-in-out-quint (* (- main-soc-bms 0.5) 2))))
     )
 
     ; Charge Icon
@@ -197,7 +194,7 @@
         (- (/ buf-width-main 2) 30)
         70
         (60 60 0 '(filled)))
-    (setq speed-visible false)
+    (setq center-value-visible false)
 })
 
 (defun view-draw-center-animal (main-current-gear) {
@@ -208,8 +205,8 @@
         (cond
             ((< main-current-gear 3) icon-turtle-4c)
             ((< main-current-gear 6) icon-fish-4c)
-            ((< main-current-gear 9) icon-pro-4c)
-            ((> main-current-gear 8) icon-shark-4c)
+            ((< main-current-gear 9) icon-shark-4c)
+            ((> main-current-gear 8) icon-pro-4c)
         )
     ))
     (sbuf-blit view-main-buf icon-animal (/ (- buf-width-main (first (img-dims icon-animal))) 2) 70 ())
@@ -219,27 +216,27 @@
         (cond
             ((< main-current-gear 3) text-speed-slow)
             ((< main-current-gear 6) text-speed-medium)
-            ((< main-current-gear 9) text-speed-pro)
-            ((> main-current-gear 8) text-speed-fast)
+            ((< main-current-gear 9) text-speed-fast)
+            ((> main-current-gear 8) text-speed-pro)
         )
     ))
     (sbuf-blit view-main-buf text (/ (- buf-width-main (first (img-dims text))) 2) 110 ())
 
 })
 
-(defun view-draw-center-speed (main-current-gear main-speed-kph) {
+(defun view-draw-center-speed (main-speed-kph) {
     (var color-speed-units 11) ; TODO: not used
     (var color-speed 12) ; TODO: not used
 
     ; Draw speed units text if speed was not visible previously
-    (if (not speed-visible) {
+    (if (not center-value-visible) {
         (view-clean-center)
 
         ; Draw speed units
         (var text (img-buffer-from-bin text-km-h))
         (sbuf-blit view-main-buf text (/ (- buf-width-main (first (img-dims text))) 2) 110 ())
 
-        (setq speed-visible true)
+        (setq center-value-visible true)
     })
 
     ; Draw current speed
@@ -257,147 +254,102 @@
 
 })
 
+(defun view-draw-center-gear (main-current-gear) {
+
+    ; Draw current geart if not visible previously
+    (if (not center-value-visible) {
+        (view-clean-center)
+
+        (setq center-value-visible true)
+    })
+
+    ; Draw current gear
+    (draw-text-aa-centered view-main-buf
+        (if (> main-current-gear 9)
+            (- (/ buf-width-main 2) 50 3) ; Special offset with a mono spaced 1 prefix
+            (- (/ buf-width-main 2) 50))
+        75 ; px down
+        100 ; px wide
+        0
+        0
+        2
+        font-sfpro-58h
+        (list 0 1 2 3)
+        (str-from-n main-current-gear "%d")
+    )
+
+})
+
 (defun view-draw-inner-arc (main-current-gear main-thr-input) {
     (var color-white 3)
     (var color-arc-inner-bg 8)
     (var color-arc-inner-fg 9)
     (var color-arc-inner-hl 10)
 
+    (var arc-inner-rad 70)
     (var arc-start-angle 90)
+    (var arc-min-deg (* 360 0.165))
+    (var arc-max-deg (* 360 0.88))
+    (def arc-degrees (- arc-max-deg arc-min-deg))
 
     ; End Angle of Max Power Arc
-    (var arc-end-max-power (* 260 (/ main-current-gear (to-float gear-max))))
-    (setq arc-end-max-power (+ arc-end-max-power 90))
+    (def gear-pct (map-range-01 (/ main-current-gear (to-float gear-max)) 0.1 1.0))
+    (def arc-end-max-power (+
+        arc-start-angle
+        arc-min-deg
+        (* arc-degrees gear-pct)))
 
     ; End Angle of Throttle Input
-    (var arc-end-throttle (* 260 (* thr-input (/ main-current-gear (to-float gear-max)))))
-    (setq arc-end-throttle (+ arc-end-throttle 90))
-
-    (var arc-innder-rad 68)
+    (def arc-end-throttle (+
+        arc-start-angle
+        (* arc-min-deg thr-input)
+        (* arc-degrees (* thr-input gear-pct))))
 
     ; Arc Inner BG
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle 450 color-arc-inner-bg '(thickness 22)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-inner-rad arc-start-angle 450 color-arc-inner-bg '(thickness 24)))
 
     ; Arc Inner FG Max Power
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 22) '(rounded)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-inner-rad 1) arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 22) '(rounded)))
 
     ; Highlight throttle position
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-innder-rad 1) arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 20) '(rounded)))
+    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-inner-rad 1) arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 22) '(rounded)))
 
     ; Blue Arc White Bottom
-    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (6 color-white '(filled)))
+    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 44) (6 color-white '(filled)))
     ; Blue Arc White Top
-    (var angle 0.0)
-    (setq angle (- arc-end-max-power 46))
-    (var pos (rot-point-origin 41 40 angle))
+    (var angle (- arc-end-max-power 46))
+    (var pos (rot-point-origin 41 41 angle))
     (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (6 color-white '(filled)))
-})
-
-(defun view-update-inner-arc-throttle (main-current-gear thr-input) {
-    (var arc-start-angle 90) ; TODO: Duplicated
-    (var arc-innder-rad 68) ; TODO: Duplicated
-    (var color-arc-inner-hl 10) ; TODO: Duplicated
-    (var color-arc-inner-fg 9) ; TODO: Duplicated
-    (var color-white 3) ; TODO: Duplicated
-
-    ; End Angle of Max Power Arc
-    (var arc-end-max-power (* 260 (/ main-current-gear (to-float gear-max))))
-    (setq arc-end-max-power (+ arc-end-max-power 90))
-
-    ; End Angle of Throttle Input
-    (var arc-end-throttle (* 260 (* thr-input (/ main-current-gear (to-float gear-max)))))
-    (setq arc-end-throttle (+ arc-end-throttle 90))
-
-    ; Arc Inner FG Max Power
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-innder-rad arc-start-angle arc-end-max-power color-arc-inner-fg '(thickness 22) '(rounded)))
-
-    ; Arc Inner Highlight Throttle Input
-    (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) ((- arc-innder-rad 1) arc-start-angle arc-end-throttle color-arc-inner-hl '(thickness 20) '(rounded)))
-
-    ; Blue Arc White Bottom
-    (sbuf-exec img-circle view-main-buf (/ buf-width-main 2) (- buf-height-main 41) (6 color-white '(filled)))
-    ; Blue Arc White Top
-    (var angle 0.0)
-    (setq angle (- arc-end-max-power 46))
-    (var pos (rot-point-origin 41 40 angle))
-    (sbuf-exec img-circle view-main-buf (+ (ix pos 0) (/ buf-width-main 2)) (+ (ix pos 1) (/ buf-height-main 2)) (6 color-white '(filled)))
-})
-
-(defun view-draw-gear-select (main-current-gear) {
-    (var gear-select-w 162)
-    (var gear-select-h 32)
-    {
-        ; Draw Gear Select Icons - / + and current Gear
-
-        ; TODO: Draw Max Power when we are at the max? Screen is crowded. Revisit please
-        ;(var max-power-text "Max Power")
-        ;(var w (* (bufget-u8 font- 0) (str-len max-power-text)))
-        ;(sbuf-exec img-text gear-buf (- (/ gear-select-w 2) (/ w 2)) (- gear-select-h 12) (2 0 font-b3 max-power-text))
-
-        ; Minus Circle
-        (var circle-color 4)
-        (if (= main-current-gear gear-min) (setq circle-color 5))
-        (sbuf-exec img-circle gear-buf 16 (/ gear-select-h 2) (16 circle-color '(thickness 2)))
-        (sbuf-exec img-rectangle gear-buf 7 (/ gear-select-h 2) (18 2 circle-color '(filled)))
-
-        ; Plus Circle
-        (if (= main-current-gear gear-max)
-            (setq circle-color 5)
-            (setq circle-color 4)
-        )
-        (sbuf-exec img-circle gear-buf (- gear-select-w 16) (/ gear-select-h 2) (16 circle-color '(thickness 2)))
-        (sbuf-exec img-rectangle gear-buf (- gear-select-w 25) 15 (18 2 circle-color '(filled)))
-        (sbuf-exec img-rectangle gear-buf (- gear-select-w 17) 7 (2 18 circle-color '(filled)))
-
-        ; Current Gear
-        (draw-text-aa-centered gear-buf
-            (- (/ gear-select-w 2) 50)
-            6
-            100 ;px wide
-            0
-            0
-            2
-            font-sfpro-bold-22h
-            (list 0 1 2 3)
-            (to-str main-current-gear)
-        )
-    }
 })
 
 (defun view-render-main () {
 
-    (sbuf-render-changes view-main-buf (list
+    (sbuf-render-changes view-main-buf `(
         0x000000
-        col-text-aa1 ; 1= dark grey
-        col-text-aa2 ; 2= lighter grey
+        ,col-text-aa1 ; 1= dark grey
+        ,col-text-aa2 ; 2= lighter grey
         0xffffff ; 3= white
 
         0x1c1c1c ; 4= Charge BG
-        charge-arc-color ; 5= Charge Arc FG
-        charge-icon-light ;0xc4d08e ; 6= Charge Arc FG Light
-        charge-icon-lighter ;0xe0e7c4 ; 7= Charge Arc FG Lighter
+        ,charge-arc-color ; 5= Charge Arc FG
+        ,charge-icon-light ;0xc4d08e ; 6= Charge Arc FG Light
+        ,charge-icon-lighter ;0xe0e7c4 ; 7= Charge Arc FG Lighter
 
-        0x262626 ; 8= Power Bar BG
-        0x474747 ; 9= Power Bar FG
-        0x3f93d0 ; 10= Power Bar Highlight
+        0x353535 ; 8= Power Bar BG
+        0x7a7a7a ; 9= Power Bar FG
+        ,(if (and timer-start-last (> (secs-since timer-start-last) 3.0))
+            0x9c9c9c ; Change color to grey to make battery ring easier to read at a glance
+            col-lind-yellow
+        ) ; 10= Power Bar Highlight
 
         0x6c6c6c ; 11= Speed Units
         0xefefef ; 12= Speed
     ))
 
-    (sbuf-render-changes gear-buf (list
-        0x0
-        col-text-aa1 ; 2bbp text
-        col-text-aa2; 2bbp text
-        0xefefef ; Gear
-        0xbebebe ; FG Active
-        0x363636 ; FG Disabled
-    ))
 })
 
 (defun view-cleanup-main () {
     (def view-main-buf nil)
-    (def gear-buf nil)
 
     (def show-time nil)
 
@@ -410,7 +362,7 @@
     (def buf-width-main nil)
     (def buf-height-main nil)
 
-    (def speed-visible nil)
+    (def center-value-visible nil)
     (def first-pass nil)
 })
 
@@ -438,7 +390,8 @@
         (str-left-pad (str-from-n seconds) 2 "0")
     ))
 
-    (sbuf-exec img-text gear-buf 20 0 (3 0 font-ubuntu-mono-22h timer-str))
+    (sbuf-exec img-rectangle view-main-buf 0 (- buf-height-main 22) (180 22 0 '(filled) `(rounded, 13)))
+    (sbuf-exec img-text view-main-buf 0 (- buf-height-main 22) (3 0 font-ubuntu-mono-22h timer-str))
 })
 
 (defun subview-draw-dbg () {

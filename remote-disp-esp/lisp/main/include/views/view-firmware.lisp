@@ -7,28 +7,23 @@
 })
 
 (defun view-init-firmware () {
-    (def view-icon-buf (create-sbuf 'indexed4 (- 120 85) 46 171 172))
-    ; Blue Circle
-    (sbuf-exec img-circle view-icon-buf 85 85 (65 1 '(filled)))
+    (def view-icon-buf (create-sbuf 'indexed4 (- 120 70) (+ 50 display-y-offset) 141 142))
+    ; Blue Arcs
+    (def view-angle-previous 90.0)
+
     ; Sync Arrows
     (var icon (img-buffer-from-bin icon-sync))
-    (sbuf-blit view-icon-buf icon 52 52 ())
+    (sbuf-blit view-icon-buf icon 35 35 ())
     
     ; Static Text
-    (def view-text-buf (create-sbuf 'indexed4 (- 120 70) 230 140 72))
+    (def view-text-buf (create-sbuf 'indexed4 (- 120 70) (+ 220 display-y-offset) 140 72))
     (var text (img-buffer-from-bin text-firmware-update))
     (sbuf-blit view-text-buf text (/ (- 140 (ix (img-dims text) 0)) 2) 0 ())
-
-    (def view-last-angle 0.0)
 })
 
 (defun view-draw-firmware () {
-    ; clear last circle
-    (var pos (rot-point-origin 78 0 view-last-angle))
-    (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 85) (+ (ix pos 1) 85) (6 0 '(filled)))
-
-    (var total-secs 6.0)
-    (var halfway 3.0)
+    (var total-secs 12.0)
+    (var halfway 6.0)
     (var secs (secs-since view-timeline-start))
     (if (> secs total-secs) {
         (setq secs (- secs total-secs))
@@ -44,21 +39,27 @@
         (var anim-t (/ (- secs halfway) halfway))
         (setq angle (to-i (lerp 180.0 720.0 (easing anim-t))))
     })
-    (var pos (rot-point-origin 78 0 angle))
-    
-    (sbuf-exec img-circle view-icon-buf (+ (ix pos 0) 85) (+ (ix pos 1) 85) (6 1 '(filled)))
-    
-    (def view-last-angle angle)    
+
+    (if (> (abs (- angle view-angle-previous)) 1.0) {
+        ; Clear previous arcs
+        (sbuf-exec img-arc view-icon-buf 70 70 (70 view-angle-previous (+ view-angle-previous 90) 0 '(thickness 17)))
+        (sbuf-exec img-arc view-icon-buf 70 70 (70 (+ view-angle-previous 90 60) (+ view-angle-previous 90 60 150) 0 '(thickness 17)))
+        ; Draw new arcs
+        (sbuf-exec img-arc view-icon-buf 70 70 (70 angle (+ angle 90) 1 '(thickness 17)))
+        (sbuf-exec img-arc view-icon-buf 70 70 (70 (+ angle 90 60) (+ angle 90 60 150) 1 '(thickness 17)))
+
+        (def view-angle-previous angle)
+    })
 })
 
 (defun view-render-firmware () {
-    (sbuf-render-changes view-icon-buf (list col-bg 0x3f93d0 0xc5d6eb col-fg))
-    (sbuf-render-changes view-text-buf (list col-bg col-text-aa1 col-text-aa2 col-fg))
+    (sbuf-render-changes view-icon-buf (list col-black 0x3f93d0 0xc5d6eb col-white))
+    (sbuf-render-changes view-text-buf (list col-black col-text-aa1 col-text-aa2 col-white))
 })
 
 (defun view-cleanup-firmware () {
     (def view-icon-buf nil)
     (def view-text-buf nil)
     
-    (def view-last-angle nil)
+    (def view-angle-previous nil)
 })

@@ -62,8 +62,7 @@
         (def rx-cnt (+ rx-cnt 1))
         (canset-current-rel 10 thr)
         (canset-current-rel 11 thr)
-        (rcode-run-noret 10 `(setq rem-thr ,thr))
-        (rcode-run-noret 10 `(setq rem-cnt ,rx-cnt))
+        (rcode-run-noret 10 `{(setq rem-thr ,thr) (setq rem-cnt ,rx-cnt)})
 })
 
 (defun proc-data (src des data rssi) {
