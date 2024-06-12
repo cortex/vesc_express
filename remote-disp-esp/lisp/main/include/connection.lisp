@@ -18,10 +18,42 @@
 
 @const-start
 
-(def rx-timeout-ms 1000)
+(def rx-timeout-ms 2000)
 
 (esp-now-start)
 
+@const-end
+
+; FW Update Prepare
+; Erases OTA Parition and sets the incoming firmware size
+; NOTE: Estimated time to complete 5 seconds
+(defun fw-update-prepare (fw-size) {
+    ;(var start-time (systime))
+    (fw-erase fw-size)
+    ;(print (secs-since start-time))
+    (setq fw-bytes-remaining fw-size)
+    (print (str-merge "send code result: " (to-str (send-code "(def fw-update-prepared true)"))))
+})
+
+; LBM Update Handling
+(def fw-bytes-remaining 0)
+(def fw-offset 0)
+(defun lbm-update-ready (fw-size) {
+    (var len 250)
+    (var offset 0)
+    (var data nil)
+    (lbm-erase)
+    (loopwhile (< offset fw-size) {
+        (setq data (read-update-partition offset len))
+        (lbm-write offset data)
+        (free data)
+        (setq offset (+ offset len))
+        (if (> (+ offset len) fw-size) (setq len (- fw-size offset)))
+    })
+    (lbm-run 1)
+})
+
+; ESP-NOW RX Handler
 (defun proc-data (src des data rssi) {
     (if (and (eq des broadcast-addr) (not is-connected)){
         (def broadcast-rx-timestamp (systime))
@@ -44,14 +76,25 @@
     (if (eq des my-addr){
         ; Handle data sent directly to us
         (def esp-rx-rssi rssi)
-        (eval (read data))
+        (if (> fw-bytes-remaining 0) {
+            ; Write data to vesc update partition
+            (fw-write fw-offset data)
+
+            (setq fw-offset (+ fw-offset (buflen data)))
+            (setq fw-bytes-remaining (- fw-bytes-remaining (buflen data)))
+            (if (not (send-code (str-merge "(def remote-pos " (str-from-n fw-offset "%d") ")"))) {
+                (print "Error sending update position to bat-ant-esp. This is not good. Sorry")
+            })
+        } {
+            ;(print data)
+            (eval (read data))
+        })
+
         (def esp-rx-cnt (+ esp-rx-cnt 1))
         (def battery-rx-timestamp (systime))
     })
     (free data)
 })
-
-@const-end
 
 (defun event-handler () {
     (loopwhile t
@@ -61,13 +104,16 @@
     ))
 })
 
-@const-start
-
 (defun send-code (str)
     (if batt-addr-rx
         (esp-now-send batt-addr str)
-        nil
+        {
+            (print "Error: send-code failed: batt-addr-rx is nil")
+            nil
+        }
 ))
+
+@const-start
 
 (defun str-crc-add (str)
     (str-merge str (str-from-n (crc16 str) "%04x"))
@@ -80,10 +126,10 @@
 (defun send-thr-rf (thr)
     (progn
         (var str (str-from-n (clamp01 thr) "(thr-rx %.2f)"))
-        
+
         ; HACK: Send io-board message to trick esc that the jet is plugged in
         ;(send-code "(can-send-eid (+ 108 (shl 32 8)) '(0 0 0 0 0 0 0 0))")
-        
+
         (send-code str)
 ))
 
@@ -102,7 +148,7 @@
 
 (defun connection-tick () {
         (var start (systime))
-        
+
         ; normal communication
         (def thr (thr-apply-gear thr-input))
 
@@ -111,43 +157,50 @@
             (print "Remote inactive for 1 hour. Going to sleep")
             (enter-sleep)
         })
-        
+
         (if (and (> (secs-since last-input-time) 30.0) (not dev-disable-inactivity-check)) {
                 (set-thr-is-active false)
         })
         (if (and (not is-connected) (not dev-disable-connection-check))
             (set-thr-is-active false)
         )
-        
+
         (if dev-force-thr-enable {
                 (set-thr-is-active true)
         })
-        
+
         (if (not (send-thr (if thr-active thr 0)))
             (setq thr-fail-cnt (+ thr-fail-cnt 1))
         )
 
         ; Update is-connected status
         (if (> (- (systime) battery-rx-timestamp) rx-timeout-ms) {
-            ; Timeout, clear battery address
-            (def batt-addr-rx false)
-            (def is-connected false)
-            (if (state-get 'was-connected) (state-set 'conn-lost true))
+            ; Do not timeout during update please
+            (if (not firmware-updating) {
+                ; Timeout, clear battery address
+                (def batt-addr-rx false)
+                (def is-connected false)
+                (if (state-get 'was-connected) (state-set 'conn-lost true))
+            })
         } (def is-connected true))
 
         ; Timeout broadcast reception
-        (var timestamp-check broadcast-rx-timestamp)
-        (if (and (not-eq timestamp-check nil) (> (- (systime) timestamp-check) rx-timeout-ms)) {
-            (def esp-rx-rssi -99)
-            (def broadcast-rx-timestamp nil)
-        })
+        (atomic ; Do not allow broadcast-rx-timestamp to change in ESP RX handler while evaluating
+            (if (and
+                (not-eq broadcast-rx-timestamp nil)
+                (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms))
+                {
+                    (def esp-rx-rssi -99)
+                    (def broadcast-rx-timestamp nil)
+                }))
+
 ;        (if (not is-connected) (def thr-active false))
-        
+
         (var tick-secs (if any-ping-has-failed
                 0.004 ; 4 ms
                 0.01 ; 10 ms
         ))
-        
+
         (var secs (- tick-secs (secs-since start)))
         (sleep (if (< secs 0.0) 0 secs))
 })

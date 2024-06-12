@@ -3,7 +3,7 @@
 ;;; firmware
 
 (defun view-is-visible-firmware () {
-    false ; unused
+    firmware-updating ; Defined in main-ui
 })
 
 (defun view-init-firmware () {

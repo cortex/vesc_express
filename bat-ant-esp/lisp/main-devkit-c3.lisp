@@ -1,13 +1,20 @@
-(loopwhile (not (main-init-done)) (sleep 0.1))
+(def strip1 (rgbled-buffer 1 0))
+(rgbled-init 8)
+(rgbled-color strip1 0 0x000011)
+(rgbled-update strip1)
+
+(defun connect-event () {
+    (rgbled-color strip1 0 0x001100)
+    (rgbled-update strip1)
+})
+
+(defun disconnect-event () {
+    (rgbled-color strip1 0 0x110000)
+    (rgbled-update strip1)
+})
 
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
-
-(import "lib/file-server.lisp" 'code-file-server)
-(read-eval-program code-file-server)
-
-(import "lib/nv-data.lisp" 'code-nv-data)
-(read-eval-program code-nv-data)
 
 (import "update-lisp.lisp" 'code-update-lisp)
 (read-eval-program code-update-lisp)
@@ -19,6 +26,7 @@
 (read-eval-program code-update-processor)
 
 (def broadcast-addr '(255 255 255 255 255 255))
+
 (def remote-addr broadcast-addr)
 
 (esp-now-start)
@@ -33,7 +41,8 @@
 (def rx-cnt-can 0)
 
 (def zero-rx-rime (systime))
-(def rx-timeout-ms 2000)
+(def rx-timeout-ms 1000)
+(def dummy-soc 0.0)
 (def disable-connection-timeout nil)
 
 (def throttle-rx-timestamp (- (systime) 20000))
@@ -62,7 +71,8 @@
         (def rx-cnt (+ rx-cnt 1))
         (canset-current-rel 10 thr)
         (canset-current-rel 11 thr)
-        (rcode-run-noret 10 `{(setq rem-thr ,thr) (setq rem-cnt ,rx-cnt)})
+        (rcode-run-noret 10 `(setq rem-thr ,thr))
+        (rcode-run-noret 10 `(setq rem-cnt ,rx-cnt))
 })
 
 (defun proc-data (src des data rssi) {
@@ -72,6 +82,7 @@
             (def remote-addr src)
             (esp-now-add-peer src)
             (eval (read data))
+            (connect-event)
         }
         {
             ; Broadcast data
@@ -94,15 +105,15 @@
         (var kw (/ (bufget-i16 data 6) 100.0))
         (def rx-cnt-can (+ rx-cnt-can 1))
         ; Send CAN data only when connected to a remote
-        ; and not performing a firmware update
-        (if (and (not-eq remote-addr broadcast-addr) (not fw-update-install)){
+        (if (not-eq remote-addr broadcast-addr) {
             (send-code (str-from-n soc-bms "(def soc-bms %.3f)"))
             (send-code (str-from-n duty "(def duty %.3f)"))
             (send-code (str-from-n kmh "(def kmh %.2f)"))
             (send-code (str-from-n kw "(def motor-kw %.3f)"))
+            (gc)
+            (free data)
         })
-    })
-    (free data)
+    } (free data))
 })
 
 (defun event-handler ()
@@ -122,9 +133,18 @@
             (if (> (- (systime) throttle-rx-timestamp) rx-timeout-ms) {
                 (if (not disable-connection-timeout) {
                     ; Timeout, clear remote-addr
+                    (print "Remote Disconnected due to Timeout")
                     (def remote-addr broadcast-addr)
+                    (disconnect-event)
                 })
-            })
+            } {
+                (if (not fw-update-install) {
+                    (send-code (str-from-n dummy-soc "(def soc-bms %.3f)"))
+                    (send-code (str-from-n dummy-soc "(def soc-bms %.3f)"))
+                    (setq dummy-soc (+ dummy-soc 0.001))
+                    (if (> dummy-soc 1.0) (setq dummy-soc 0.0))
+                })
+            }) ; TODO: Do not use in production, this is a hack for missing CAN data from ESC on DevKit
         })
         (sleep 0.1) ; Rate limit to 10Hz
     })
@@ -136,5 +156,3 @@
 
 (spawn connection-monitor)
 (spawn fw-update-processor)
-
-(start-code-server) ; to receive update information

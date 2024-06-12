@@ -1,20 +1,25 @@
+@const-start
+
 (def char-lf 10b)
 (def crlf "\r\n")
 (defun strip-crlf (str) (str-part str 0 (buf-find str crlf)))
 
-(defun http-read-line (conn) 
-    (strip-crlf (tcp-recv-to-char conn 4000 char-lf))
-)
+(defun http-read-line (conn) {
+    (var line (tcp-recv-to-char conn 128 char-lf))
+    (if (eq line 'disconnected) "" (strip-crlf line))
+})
 
 (defunret take-until (str delim) {
     (var pos (buf-find str delim))
     (if (eq pos -1) (return (list 'parse-error str)))
+    (if (> pos (buflen str)) (return (list 'parse-error str)))
     (list (str-part str 0 pos) (str-part str (+ pos (str-len delim))))
 })
 
 (defunret take-exact (str x) {
     (var pos (buf-find str x))
     (if (eq pos -1) (return (list 'parse-error str)))
+    (if (> pos (buflen str)) (return (list 'parse-error str)))
     (list (str-part str 0 (str-len x)) (str-part str (+ (str-len x))))
 })
 
@@ -38,8 +43,13 @@
 (defun is-empty (str) (eq str "") )
 
 (defun map-until (conn pred f) {
+    (var result '())
     (var line (http-read-line conn))
-    (if (not (pred line)) (cons (f line) (map-until conn pred f)) nil)
+    (loopwhile (not (pred line)) {
+        (setq result (cons (f line) result))
+        (setq line (http-read-line conn))
+    })
+    (reverse result)
 })
 
 ; parse http response, leave conn at body
@@ -51,13 +61,57 @@
         (list status headers)
 })
 
+(defunret http-parse-content-length (http-response) {
+    (var i 0)
+    (loopwhile (< i (length http-response)) {
+        (var j 0)
+        (loopwhile (< j (length (ix http-response i))) {
+            (if (eq (first (ix (ix http-response i) j)) "Content-Length") {
+                (return (str-to-i (second (ix (ix http-response i) j))))
+            })
+            (setq j (+ j 1))
+        })
+        (setq i (+ i 1))
+    })
+    (return nil)
+})
+
 (defun http-post-json (url body)
     (str-merge
         "POST " (url-path url) " HTTP/1.1\n"
         "Host: " (url-host url) "\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\n"
         "Content-Type: application/json\n"
         "Content-Length: " (str-from-n (buflen body)) "\n"
         "Connection: close" "\n"
         "\n\n"
         body "\n")
+)
+
+(defun http-get (url)
+    (str-merge
+        "GET " (url-path url) " HTTP/1.1\r\n"
+        "Host: " (url-host url) "\r\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\r\n"
+        "\r\n\r\n"
+    )
+)
+
+(defun http-head (url)
+    (str-merge
+        "HEAD " (url-path url) " HTTP/1.1\r\n"
+        "Host: " (url-host url) "\r\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\r\n"
+        "\r\n\r\n"
+    )
+)
+
+(defun http-get-range (url start len)
+    (str-merge
+        "GET " (url-path url) " HTTP/1.1\r\n"
+        "Host: " (url-host url) "\r\n"
+        "Lind-Hardware-Identifier: " serial-number-battery "\r\n"
+        "Range: bytes=" (str-from-n start "%d") "-" (str-from-n (+ start len -1) "%d") "\r\n"
+        "\r\n\r\n"
+    )
 )

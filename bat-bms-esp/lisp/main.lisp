@@ -1,6 +1,22 @@
 @const-symbol-strings
 
-@const-start
+(import "sleep.lisp" 'idle-sleep)
+(read-eval-program idle-sleep)
+
+(import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
+(read-eval-program code-server)
+
+(start-code-server) ; To receive firmware related information
+
+(import "lib/file-server.lisp" 'code-file-server)
+(read-eval-program code-file-server)
+
+(import "lib/nv-data.lisp" 'code-nv-data)
+(read-eval-program code-nv-data)
+
+(import "fw-check.lisp" 'fw-check)
+(read-eval-program fw-check)
+
 (import "lib/utils.lisp" 'utils)
 (read-eval-program utils)
 
@@ -13,7 +29,7 @@
 (import "lib/http.lisp" 'http)
 (read-eval-program http)
 
+(define dev-enable-ota-actions false)
+
 (import "status.lisp" 'status)
 (read-eval-program status)
-
-@const-end

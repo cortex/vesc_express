@@ -1,3 +1,7 @@
+(def charge-limit 100) ; TODO: This should come from the bms I suspect
+(def fake-charge-status 1) ; TODO: This is just for testing, use (charge-status)
+@const-start
+
 (def api-url "http://lindboard-staging.azurewebsites.net/api/esp")
 
 ;JSON helpers
@@ -12,42 +16,168 @@
         'connected
 'disconnected)))
 
-(defunret battery-status-json () (cond
-    ((not registration-id) 'no-registration-id)
-    (t (str-merge
-            "{" (kv "registrationId" (q registration-id)) ", "
-                (q "units" ) ":["
-                "{" 
-                    (kv "hardwareIdentifier"     (q (str-merge "BA" (mac-addr-string)))) ","
-                    (kv "serialNumber"           (q serial-number-battery)) ","
-                    (kv "hardwareTypeId" "1") ","
-                    (kv "firmwareId"             (q "test")) "," ; TODO: needs lispbm implementation
-                    (kv "chargeLevel"            (int (* (get-bms-val 'bms-soc) 100))) ","
-                    (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
-                    (kv "chargeStatus"           (charge-status)) ","
-                    (kv "chargeLimit"            "100") ","
-                    (kv "latitude"               (str-from-n 59.3293)) "," ; TODO: what to do in case of error
-                    (kv "longitude"              (str-from-n 18.0686)) "," ; TODO: what to do in case of error
-                    (kv "celcius"                (int (get-bms-val 'bms-temp-hum)))
-                "}"
-                ;",{" (kv "serialNumber" (q serial-number-remote)) "}"
-                ;",{" (kv "serialNumber" (q serial-number-jet)) "}"
-                ;",{" (kv "serialNumber" (q serial-number-board)) "}"
-            "]}"
-        )
+(defunret status-update-json ()
+    (str-merge
+        "{" (q "units" ) ":["
+            "{"
+                (kv "hardwareIdentifier"     (q serial-number-battery)) ","
+                (kv "serialNumber"           (q serial-number-battery)) ","
+                (kv "hardwareTypeId" "1") ","
+                (kv "firmwareId"             (int (nv-get 'fw-id-battery))) ","
+                (kv "chargeLevel"            (int (* (get-bms-val 'bms-soc) 100))) ","
+                (kv "chargeMinutesRemaining" (int (* 45 (get-bms-val 'bms-soc)))) ","
+                (kv "chargeStatus"           (str-from-n fake-charge-status)) "," ; TODO: Was: (charge-status)
+                (kv "chargeLimit"            (str-from-n charge-limit)) ","
+                (kv "latitude"               (str-from-n 59.3293)) "," ; TODO: what to do in case of error
+                (kv "longitude"              (str-from-n 18.0686)) "," ; TODO: what to do in case of error
+                (kv "celcius"                (int (get-bms-val 'bms-temp-hum)))
+            "}"
+        ",{" (kv "hardwareIdentifier" (q serial-number-remote)) "," (kv "serialNumber" (q serial-number-remote)) "," (kv "chargeLevel" (int 42)) "," (kv "chargeStatus" (int 2)) "}"
+        ",{" (kv "hardwareIdentifier" (q serial-number-jet))    "," (kv "serialNumber" (q serial-number-jet))    "," (kv "chargeStatus" (int 1)) "}"
+        ",{" (kv "hardwareIdentifier" (q serial-number-board))  "," (kv "serialNumber" (q serial-number-board))  "," (kv "chargeStatus" (int 1)) "}"
+        "]}"
     )
-))
+)
 
-(define registration-id nil)
-(define registration-id "dab20f85-4ea7-4b70-bb02-848f0e82f8db")
+; TCP Connection Helper (could be relocated to a better home)
+(def shared-conn nil)
+(defun tcp-conn (url) {
+    (if (not-eq shared-conn nil)
+        (tcp-close shared-conn)
+    )
+    (setq shared-conn (tcp-connect (url-host url) (url-port url)))
+    ; NOTE: tcp-connect may return many things, only type-i is successful.
+    ; For example:
+    ;   nil
+    ;   unknown-host
+    ;   (connect-error "errval")
+    ;   (symbol_socket_error "errval")
+    (if (not-eq (type-of shared-conn) 'type-i)
+    {
+        (print (str-merge "error connecting to " (url-host url) " " (to-str shared-conn)))
+        (def shared-conn nil)
+    }
+        shared-conn
+    )
+})
+
+(defun confirm-action-json (action-id)
+    (str-merge
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) ", "
+            (kv "hardwareActionId" (q action-id))
+        "}"
+    )
+)
+
+(defun confirm-action (action-id) {
+    (var url (str-merge api-url "/confirmAction"))
+    (var conn (tcp-conn url))
+    (if conn {
+        (var to-post (confirm-action-json action-id))
+        (if (not (eq (type-of to-post) 'type-array))
+            (print "Error creating confirm-action-json")
+            {
+                (var req (http-post-json url to-post))
+                (var res (tcp-send conn req))
+                (var response (http-parse-response conn))
+                (var result (second (first response)))
+
+                (tcp-close conn)
+                (if (eq "204" result) 'ok 'error)
+            }
+        )
+    } 'no-connection)
+})
+
+(defun pending-actions-json ()
+    (str-merge
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) "}"
+    )
+)
+
+(defunret pending-actions () {
+    (var url (str-merge api-url "/pendingActions"))
+    (var conn (tcp-conn url))
+    (if conn {
+            (var request-json (pending-actions-json))
+            (if (not (eq (type-of request-json) 'type-array)) {
+                (tcp-close conn)
+                (return request-json)
+            })
+            (var req (http-post-json url request-json))
+            (var res (tcp-send conn req))
+            (var response (http-parse-response conn))
+            (var result (second (first response)))
+
+            (if (eq "200" result) {
+                ; Read body for hardwareActionId processing
+                (var content-length (http-parse-content-length response))
+                (if (not-eq content-length nil) {
+                    (var resp-body (tcp-recv conn content-length))
+                    ;(print resp-body)
+                    (def hw-actions (parse-json-firmware resp-body))
+
+                    ; Close the connection now that we are finished parsing
+                    (tcp-close conn)
+
+                    (var i 0)
+                    (loopwhile (< i (length hw-actions)) {
+                        ; Perform hardware actions, such as initiating fw install
+                        (var action-id (second (second (ix hw-actions i))))
+                        (var action-type (second (third (ix hw-actions i))))
+                        (var action-data (second (ix (ix hw-actions i) 4)))
+                        ;(print (str-merge action-id ", " action-type ", " action-data))
+
+                        (cond
+                            ((eq action-type "1") {
+                                (print "Action: Start Charging")
+                                ; TODO: Start charging
+                                (def fake-charge-status 2)
+                                (confirm-action action-id)
+                            })
+                            ((eq action-type "2") {
+                                (print "Action: Stop Charging")
+                                ; TODO: Stop charging
+                                (def fake-charge-status 1)
+                                (confirm-action action-id)
+                            })
+                            ((eq action-type "3") {
+                                (print (str-merge "Action: Charge Limit to " action-data))
+                                ; TODO: change the charge limit somehow
+                                (def charge-limit (str-to-i action-data))
+                                (confirm-action action-id)
+                            })
+                            ((eq action-type "4") {
+                                (var hwid (first (str-split action-data "|")))
+                                (var fwvr (second (str-split action-data "|")))
+                                (print (str-merge "Action: Install FW " fwvr " on " hwid))
+                                ; TODO: There is a bit to think about here.
+                                ;       A board may receive a request to install multiple updates
+                                ;       Many update files would have to be saved to the SD Card
+                                ;       The current logic assumes the latest update will encapsulate all previous updates =/
+                                ; Notify bat-ant-esp it's time to begin
+                                (var res (rcode-run 31 2 '(def fw-update-install true)))
+                                (if (not-eq res 'timeout)
+                                    (print (str-merge "Action Confirm: " (to-str (confirm-action action-id))))
+                                )
+                            })
+                            (_ (print (str-merge "Unexpected action-type: " action-type)))
+                        )
+
+                        (setq i (+ i 1))
+                    })
+                })
+            } (tcp-close conn))
+
+            (if (eq "200" result) 'ok 'error)
+        })
+})
 
 (defunret send-status (){
-    (var url (str-merge api-url "/batteryStatusUpdate"))
-    (var conn (tcp-connect (url-host url) (url-port url)))
-    (if (or (eq conn nil) (eq conn 'unknown-host))
-        (print (str-merge "error connecting to " (url-host url) " " (to-str conn))) 
-        {
-            (var status-json (battery-status-json))
+    (var url (str-merge api-url "/statusUpdate"))
+    (var conn (tcp-conn url))
+    (if conn {
+            (var status-json (status-update-json))
             (if (not (eq (type-of status-json) 'type-array)) {
                 (tcp-close conn)
                 (return status-json)
@@ -55,9 +185,36 @@
             (var req (http-post-json url status-json))
             (var res (tcp-send conn req))
             (var response (http-parse-response conn))
-            (var result (ix (ix response 0) 1))
+            (var result (second (first response)))
+
             (tcp-close conn)
-            (if (eq "200" result) 'ok 'error)
+            (if (eq "204" result) 'ok 'error)
+        })
+})
+
+(defun fw-ready-json ()
+    (str-merge
+        "{" (kv "hardwareIdentifier" (q serial-number-battery)) ","
+            (kv "firmwareId" (int (nv-get 'fw-id-battery-downloaded)))
+        "}"
+    )
+)
+
+(defunret send-fw-ready (){
+    (var url (str-merge api-url "/readyToInstallFirmware"))
+    (var conn (tcp-conn url))
+    (if conn {
+            (var status-json (fw-ready-json))
+            (if (not (eq (type-of status-json) 'type-array)) {
+                (tcp-close conn)
+                (return status-json)
+            })
+            (var req (http-post-json url status-json))
+            (var res (tcp-send conn req))
+            (var response (http-parse-response conn))
+            (var result (second (first response)))
+            (tcp-close conn)
+            (if (eq "204" result) 'ok 'error)
         })
 })
 
@@ -68,10 +225,37 @@
 (charging 2))))
 
 (defun status-loop () {
+    (var i 0)
+    (loopwhile t {
         (print (str-merge "Status ping: " (to-str (send-status))))
-        (gc)
+        (if dev-enable-ota-actions {
+
+            ; Send latest update progress if available
+            (if (not-eq fw-update-progress nil) {
+                (fw-install-progress-helper fw-update-progress)
+                ; TODO; if success def nil
+                (def fw-update-progress nil)
+            })
+
+            ; Send latest fw update result if available
+            (if (not-eq fw-update-results nil) {
+                (fw-install-result-helper fw-update-results)
+                ; TODO: if success def nil
+                (def fw-update-results nil)
+            })
+
+            ; Check for pending actions
+            (print (str-merge "Pending actions: " (to-str (pending-actions))))
+
+            ; Check for firmware releases less frequently
+            (if (eq (mod i 10) 0) {
+                    (print (str-merge "FW check: " (to-str (fw-check))))
+                    (if (nv-get 'fw-install-ready) (print (str-merge "FW ready ping: " (to-str (send-fw-ready)))))
+            })
+        })
+        (setq i (+ i 1))
         (sleep 5)
-        (status-loop)
+    })
 })
 
-(status-loop)
+(spawn status-loop)
