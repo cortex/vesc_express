@@ -10,6 +10,12 @@
     (gpio-write 3 0) ; enable display backlight (active when low)
 })
 
+(def has-gpio-expander nil)
+(defun thd nil (read-button 0))
+(spawn-trap thd)
+(recv ((exit-error (? thd) (? e)) (def has-gpio-expander nil))
+      ((exit-ok (? thd) (? v)) (def has-gpio-expander true)))
+
 (def pi 3.14159265359)
 
 ; Add value to variable and assign the result to the variable.
