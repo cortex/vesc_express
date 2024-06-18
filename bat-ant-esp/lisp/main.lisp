@@ -44,6 +44,12 @@
 
 (def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
 
+; When the remote requests, release pairing
+(defun unpair () {
+    (print "Remote request: release pairing")
+    (def pairing-state 'not-paired)
+})
+
 (loopwhile-thd 100 t {
         (if log-running
             (if (> (secs-since throttle-rx-timestamp) 5.0) {

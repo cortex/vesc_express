@@ -194,6 +194,22 @@
     (def draw-enabled false)
     (disp-clear)
 
+    ; If paired with a battery, attempt to release pairing
+    (if (eq pairing-state 'paired) {
+        (var retries 10)
+        (loopwhile (> retries 0) {
+            (if (send-code "(unpair)") {
+                (print "Battery has released pairing")
+                (break)
+            } (setq retries (- retries 1)))
+        })
+    })
+
+    ; Wait for power button to be released from long press
+    (loopwhile btn-up-long-fired
+        (sleep 0.1)
+    )
+
     ; Go to sleep and wake up in 6 hours
     (go-to-sleep (* (* 6 60) 60))
 })
