@@ -26,7 +26,7 @@
 ; When the battery requests, release pairing
 (defun unpair-ack () {
     (print "Battery request: release pairing")
-    (if (send-code "(def pairing-state 'not-paired)") {
+    (if (and (eq pairing-state 'paired) (send-code "(def pairing-state 'not-paired)")) {
         (def pairing-state 'not-paired)
         (def batt-addr-rx false)
         (def is-connected false)
@@ -119,10 +119,10 @@
 })
 
 (defun send-code (str)
-    (if batt-addr-rx
+    (if (eq pairing-state 'paired)
         (esp-now-send batt-addr str)
         {
-            (print "Error: send-code failed: batt-addr-rx is nil")
+            (print "Error: send-code failed, not-paired")
             nil
         }
 ))
@@ -183,8 +183,10 @@
                 (set-thr-is-active true)
         })
 
-        (if (not (send-thr (if thr-active thr 0)))
-            (setq thr-fail-cnt (+ thr-fail-cnt 1))
+        (if (eq pairing-state 'paired)
+            (if (not (send-thr (if thr-active thr 0)))
+                (setq thr-fail-cnt (+ thr-fail-cnt 1))
+            )
         )
 
         ; Timeout broadcast reception

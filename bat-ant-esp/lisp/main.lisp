@@ -153,6 +153,10 @@
                     (def pairing-state 'not-paired) ; Update State
                 })
             })
+            (if (eq pairing-state 'paired) {
+                (print "Releasing pairing while jet is disconnected")
+                (def pairing-state 'not-paired)
+            })
         )
 
         (match pairing-state
