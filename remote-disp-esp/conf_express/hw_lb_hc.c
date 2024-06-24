@@ -62,7 +62,7 @@
  * have enough space for all items.
  * \return true if list was a proper list.
 */
-static bool lbm_lower_list(const lbm_value list, lbm_value dest_array[]) {
+static bool lbm_lower_list(const lbm_value list, lbm_value * dest_array) {
 	lbm_value curr = list;
 	size_t i = 0;
 	
