@@ -13,11 +13,7 @@
     in {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
-          /*pkgs.esp-idf-esp32c3*/
-          (pkgs.esp-idf-esp32c3.override {
-            rev = "v5.2.2";
-            sha256 = "sha256-I4YxxSGdQT8twkoFx3zmZhyLTSagmeLD2pygVfY/pEk=";
-          })
+          pkgs.esp-idf-esp32c3
           pkgs.python310Packages.future
           pkgs.envsubst
         ];
