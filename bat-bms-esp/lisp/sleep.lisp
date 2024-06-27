@@ -1,6 +1,6 @@
 
 (define bms-boot-timeout-secs 0.25) ; Time to wait for first BMS message on boot
-(define bms-timeout-secs 3000.0)    ; Time without BMS message before going to sleep
+(define bms-timeout-secs 2.0)    ; Time without BMS message before going to sleep
 
 ; Wait for first BMS package or timeout
 (loopwhile
@@ -15,12 +15,12 @@
 
 ; Continue sleeping if no BMS package arrived within timeout
 (if (> (get-bms-val 'bms-msg-age) (- bms-boot-timeout-secs 0.05))
-    (sleep-deep 10)
+    (sleep-deep 30)
 )
 
 ; Go to sleep if not getting bms package for timeout
 (loopwhile-thd 100 t {
-        (if (> (get-bms-val 'bms-msg-age) bms-timeout-secs) (sleep-deep 10))
+        (if (> (get-bms-val 'bms-msg-age) bms-timeout-secs) (sleep-deep 30))
         (sleep 1)
 })
 
