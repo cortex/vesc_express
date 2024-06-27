@@ -21,6 +21,7 @@
 (disp-load-ssd1306 1 10 500000)
 (disp-reset)
 
+
 (defun line (x0 y0 x1 y1)
     (img-line img x0 y0 x1 y1 1 '(thickness 1))
 )
@@ -67,7 +68,11 @@
 (def fps 0)
 
 
-(def battery-name (match (get-mac-addr) ((220 84 117 181 73 241) "B05") (_"UNKNOWN") ))
+(def battery-name (match (get-mac-addr)
+    ((220 84 117 181 73 241) "B05")
+    ((244 18 250 52 155 205) "B19")
+    ((244 18 250 51 85 77)   "B25")
+    (_"UNKNOWN") ))
 
 (loopwhile t {
         (var t-start (systime))
