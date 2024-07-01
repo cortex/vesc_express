@@ -62,6 +62,10 @@
 
 @const-start
 
+;;; Persistent Settings
+(import "include/persistent-settings.lisp" 'code-persistent-settings)
+(read-eval-program code-persistent-settings)
+
 ;;; Low Battery View
 (if (not view-low-battery-loaded) {
     (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
@@ -243,6 +247,9 @@
 
 ; When True display the Firmware update View
 (def firmware-updating false)
+
+; Restore last saved gear selection
+(state-set 'gear (read-setting 'sel-gear))
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 188 (+ 20 display-y-offset) 30 16))
