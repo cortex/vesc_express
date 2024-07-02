@@ -318,6 +318,7 @@
                 (setq has-fault false)
                 (setq fault-txt "")
                 (setq battery-full false)
+                (enable-output false)
         })
 
         (if (mode-output?)
