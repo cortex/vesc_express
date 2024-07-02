@@ -58,7 +58,8 @@
 ; When the remote requests, release pairing
 (defun unpair () {
     (print "Remote request: release pairing")
-    (def pairing-state 'not-paired)
+    (if (eq pairing-state 'paired) (rcode-run-noret 10 '(alert-unpair)))
+    (def pairing-state 'not-paired) 
 })
 
 (loopwhile-thd 100 t {
@@ -121,6 +122,7 @@
                 (def remote-addr src)
                 (esp-now-add-peer src)
                 (def pairing-state 'paired)
+                (rcode-run-noret 10 '(alert-paired))
             })
 
             (eval (read data))

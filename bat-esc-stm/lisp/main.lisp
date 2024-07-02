@@ -9,6 +9,10 @@
 
 ; (can-start-run-thd) ; TODO: necessary?
 
+(import "pkg::midi@://vesc_packages/lib_midi/midi.vescpkg" 'midi)
+(import "lib/audible-alerts.lisp" 'audible-alerts)
+(read-eval-program audible-alerts)
+
 (def buf-can (array-create 8))
 
 ; Load cell reading. Updated using code server when available.
