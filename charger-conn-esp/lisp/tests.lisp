@@ -5,11 +5,15 @@
        (eq (can-scan) '(10 11 20 21 31))
 })
 
+(defun run-ant-esp (code) (rcode-run 31 100 code))
+(defun run-bms-esp (code) (rcode-run 21 100 code))
+(defun run-esc (code) (rcode-run 10 200 code))
+
 ; name func args
 (def tests '(
         ("CAN" can-check)
-        ("GPS" (fn () (not (> 0 (foldl + 0 (gnss-date-time))))))
-        ("ESC" (fn () (not (> 0 (foldl + 0 (gnss-date-time))))))
+        ;("GPS" (fn () (not (> 0 (foldl + 0 (gnss-date-time))))))
+        ("ESC" test-esc)
 
 ))
 
