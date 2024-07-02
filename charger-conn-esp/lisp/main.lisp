@@ -386,6 +386,16 @@
         (sleep 0.1)
 })
 
+;Stop output when battery SOC reaches 5%
+(loopwhile-thd 100 t {
+        (if (and (mode-output?) (< (get-bms-val 'bms-soc) 0.05)) {
+        (print "SOC below 5% switching off")
+            (setq pwr-sel 0)
+            }
+        )
+        (sleep 0.1)
+})
+
 (def img (img-buffer 'indexed4 320 172))
 
 (defun draw-btn (img pressed ofs-x ofs-y w h txt) {
@@ -443,7 +453,7 @@
         )
         ; Long press
 
-        (if  (= bt2 50) {
+        (if  (= bt2 10) {
         (print "run tests")
                (setq pwr-sel 8)
                (run-tests)
@@ -486,7 +496,7 @@
         (var row 0)
         (var print-row (fn (txt val) {
                     (if val
-                        (img-text img ofs-txt (+ 55 (* 26 row)) 3 -1 font (str-from-n (if (> val 0.0) val 0.0) txt))
+                        (img-text img ofs-txt (+ 55 (* 26 row)) 3 -1 font (str-from-n (if ( or (> val 0.0) (mode-output?)) val 0.0) txt))
                         (img-text img ofs-txt (+ 55 (* 26 row)) 3 -1 font txt)
                     )
                     (setq row (+ row 1))
