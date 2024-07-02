@@ -1,7 +1,13 @@
 (import "pkg::font_16_26@://vesc_packages/lib_files/files.vescpkg" 'font)
 
+(import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
+(read-eval-program code-server)
+
 (import "tests.lisp" 'tests)
 (read-eval-program tests)
+
+(import "test-esc.lisp" 'test-esc)
+(read-eval-program test-esc)
 
 
 (loopwhile (not (main-init-done)) (sleep 1))
