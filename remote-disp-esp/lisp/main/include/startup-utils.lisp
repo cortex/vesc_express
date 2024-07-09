@@ -10,11 +10,7 @@
     (gpio-write 3 0) ; enable display backlight (active when low)
 })
 
-(def has-gpio-expander nil)
-(defun thd nil (read-button 0))
-(spawn-trap thd)
-(recv ((exit-error (? thd) (? e)) (def has-gpio-expander nil))
-      ((exit-ok (? thd) (? v)) (def has-gpio-expander true)))
+(def has-gpio-expander (eq (first(trap(read-button 0))) 'exit-ok))
 
 (def pi 3.14159265359)
 
@@ -125,16 +121,6 @@
     (map-range-01 remote-batt-v 3.45 4.1)
 })
 
-(defun render-low-battery () {
-    (disp-clear)
-    (read-eval-program code-view-low-battery)
-    (def view-timeline-start (systime))
-    (view-init-low-battery)
-    (view-draw-low-battery)
-    (view-render-low-battery)
-    (view-cleanup-low-battery)
-})
-
 @const-end
 
 (def view-low-battery-loaded false)
@@ -146,12 +132,9 @@
     (if (<= (get-remote-soc) 0.2) {
         (print (str-merge "Low battery on boot: " (to-str (get-remote-soc))))
 
-        ;;; Low Battery View
-        (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
-        (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
-        (def view-low-battery-loaded true)
-
-        (render-low-battery)
+        ; Render low battery message before the startup animation
+        (var text (img-buffer-from-bin text-remote-battery-low))
+        (disp-render text (- 120 (/ (first (img-dims text)) 2)) (+ 220 display-y-offset) (list col-black col-text-aa1 col-text-aa2 col-white))
         (sleep 1.0)
     })
 })

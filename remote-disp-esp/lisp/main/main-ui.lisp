@@ -22,7 +22,7 @@
 
 @const-start
 
-(def version-str "v0.6")
+(def version-str "v0.7")
 (print (str-merge "Booting " version-str))
 
 ;;; Colors
@@ -45,6 +45,9 @@
 (import "../assets/icons/bin/icon-lind-logo-inverted.bin" 'icon-lind-logo) ; size: 115x19
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
 
+;;; Low Battery Text
+(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+
 @const-end
 
 (check-wake-cause-on-boot)
@@ -62,12 +65,6 @@
 
 @const-start
 
-;;; Low Battery View
-(if (not view-low-battery-loaded) {
-    (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
-    (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
-})
-
 ;;; Dev flags
 (import "../dev-flags.lisp" 'code-dev-flags)
 (read-eval-program code-dev-flags)
@@ -79,12 +76,6 @@
 ;;; Vibration
 (import "include/vib-reg.lisp" 'code-vib-reg)
 (read-eval-program code-vib-reg)
-
-;;; Included files
-
-;;; Views
-(import "include/views.lisp" code-views)
-(read-eval-program code-views)
 
 ;;; Specific view state management
 (import "include/ui-tick.lisp" code-ui-tick)
@@ -110,6 +101,9 @@
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
 (import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
+(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
+(import "include/views.lisp" code-views)
+(read-eval-program code-views)
 
 ;;; Icons
 
@@ -393,7 +387,7 @@
 
             ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
             (hibernate-now)
-            (render-low-battery)
+            (state-set 'view 'low-battery)
             (sleep 8)
         })
 
