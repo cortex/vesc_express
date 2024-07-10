@@ -217,7 +217,7 @@
 (def main-button-fadeout-secs 0.8)
 
 ; How many seconds the thrust activation countdown lasts.
-(def thr-countdown-len-secs (if dev-short-thr-activation 1.0 2.0))
+(def thr-countdown-len-secs 1.0)
 
 ; The timestamp when the throttle activation countdown animation last started.
 (def thr-countdown-start (systime))

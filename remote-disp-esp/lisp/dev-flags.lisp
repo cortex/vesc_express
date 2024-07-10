@@ -2,7 +2,6 @@
 
 (def dev-disable-low-battery-msg false)
 (def dev-disable-charging-msg false)
-(def dev-short-thr-activation false)
 (def dev-disable-inactivity-check false) ; Disables the check that deactivates the thrust upon 30 seconds of inactivity.
 (def dev-disable-connection-check false) ; Disables the check that deactivates the thrust when connection has been lost.
 (def dev-disable-connection-lost-msg false)
@@ -23,7 +22,7 @@
 (def dev-simulate-connection false)
 (def dev-disable-send-thr false) ; Makes remote no longer send any thrust to the board.
 ; Enables a dbg menu that shows information about connection to the board. Can
-; be enabled by pressing left and right simultaneously.
+; be enabled by pressing the up button, disabled by holding the up button
 (def dev-enable-connection-dbg-menu false)
 
 (def dev-smooth-tick-ms true) ; Applies a smoothing filter to the tick interval measurements.
