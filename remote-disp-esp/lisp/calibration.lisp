@@ -12,7 +12,7 @@
 (map (lambda (i)(list (mag-get-x i) (mag-get-y i) (mag-get-z i))) (iota 3)))
 
 (defun calibrate-value (v) {
-        (print (str-merge "set throttle to " (to-str v) " and push button"))
+        (puts (str-merge "set throttle to " (to-str v) " mm and push button"))
         (loopwhile (eq (sample-button (get-adc 0)) nil) (sleep 0.1))
         (var s (sample-throttle))
         (loopwhile (not (eq (sample-button (get-adc 0)) nil)) (sleep 0.1))
@@ -34,9 +34,20 @@
             )
 )))
 
-(defun calibrate-throttle () {
-        (define values (map calibrate-value (iota 14)))
-        (map print (map pick-values values))
+(defun calibrate () {
+    (puts "\n")
+    (puts "Started calibration...")
+    (define values (map calibrate-value (iota 14)))
+    
+    (puts "\n")
+    (puts (str-merge "(" (to-str (get-mac-addr)) " '("))
+    (map (fn (x) (puts (str-merge "    " (to-str x)))) (map pick-values values))
+    (puts "))")
+    
+    (puts "\n")
+    (puts "Add this to the samples list in main/include/input.lisp")
+    (puts "\n")
+    (puts "Run (calibrate) to redo the calibration procedure")
 })
 
 
@@ -79,3 +90,5 @@
             (print (sample-button (get-adc 0)))
             (sleep 0.2)
 }))
+
+(calibrate)
