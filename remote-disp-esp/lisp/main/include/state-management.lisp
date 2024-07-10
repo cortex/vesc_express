@@ -191,6 +191,10 @@
 ; conserve energy.
 (defun enter-sleep () {
     (print "entering sleep...")
+
+    ; Save selected gear to be restored at next boot
+    (write-setting 'sel-gear (state-get-live 'gear))
+
     (def draw-enabled false)
     (disp-clear)
 

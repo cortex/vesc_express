@@ -1,9 +1,9 @@
 @const-start
 
-(def gear-ratios (append '(0) (evenly-place-points 0.3 1.0 10)))
+(def gear-ratios (append '(0) (evenly-place-points 0.3 1.0 15)))
 
 (def gear-min 1)
-(def gear-max 10)
+(def gear-max 15)
 
 @const-end
 
