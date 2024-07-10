@@ -62,22 +62,28 @@
  * have enough space for all items.
  * \return true if list was a proper list.
 */
-static bool lbm_lower_list(const lbm_value list, lbm_value dest_array[]) {
-	lbm_value curr = list;
-	size_t i = 0;
-	
-	while (!lbm_is_symbol_nil(curr)) {
-		if (!lbm_is_cons(curr)) {
-			return false;
-		}
-		
-		dest_array[i] = lbm_car(curr);
-		
-		i++;
-		curr = lbm_cdr(curr);
-	}
-	
-	return false;
+static bool lbm_lower_list(const lbm_value list, lbm_value * dest_array, size_t max_size) {
+    lbm_value curr = list;
+    size_t i = 0;
+
+    while (!lbm_is_symbol_nil(curr)) {
+        if (!lbm_is_cons(curr)) {
+            return false;
+        }
+
+        if (i >= max_size) {
+            // Prevent overflow by checking the bounds
+			commands_printf_lisp("lbm_lower_list: Exceeded max size");
+            return false;
+        }
+
+        dest_array[i] = lbm_car(curr);
+
+        i++;
+        curr = lbm_cdr(curr);
+    }
+
+    return true;
 }
 
 // Get the length of list. -1 is returned if value is not a proper list.
@@ -620,7 +626,7 @@ static void send_thd_fun(void *arg) {
 		lbm_unblock_ctx_unboxed(send_cid, ENC_SYM_TRUE);
 	}
 
-	free(send_str);
+	lbm_free(send_str);
 	send_str = NULL;
 	vTaskDelete(NULL);
 }
@@ -684,7 +690,7 @@ static lbm_value ext_nf_send(lbm_value *args, lbm_uint argn) {
 			return ENC_SYM_NIL;
 		}
 		send_len = n;
-		send_str = malloc(send_len);
+		send_str = lbm_malloc(send_len);
 		memcpy(send_str, str, send_len);
 		send_cid = lbm_get_current_cid();
 		lbm_block_ctx_from_extension();
@@ -808,18 +814,18 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 	if (samples_len < 2) {
 		return ENC_SYM_EERROR;
 	}
-	
-	float *values = malloc(sizeof(float[samples_len]));
+
+	float *values = lbm_malloc(sizeof(float[samples_len]));
 	if (!values) {
 		return ENC_SYM_MERROR;
 	}
 	
-	float (*samples)[dimensions] = malloc(sizeof(float[samples_len][dimensions]));
+	float (*samples)[dimensions] = lbm_malloc(sizeof(float[samples_len][dimensions]));
 	if (!samples) {
-		free(values);
+		lbm_free(values);
 		return ENC_SYM_MERROR;
 	}
-	
+
 	/*
 	example argument value:
 	(cons ; curr_sample
@@ -833,28 +839,36 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 		...
 	)
 	*/
-	
+
 	// check types and get values
 	size_t i = 0;
 	curr_sample = args[1];
-	while (!lbm_is_symbol_nil(curr_sample)) {
-		lbm_value value_samples_list = lbm_car(curr_sample);
-		lbm_value value = lbm_car(value_samples_list);
+	lbm_value raw_samples[dimensions];
+	lbm_value value_samples_list;
+	lbm_value value;
+	lbm_value samples_list;
+	lbm_value sample;
+	while (!lbm_is_symbol_nil(curr_sample) && i < samples_len) {
+		value_samples_list = lbm_car(curr_sample);
+		value = lbm_car(value_samples_list);
 		if (!lbm_is_number(value)) {
-			free(values);
-			free(samples);
+			lbm_free(values);
+			lbm_free(samples);
 			return ENC_SYM_TERROR;
 		}
 		values[i] = lbm_dec_as_float(value);
 		
-		lbm_value samples_list = lbm_car(lbm_cdr(value_samples_list));
-		lbm_value raw_samples[dimensions];
-		lbm_lower_list(samples_list, raw_samples);
+		samples_list = lbm_car(lbm_cdr(value_samples_list));
+		if (!lbm_lower_list(samples_list, raw_samples, dimensions)) {
+			lbm_free(values);
+			lbm_free(samples);
+			return ENC_SYM_TERROR;
+		}
 		for (size_t j = 0; j < dimensions; j++) {
-			lbm_value sample = raw_samples[j];
+			sample = raw_samples[j];
 			if (!lbm_is_number(sample)) {
-				free(values);
-				free(samples);
+				lbm_free(values);
+				lbm_free(samples);
 				return ENC_SYM_TERROR;
 			}
 			
@@ -864,32 +878,36 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 		curr_sample = lbm_cdr(curr_sample);
 		i++;
 	}
-	
+
 	if (!lbm_is_list_len(args[0], dimensions)) {
-		free(values);
-		free(samples);
+		lbm_free(values);
+		lbm_free(samples);
 		return ENC_SYM_EERROR;
 	}
 	
 	lbm_value sample_raw[dimensions];
-	lbm_lower_list(args[0], sample_raw);
+	if (!lbm_lower_list(args[0], sample_raw, dimensions)) {
+		lbm_free(values);
+		lbm_free(samples);
+		return ENC_SYM_TERROR;
+	}
 	
-	float sample[dimensions];
+	float sample_f[dimensions];
 	for (size_t i = 0; i < dimensions; i++) {
 		if (!lbm_is_number(sample_raw[i])) {
-			free(values);
-			free(samples);
+			lbm_free(values);
+			lbm_free(samples);
 			return ENC_SYM_TERROR;
 		}
 		
-		sample[i] = lbm_dec_as_float(sample_raw[i]);
+		sample_f[i] = lbm_dec_as_float(sample_raw[i]);
 	}
 	
-	float result = interpolate_sample(dimensions, samples_len, sample, samples, values);
+	float result = interpolate_sample(dimensions, samples_len, sample_f, samples, values);
 	
-	free(values);
-	free(samples);
-	
+	lbm_free(values);
+	lbm_free(samples);
+
 	return lbm_enc_float(result);
 }
 
