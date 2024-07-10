@@ -2,3 +2,4 @@ build/
 result
 .direnv
 *.lpkg
+logserver/target

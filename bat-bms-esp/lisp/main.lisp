@@ -3,6 +3,11 @@
 (import "sleep.lisp" 'idle-sleep)
 (read-eval-program idle-sleep)
 
+(import "pkg::font_16_26@://vesc_packages/lib_files/files.vescpkg" 'font)
+
+(import "display.lisp" 'display)
+(read-eval-program display)
+
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
