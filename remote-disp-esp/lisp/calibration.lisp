@@ -1,3 +1,6 @@
+(loopwhile (not (main-init-done)) (sleep 0.1))
+(init-hw)
+
 (define buttons '(left down right up))
 (define buttons '(left down (left down) right (right down) up (up left) (up right)))
 
