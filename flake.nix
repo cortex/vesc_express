@@ -1,7 +1,7 @@
 {
   description = "Lindboard Firmware";
   inputs = {
-    nixpkgs-esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
+    nixpkgs-esp-dev.url = "github:Lindboard/nixpkgs-esp-dev";
   };
   outputs = { self, nixpkgs-esp-dev, nixpkgs}: 
     let
@@ -13,10 +13,7 @@
     in {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
-          (pkgs.esp-idf-esp32c3.override {
-            rev = "v5.0.2";
-            sha256 = "sha256-dlmtTjoz4qQdFG229v9bIHKpYBzjM44fv+XhdDBu2Os=";
-          })
+          pkgs.esp-idf-esp32c3
           pkgs.python310Packages.future
           pkgs.envsubst
         ];

@@ -188,6 +188,7 @@
         (warning view-cleanup-warning)
         (firmware view-cleanup-firmware)
         (conn-lost view-cleanup-conn-lost)
+        (low-battery view-cleanup-low-battery)
         (_ (fn () ()))
     ))
 
@@ -201,6 +202,7 @@
         (warning view-init-warning)
         (firmware view-init-firmware)
         (conn-lost view-init-conn-lost)
+        (low-battery view-init-low-battery)
         (_ ())
     ))
 
@@ -222,6 +224,7 @@
         (warning (view-draw-warning))
         (firmware (view-draw-firmware))
         (conn-lost (view-draw-conn-lost))
+        (low-battery (view-draw-low-battery))
         (_ (print "no active current view"))
     )
 })
@@ -235,6 +238,7 @@
         (warning (view-render-warning))
         (firmware (view-render-firmware))
         (conn-lost (view-render-conn-lost))
+        (low-battery (view-render-low-battery))
         (_ (print "no active current view"))
     )
 })
@@ -273,3 +277,4 @@
 (read-eval-program code-view-warning)
 (read-eval-program code-view-firmware)
 (read-eval-program code-view-conn-lost)
+(read-eval-program code-view-low-battery)

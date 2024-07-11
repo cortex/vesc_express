@@ -22,7 +22,7 @@
 
 @const-start
 
-(def version-str "v0.6")
+(def version-str "v0.7")
 (print (str-merge "Booting " version-str))
 
 ;;; Colors
@@ -45,6 +45,9 @@
 (import "../assets/icons/bin/icon-lind-logo-inverted.bin" 'icon-lind-logo) ; size: 115x19
 (import "../assets/fonts/bin/B3.bin" 'font-b3)
 
+;;; Low Battery Text
+(import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
+
 @const-end
 
 (check-wake-cause-on-boot)
@@ -62,11 +65,9 @@
 
 @const-start
 
-;;; Low Battery View
-(if (not view-low-battery-loaded) {
-    (import "include/views/view-low-battery.lisp" 'code-view-low-battery)
-    (import "../assets/texts/bin/remote-battery-low.bin" 'text-remote-battery-low)
-})
+;;; Persistent Settings
+(import "include/persistent-settings.lisp" 'code-persistent-settings)
+(read-eval-program code-persistent-settings)
 
 ;;; Dev flags
 (import "../dev-flags.lisp" 'code-dev-flags)
@@ -79,12 +80,6 @@
 ;;; Vibration
 (import "include/vib-reg.lisp" 'code-vib-reg)
 (read-eval-program code-vib-reg)
-
-;;; Included files
-
-;;; Views
-(import "include/views.lisp" code-views)
-(read-eval-program code-views)
 
 ;;; Specific view state management
 (import "include/ui-tick.lisp" code-ui-tick)
@@ -110,6 +105,9 @@
 (import "include/views/view-warning.lisp" 'code-view-warning)
 (import "include/views/view-firmware.lisp" 'code-view-firmware)
 (import "include/views/view-conn-lost.lisp" 'code-view-conn-lost)
+(import "include/views/view-low-battery.lisp" 'code-view-low-battery)
+(import "include/views.lisp" code-views)
+(read-eval-program code-views)
 
 ;;; Icons
 
@@ -223,7 +221,7 @@
 (def main-button-fadeout-secs 0.8)
 
 ; How many seconds the thrust activation countdown lasts.
-(def thr-countdown-len-secs (if dev-short-thr-activation 1.0 2.0))
+(def thr-countdown-len-secs 1.0)
 
 ; The timestamp when the throttle activation countdown animation last started.
 (def thr-countdown-start (systime))
@@ -243,6 +241,9 @@
 
 ; When True display the Firmware update View
 (def firmware-updating false)
+
+; Restore last saved gear selection
+(state-set 'gear (read-setting 'sel-gear))
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 188 (+ 20 display-y-offset) 30 16))
@@ -393,7 +394,7 @@
 
             ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
             (hibernate-now)
-            (render-low-battery)
+            (state-set 'view 'low-battery)
             (sleep 8)
         })
 

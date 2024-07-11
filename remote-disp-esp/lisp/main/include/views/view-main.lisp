@@ -203,10 +203,10 @@
     ; Draw animal icon for current gear level
     (var icon-animal (img-buffer-from-bin
         (cond
-            ((< main-current-gear 3) icon-turtle-4c)
-            ((< main-current-gear 6) icon-fish-4c)
-            ((< main-current-gear 9) icon-shark-4c)
-            ((> main-current-gear 8) icon-pro-4c)
+            ((< main-current-gear 4) icon-turtle-4c) ; 1,2,3
+            ((< main-current-gear 8) icon-fish-4c) ; 4,5,6,7
+            ((< main-current-gear 12) icon-shark-4c) ; 8,9,10,11
+            ((> main-current-gear 11) icon-pro-4c) ; 12,13,14,15
         )
     ))
     (sbuf-blit view-main-buf icon-animal (/ (- buf-width-main (first (img-dims icon-animal))) 2) 70 ())
@@ -214,10 +214,10 @@
     ; Draw speed label
     (var text (img-buffer-from-bin
         (cond
-            ((< main-current-gear 3) text-speed-slow)
-            ((< main-current-gear 6) text-speed-medium)
-            ((< main-current-gear 9) text-speed-fast)
-            ((> main-current-gear 8) text-speed-pro)
+            ((< main-current-gear 4) text-speed-slow)
+            ((< main-current-gear 8) text-speed-medium)
+            ((< main-current-gear 12) text-speed-fast)
+            ((> main-current-gear 11) text-speed-pro)
         )
     ))
     (sbuf-blit view-main-buf text (/ (- buf-width-main (first (img-dims text))) 2) 110 ())
