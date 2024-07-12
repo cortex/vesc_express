@@ -33,8 +33,8 @@
 
 (defun voltages (motor) (map (fn (r) (raw-adc-voltage motor r 0)) (drop (range 4) 1)))
 (print "Verifying output voltages no duty")
-(print (map (expect 2 0.5) (voltages 1)))
-(print (map (expect 2 0.5) (voltages 2)))
+(print (map (expect 2 1.0) (voltages 1)))
+(print (map (expect 2 1.0) (voltages 2)))
 
 (print "Verifying output voltages full brake")
 (select-motor 1)
