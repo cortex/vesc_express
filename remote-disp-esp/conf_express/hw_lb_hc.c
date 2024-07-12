@@ -51,7 +51,7 @@
 
 #ifndef LB_HC_CONF_EXPRESS_VERION
 	// Check this version in LBM to validate compatibility
-	#define LB_HC_CONF_EXPRESS_VERION 4
+	#define LB_HC_CONF_EXPRESS_VERION 5
 #endif
 
 // LBM Utilities
@@ -1174,6 +1174,7 @@ static lbm_value ext_interpolate_sample(lbm_value *args, lbm_uint argn) {
 // 	return lbm_enc_float(result);
 // }
 
+#define BAT_REG_IN_C_LIMIT 0x00
 #define BAT_REG_CONTROL_ADC_ODT 0x03
 #define BAT_REG_STAT 0x0c
 #define BAT_REG_ADC_BAT_V 0x0e
@@ -1227,6 +1228,16 @@ void bat_init(void) {
 
 	uint8_t charge_voltage = 0x8C; // Set charger voltage to 4.1V (~90% SOC)
 	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CHARGE_V_REG, charge_voltage) != ESP_OK) {
+		bat_init_success = false;
+	}
+
+	uint8_t input_current_limit = 0x52; // Set input current limit to 1A
+	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_IN_C_LIMIT, input_current_limit) != ESP_OK) {
+		bat_init_success = false;
+	}
+
+	uint8_t enable_adc = 0xD0; // Enable ADC continous sampling
+	if (i2c_write_reg(I2C_ADDR_PWR, BAT_REG_CONTROL_ADC_ODT, enable_adc) != ESP_OK) {
 		bat_init_success = false;
 	}
 }

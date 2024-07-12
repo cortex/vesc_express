@@ -4,7 +4,7 @@
 ; On occasion there is an additional 600ms delay noticed in the startup animation
 
 (defun version-check () {
-    (var compatible-version 4)
+    (var compatible-version 5)
     (if (!= (conf-express-version) compatible-version) {
         (loopwhile t {
             (print (str-merge
@@ -22,7 +22,7 @@
 
 @const-start
 
-(def version-str "v0.7")
+(def version-str "v0.7.1")
 (print (str-merge "Booting " version-str))
 
 ;;; Colors
@@ -213,7 +213,7 @@
 (def soc-bar-visible t)
 
 ; The last voltage captured while checking the remote battery.
-(def remote-batt-v (vib-vmon))
+(def remote-batt-v (/ (bat-v) 1000.0))
 
 ; Timestamp of the last tick where the left or right buttons where pressed
 (def main-left-held-last-time 0)
@@ -339,6 +339,7 @@
 
 ; Slow updates
 (def m-slow-updates-tick-ms 0.0)
+(def soc-last-update (systime))
 (spawn 120 (fn ()
     (loopwhile (not stop-threads) {
         (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
@@ -351,15 +352,21 @@
         ))
         (def thread-slow-updates-start (systime))
 
-        ; Update SOC
-        (def soc-remote (get-remote-soc))
-        (state-set 'soc-remote soc-remote)
+        ; Update SOC (Limit to 5 seconds while charging)
+        (if (and (state-get 'charger-plugged-in) (> (secs-since soc-last-update) 5.0)) {
+            (def soc-remote (get-remote-soc))
+            (state-set 'soc-remote soc-remote)
+            (def soc-last-update (systime))
+        })
+
+        ; Update charger-plugged-in state
+        (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 
         ; Update RSSI state from latest esp-rx-rssi
         (state-set 'rx-rssi esp-rx-rssi)
 
         ; If we reach 3.2V (0% SOC) the remote must power down
-        (if (<= remote-batt-v 3.2) {
+        (if (and (<= remote-batt-v 3.2) (eq (bat-charge-status) nil)) {
             (print "Remote battery too low for operation!")
             (print "Foced Shutdown Event @ 0%")
 
