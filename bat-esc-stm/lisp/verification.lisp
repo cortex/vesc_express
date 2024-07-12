@@ -15,10 +15,10 @@
         (var voltage-offsets (take (drop offsets 3) 5))
 
         ; Current offsets should be around 2050
-        (var current-offsets (map (expect 2050 10) current-offsets))
+        (setq current-offsets (map (expect 2050 10) current-offsets))
 
         ; Voltage offsets should be around 0
-        (var voltage-offsets (map (expect 0 0.05) voltage-offsets))
+        (setq voltage-offsets (map (expect 0 0.05) voltage-offsets))
         (print (list current-offsets voltage-offsets))
 })
 
