@@ -352,15 +352,15 @@
         ))
         (def thread-slow-updates-start (systime))
 
+        ; Update charger-plugged-in state
+        (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
+
         ; Update SOC (Limit to 5 seconds while charging)
         (if (and (state-get 'charger-plugged-in) (> (secs-since soc-last-update) 5.0)) {
             (def soc-remote (get-remote-soc))
             (state-set 'soc-remote soc-remote)
             (def soc-last-update (systime))
         })
-
-        ; Update charger-plugged-in state
-        (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 
         ; Update RSSI state from latest esp-rx-rssi
         (state-set 'rx-rssi esp-rx-rssi)
