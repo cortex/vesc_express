@@ -137,7 +137,7 @@
 (defun check-battery-on-boot () {
     ; Once on startup, check remote battery soc
     (if (<= (get-remote-soc) 0.2) {
-        (print (str-merge "Low battery on boot, SOC: " (to-str (get-remote-soc) " V: " (to-str remote-batt-v))))
+        (print (str-merge "Low battery on boot, SOC: " (to-str (get-remote-soc)) " V: " (to-str remote-batt-v)))
 
         ; Render low battery message before the startup animation
         (var text (img-buffer-from-bin text-remote-battery-low))
