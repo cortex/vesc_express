@@ -340,6 +340,12 @@
 ; Slow updates
 (def m-slow-updates-tick-ms 0.0)
 (def soc-last-update (systime))
+
+; Set state before starting thread
+(def soc-remote (get-remote-soc))
+(state-set 'soc-remote soc-remote)
+(state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
+
 (spawn 120 (fn ()
     (loopwhile (not stop-threads) {
         (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
