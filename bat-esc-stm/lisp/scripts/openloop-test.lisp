@@ -13,4 +13,4 @@
 
 
 ; Reset sensor mode
-(conf-set 'foc-sensor-mode 0)
+(conf-set 'foc-sensor-mode 4)
