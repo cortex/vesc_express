@@ -56,13 +56,18 @@
         (sleep 1)
 })
 
-(defun thr-rx (thr) {
+(defun thr-rx (thr uptime bme-hum bme-temp bme-pres) {
         (setq throttle-rx-timestamp (systime))
         (def thr-val thr)
         (def rx-cnt (+ rx-cnt 1))
         (canset-current-rel 10 thr)
         (canset-current-rel 11 thr)
-        (rcode-run-noret 10 `{(setq rem-thr ,thr) (setq rem-cnt ,rx-cnt)})
+        (rcode-run-noret 10 `(def rem-thr ,thr))
+        (rcode-run-noret 10 `(def rem-cnt ,rx-cnt))
+        (rcode-run-noret 10 `(def rem-uptime ,uptime))
+        (rcode-run-noret 10 `(def rem-hum ,bme-hum))
+        (rcode-run-noret 10 `(def rem-temp ,bme-temp))
+        (rcode-run-noret 10 `(def rem-pres ,bme-pres))
 })
 
 (defun proc-data (src des data rssi) {

@@ -12,6 +12,12 @@
 (def rem-thr 0.0)
 (def rem-cnt 0.0)
 
+; Remote sensors and uptime. Updated using code server.
+(def rem-uptime 0.0)
+(def rem-hum 0.0)
+(def rem-temp 0.0)
+(def rem-pres 0.0)
+
 (select-motor 1)
 
 (spawn (fn ()
@@ -125,6 +131,12 @@
         ; Remote counters
         ("Rem Thr"                       (* 1.0 rem-thr))
         ("Rem Cnt"                       (* 1.0 rem-cnt))
+
+        ; Remote sensors
+        ("Rem Uptime"                   (* 1.0 rem-uptime))
+        ("Rem Hum"                      (* 1.0 rem-hum))
+        ("Rem Temp"                     (* 1.0 rem-temp))
+        ("Rem Pres"                     (* 1.0 rem-pres))
 ))
 
 (defun init-logging ()

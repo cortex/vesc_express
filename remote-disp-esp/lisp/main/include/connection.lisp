@@ -125,7 +125,15 @@
 
 (defun send-thr-rf (thr)
     (progn
-        (var str (str-from-n (clamp01 thr) "(thr-rx %.2f)"))
+        (var str (str-merge
+            "(thr-rx "
+                (str-from-n (clamp01 thr) "%.2f ") ; Throttle Now
+                (str-from-n (secs-since 0) "%.1f ") ; Uptime
+                (str-from-n (bme-hum) "%.3f ") ; Humidity
+                (str-from-n (bme-temp) "%.3f ") ; Temperature
+                (str-from-n (bme-pres) "%.2f ") ; Pressure
+            ")"
+        ))
 
         ; HACK: Send io-board message to trick esc that the jet is plugged in
         ;(send-code "(can-send-eid (+ 108 (shl 32 8)) '(0 0 0 0 0 0 0 0))")
