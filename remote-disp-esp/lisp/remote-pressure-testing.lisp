@@ -1,3 +1,10 @@
+; Remote Pressure Testing Script
+;
+; Execute (start-logging) to erase the previous recording and start saving data to flash.
+; Execute (print-log) to output recorded data to Console & plot values in the Experiement Plot.
+;
+; NOTE: No power management, to restore normal functionality Upload main-ui.lisp to remote.
+
 @const-symbol-strings
 
 (import "pkg::font_16_26@://vesc_packages/lib_files/files.vescpkg" 'font-26)
@@ -44,12 +51,29 @@
     (print "Logged Data:")
     (def read-pos 0)
     (def log-entry (unflatten (fw-data read-pos log-entry-length)))
+    (var index 0)
     (loopwhile (eq (ix log-entry 0) log-header) {
         (print log-entry)
+        (plot-points index (ix log-entry 1) (ix log-entry 2) (ix log-entry 3))
+        (setq index (+ index 1))
         (setq read-pos (+ read-pos log-entry-length))
         (setq log-entry (unflatten (fw-data read-pos log-entry-length)))
     })
     (print "End of data")
+})
+
+(plot-init "Time (Seconds)" "Humidity, Temp, Pressure")
+(plot-add-graph "Humitidy")
+(plot-add-graph "Temp")
+(plot-add-graph "Pressure")
+
+(defun plot-points (i hum temp pres) {
+    (plot-set-graph 0)
+    (plot-send-points i hum)
+    (plot-set-graph 1)
+    (plot-send-points i temp)
+    (plot-set-graph 2)
+    (plot-send-points i pres)
 })
 
 (loopwhile t {
