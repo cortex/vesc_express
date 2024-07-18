@@ -125,6 +125,10 @@
         ; Remote counters
         ("Rem Thr"                       (* 1.0 rem-thr))
         ("Rem Cnt"                       (* 1.0 rem-cnt))
+
+        ; Uptime counters
+        ("ESC uptime"                    (secs-since 0))
+
 ))
 
 (defun init-logging ()
