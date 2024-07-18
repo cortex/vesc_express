@@ -280,7 +280,7 @@
                 (setq fault-now-txt "FLT OT Conn2")
         })
 
-        (if (> i-out 75.0) { ; Overcurrent
+        (if (> i-out-flt 65.0) { ; Overcurrent
                 (setq fault-now true)
                 (setq fault-now-txt "FLT OC")
         })
