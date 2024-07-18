@@ -453,10 +453,12 @@
         )
         ; Long press
 
-        (if  (= bt2 10) {
-        (print "run tests")
-               (setq pwr-sel 8)
-               (run-tests)
+        (if  (= bt2 100) {
+                (if mode-test? {
+                        (print "run tests")
+                        (setq pwr-sel 8)
+                        (run-tests)
+                })
         })
 
         (sleep 0.015)
