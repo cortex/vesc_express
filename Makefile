@@ -9,44 +9,46 @@
 all: firmware lisp
 
 firmware: \
-	build/bat-ant-esp/firmware.bin \
-	build/bat-ant-stm/firmware.bin \
-	build/bat-bms-esp/firmware.bin \
-	build/bat-esc-stm/firmware.bin \
-	build/jet-if-esp/firmware.bin \
-	build/bat-bms-stm/firmware.bin \
-	build/remote-disp-esp/firmware.bin
-
-lisp: \
-	build/bat-ant-esp/main.lpkg \
-	build/bat-bms-esp/main.lpkg \
-	build/bat-esc-stm/main.lpkg
+	bat-ant-esp \
+	bat-ant-stm \
+	bat-bms-esp \
+	bat-bms-stm \
+	bat-esc-stm \
+	jet-if-esp \
+	remote-disp-esp
 
 clean:
 	rm -rf build
 
 bat-ant-esp: \
+	build/conf_general.h.template \
 	build/bat-ant-esp/firmware.bin \
 	build/bat-ant-esp/main.lpkg
 
 bat-ant-stm: \
+	build/conf_general.h.template \
 	build/bat-ant-stm/firmware.bin
 
 bat-bms-esp: \
+	build/conf_general.h.template \
 	build/bat-bms-esp/firmware.bin \
 	build/bat-bms-esp/main.lpkg
 
 bat-bms-stm: \
+	build/conf_general.h.template \
 	build/bat-bms-stm/firmware.bin
 
 bat-esc-stm: \
+	build/conf_general.h.template \
 	build/bat-esc-stm/firmware.bin \
 	build/bat-esc-stm/main.lpkg
 
 jet-if-esp: \
+	build/conf_general.h.template \
 	build/jet-if-esp/firmware.bin
 
 remote-disp-esp: \
+	build/conf_general.h.template \
 	build/remote-disp-esp/firmware.bin
 
 reset:
