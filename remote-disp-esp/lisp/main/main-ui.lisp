@@ -247,6 +247,7 @@
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 188 (+ 20 display-y-offset) 30 16))
+(def no-data-buf (create-sbuf 'indexed2 22 (+ 20 display-y-offset) 16 16))
 
 ; Communication
 (def m-connection-tick-ms 0.0)

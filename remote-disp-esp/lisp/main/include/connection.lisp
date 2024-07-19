@@ -183,11 +183,15 @@
                 (set-thr-is-active true)
         })
 
-        (if (eq pairing-state 'paired)
+        (if (eq pairing-state 'paired) {
+            ; Send Throttle
             (if (not (send-thr (if thr-active thr 0)))
                 (setq thr-fail-cnt (+ thr-fail-cnt 1))
             )
-        )
+
+            ; Update state when the ESC data is older than 2 seconds
+            (state-set 'no-data (> (secs-since battery-rx-timestamp) 2.0))
+        })
 
         ; Timeout broadcast reception
         (atomic ; Do not allow broadcast-rx-timestamp to change in ESP RX handler while evaluating

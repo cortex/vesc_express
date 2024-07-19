@@ -223,6 +223,10 @@
         (render-status-battery soc-remote)
     }))
 
+    (state-with-changed '(soc-bar-visible no-data) (fn (soc-bar-visible no-data) {
+        (render-data-indicator (if soc-bar-visible no-data nil))
+    }))
+
     ; (if (not-eq script-start nil) {
     ;     (println ("render took" (* (secs-since script-start) 1000) "ms"))
     ;     (def script-start nil)
