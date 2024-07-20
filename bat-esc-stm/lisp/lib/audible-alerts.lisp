@@ -1,8 +1,8 @@
 @const-start
 
-(import "./ascend.mid" 'midi-pair)
-(import "./descend.mid" 'midi-unpair)
-(import "./error.mid" 'midi-error)
+(import "./alerts/ascend.mid" 'midi-pair)
+(import "./alerts/descend.mid" 'midi-unpair)
+(import "./alerts/error.mid" 'midi-error)
 
 (def midi-voltage-scale 0.42)
 
