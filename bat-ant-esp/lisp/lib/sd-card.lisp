@@ -7,6 +7,9 @@
         (return true)
     )
     
+    ; The internal behavior of f-connect should be called automatically at
+    ; start-up, but for some reason that does not work. Either way f-connect
+    ; fixes this.
     (if (f-connect 4 0 10 3) {
         (puts "Successfully connected SD-card")
         (return true)
