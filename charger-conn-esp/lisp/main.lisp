@@ -275,7 +275,7 @@
                 })
         })
 
-        (if (> t-conn 65.0) { ; Charge port overtemperature
+        (if (> t-conn 80.0) { ; Charge port overtemperature
                 (setq fault-now true)
                 (setq fault-now-txt "FLT OT Conn2")
         })
