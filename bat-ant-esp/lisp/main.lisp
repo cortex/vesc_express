@@ -5,6 +5,9 @@
 
 (def dev-pair-without-jet false) ; Allows the remote to pair with the battery when no jet is connected
 
+(import "lib/sd-card.lisp" 'code-sd-card)
+(read-eval-program code-sd-card)
+
 (import "lib/file-server.lisp" 'code-file-server)
 (read-eval-program code-file-server)
 
