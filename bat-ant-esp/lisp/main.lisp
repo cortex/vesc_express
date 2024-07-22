@@ -62,12 +62,14 @@
         (def rx-cnt (+ rx-cnt 1))
         (canset-current-rel 10 thr)
         (canset-current-rel 11 thr)
-        (rcode-run-noret 10 `(def rem-thr ,thr))
-        (rcode-run-noret 10 `(def rem-cnt ,rx-cnt))
-        (rcode-run-noret 10 `(def rem-uptime ,uptime))
-        (rcode-run-noret 10 `(def rem-hum ,bme-hum))
-        (rcode-run-noret 10 `(def rem-temp ,bme-temp))
-        (rcode-run-noret 10 `(def rem-pres ,bme-pres))
+        (rcode-run-noret 10 `{
+            (def rem-thr ,thr)
+            (def rem-cnt ,rx-cnt)
+            (def rem-uptime ,uptime)
+            (def rem-hum ,bme-hum)
+            (def rem-temp ,bme-temp)
+            (def rem-pres ,bme-pres)
+        })
 })
 
 (defun proc-data (src des data rssi) {
