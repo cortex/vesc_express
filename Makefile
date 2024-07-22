@@ -6,7 +6,7 @@
 	jet-if-esp \
 	remote-disp-esp \
 
-all: firmware lisp
+all: firmware
 
 firmware: \
 	bat-ant-esp \
