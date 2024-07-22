@@ -12,8 +12,8 @@ pkgs.stdenv.mkDerivation rec {
   src = pkgs.fetchFromGitHub {
     owner = "vedderb";
     repo = "vesc_tool";
-    rev = "master";
-    hash = "sha256-2jyfYrWnXw+6bOvwkTLQv3FFXTmkkGVC0Fp1rfdB55g=";
+    rev = "f063b4b";
+    hash = "sha256-7NdGyeF2V03WJTAV4NQ5UVx+iohQjmTfycyob1LhIJ8=";
   };
   
   patches = [
