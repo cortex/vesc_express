@@ -3,6 +3,9 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
+(import "lib/sd-card.lisp" 'code-sd-card)
+(read-eval-program code-sd-card)
+
 (import "lib/file-server.lisp" 'code-file-server)
 (read-eval-program code-file-server)
 
