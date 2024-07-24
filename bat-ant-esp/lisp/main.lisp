@@ -58,14 +58,13 @@
         )
         (sleep 1)
 })
-
+; TODO: This should be renamed to rx-thr, but I didn't wan't to break
+; backwards-compatibility for now...
 (defun thr-rx (thr) {
-        (setq throttle-rx-timestamp (systime))
-        (def thr-val thr)
-        (def rx-cnt (+ rx-cnt 1))
-        (canset-current-rel 10 thr)
-        (canset-current-rel 11 thr)
-        (rcode-run-noret 10 `{(setq rem-thr ,thr) (setq rem-cnt ,rx-cnt)})
+    (setq throttle-rx-timestamp (systime))
+    (def thr-val thr)
+    (def rx-cnt (+ rx-cnt 1))
+    (rcode-run-noret 10 `(rx-thr ,thr ,rx-cnt))
 })
 
 (defun proc-data (src des data rssi) {
