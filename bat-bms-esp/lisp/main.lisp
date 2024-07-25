@@ -5,6 +5,9 @@
 
 (import "pkg::font_16_26@://vesc_packages/lib_files/files.vescpkg" 'font)
 
+(import "lib/utils.lisp" 'utils)
+(read-eval-program utils)
+
 (import "display.lisp" 'display)
 (read-eval-program display)
 
@@ -21,9 +24,6 @@
 
 (import "fw-check.lisp" 'fw-check)
 (read-eval-program fw-check)
-
-(import "lib/utils.lisp" 'utils)
-(read-eval-program utils)
 
 (import "lib/url.lisp" 'url)
 (read-eval-program url)
