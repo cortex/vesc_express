@@ -5,6 +5,9 @@
 
 (import "pkg::font_16_26@://vesc_packages/lib_files/files.vescpkg" 'font)
 
+(import "env.lisp" 'code-env)
+(read-eval-program code-env)
+
 (import "lib/utils.lisp" 'utils)
 (read-eval-program utils)
 
