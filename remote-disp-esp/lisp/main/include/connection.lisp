@@ -18,6 +18,7 @@
 
 @const-start
 
+(def battery-timeout-ms 3000)
 (def broadcast-timeout-ms 2000)
 (def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
 
@@ -189,8 +190,11 @@
                 (setq thr-fail-cnt (+ thr-fail-cnt 1))
             )
 
-            ; Update state when the ESC data is older than 2 seconds
-            (state-set 'no-data (> (secs-since battery-rx-timestamp) 2.0))
+            ; Update state when the Battery (ESC data) times out
+            (if (> (- (systime) battery-rx-timestamp) battery-timeout-ms) {
+                (state-set 'no-data true) ; Display indicator on main view
+                (set-thr-is-active false) ; Lock throttle
+            } (state-set 'no-data false))
         })
 
         ; Timeout broadcast reception
