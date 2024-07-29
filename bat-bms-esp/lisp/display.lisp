@@ -67,18 +67,6 @@
 
 (def fps 0)
 
-
-(def battery-name (match (get-mac-addr)
-    ((220 84 117 181 73 241) "B05")
-    ((244 18 250 52 155 205) "B19")
-    ((244 18 250 51 85 77)   "B25")
-    ((244 18 250 53 65 97)   "B20")
-    ((244 18 250 51 55 69)   "B21")
-    ((244 18 250 52 154 209) "B22")
-    ((244 18 250 53 64 213)  "B23")
-
-    (_"UNKNOWN") ))
-
 (loopwhile t {
         (var t-start (systime))
         (img-text img 5 5 1 0 font battery-name)
