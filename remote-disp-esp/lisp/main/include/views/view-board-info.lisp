@@ -132,9 +132,9 @@
                 ; Clear arc area
                 (sbuf-exec img-arc view-icon-buf 70 70 (70 90 450 0 '(thickness 17)))
                 ; End Angle of Arc
-                (var angle-end (+ 90 (* 359 (map-range-01 esp-rx-rssi -80 -41))))
+                (var angle-end (+ 90 (* 359 (map-range-01 esp-rx-rssi -80 rssi-pairing-threshold))))
                 (if (> angle-end 449) (setq angle-end 449))
-                (var angle-displayed (smooth-filter angle-end view-rssi-angle 0.1))
+                (var angle-displayed (smooth-filter angle-end view-rssi-angle 0.05))
                 (setq view-rssi-angle angle-displayed)
 
                 ; Draw arc to show progress / proximity to board
