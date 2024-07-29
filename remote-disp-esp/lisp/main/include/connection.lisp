@@ -12,7 +12,7 @@
 (def any-ping-has-failed false) ; TODO: This is never set to true
 
 (def my-addr (get-mac-addr))
-(def rssi-pairing-threshold -41)
+(def rssi-pairing-threshold -50) ; TODO: -47 not consistent, -48 might be good - needs testing
 (def battery-rx-timestamp (- (systime) 20000))
 (def broadcast-rx-timestamp nil)
 
