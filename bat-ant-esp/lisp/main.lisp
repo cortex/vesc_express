@@ -168,7 +168,7 @@
             (notify-unpair {
                 ; Let the remote know we need to release pairing
                 ; NOTE: The remote or a jet connection can change this state
-                (send-code "(unpair-ack)")
+                (send-code "(trap (unpair-ack))")
             })
             (not-paired {
                 (if (or jet-if-timestamp dev-pair-without-jet)

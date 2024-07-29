@@ -206,7 +206,7 @@
         (def pairing-state 'notify-unpair)
         (var retries 10)
         (loopwhile (> retries 0) {
-            (esp-now-send batt-addr "(unpair)")
+            (unpair-request)
             (setq retries (- retries 1))
         })
     })

@@ -24,6 +24,11 @@
 
 (esp-now-start)
 
+; Send a unpair request to the battery
+(defun unpair-request () {
+    (esp-now-send batt-addr "(trap (unpair))")
+})
+
 ; When the battery requests, release pairing
 (defun unpair-ack () {
     (print "Battery request: release pairing")
