@@ -228,8 +228,6 @@
     (state-set 'thr-input thr-input)
     (state-set 'kmh kmh)
     (state-set 'is-connected is-connected)
-
-    (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 })
 
 (def input-debounce-count 2) ; How many ticks buttons need to be pressed to register.

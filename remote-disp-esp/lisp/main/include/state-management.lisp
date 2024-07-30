@@ -218,6 +218,9 @@
         (sleep 0.1)
     })
 
+    ; Ensure we are charging
+    (bat-set-charge true)
+
     ; Go to sleep and wake up in 6 hours
     (go-to-sleep (* (* 6 60) 60))
 })

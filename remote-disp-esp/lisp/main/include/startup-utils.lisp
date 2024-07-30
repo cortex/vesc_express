@@ -98,7 +98,7 @@
     (if (eq (wake-cause) 'wake-timer) {
         (print "Exiting sleep from ESP Timer. Checking battery!")
 
-        (var boot-voltage (vib-vmon))
+        (var boot-voltage (/ (bat-v) 1000.0))
         ; NOTE: 3.45V is ~25% SOC, reporting as 0%
         (var boot-soc (map-range-01 boot-voltage 3.45 4.1))
         (print (str-merge "SOC: " (to-str boot-soc)))
@@ -116,7 +116,14 @@
 })
 
 (defun get-remote-soc () {
-    (def remote-batt-v (vib-vmon))
+    (if (bat-charge-status) {
+        (bat-set-charge false)
+        (sleep 0.05)
+    })
+    (def remote-batt-v (/ (bat-v) 1000.0))
+
+    (bat-set-charge true)
+
     ; NOTE: 3.45V is ~25% SOC, reporting as 0%
     (map-range-01 remote-batt-v 3.45 4.1)
 })
@@ -130,7 +137,7 @@
 (defun check-battery-on-boot () {
     ; Once on startup, check remote battery soc
     (if (<= (get-remote-soc) 0.2) {
-        (print (str-merge "Low battery on boot: " (to-str (get-remote-soc))))
+        (print (str-merge "Low battery on boot, SOC: " (to-str (get-remote-soc)) " V: " (to-str remote-batt-v)))
 
         ; Render low battery message before the startup animation
         (var text (img-buffer-from-bin text-remote-battery-low))
