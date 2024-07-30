@@ -148,6 +148,7 @@
         (var str (str-merge
             "(thr-rx "
                 (str-from-n (clamp01 thr) "%.2f ") ; Throttle Now
+                (str-from-n (state-get-live 'gear) "%d ") ; Gear
                 (str-from-n (secs-since 0) "%.1f ") ; Uptime
                 (str-from-n (bme-hum) "%.3f ") ; Humidity
                 (str-from-n (bme-temp) "%.3f ") ; Temperature

@@ -11,11 +11,10 @@
 ; Load cell reading. Updated using code server when available.
 (def grams-load-cell 0.0)
 
-; Remote throttle and rx counters. Updated by rx-thr.
+; Remote values. Updated when rx-thr is called by code server.
 (def rem-thr 0.0)
+(def rem-gear 0)
 (def rem-cnt 0.0)
-
-; Remote sensors and uptime. Updated using code server.
 (def rem-uptime 0.0)
 (def rem-hum 0.0)
 (def rem-temp 0.0)
@@ -35,8 +34,9 @@
 )
 
 ; To be called by code server
-(defun rx-thr (thr rx-cnt uptime bme-hum bme-temp bme-pres) {
+(defun rx-thr (thr gear rx-cnt uptime bme-hum bme-temp bme-pres) {
     (def rem-thr thr)
+    (def rem-gear gear)
     (def rem-cnt rx-cnt)
     (def rem-uptime uptime)
     (def rem-hum bme-hum)
@@ -155,12 +155,13 @@
         ; Load cell
         ("Force Load Cell" "kg"          (/ grams-load-cell 1000.0))
 
-        ; Remote counters
+        ; Remote
         ("Rem Thr"                       (* 1.0 rem-thr))
+        ("Rem Gear"                      (* 1 rem-gear))
         ("Rem Cnt"                       (* 1.0 rem-cnt))
+        ("Rem Uptime" "s"                (* 1.0 rem-uptime))
 
         ; Remote sensors
-        ("Rem Uptime" "s"                (* 1.0 rem-uptime))
         ("Rem Hum" "%"                   (* 1.0 rem-hum))
         ("Rem Temp" "degC"               (* 1.0 rem-temp))
         ("Rem Pres"                      (* 1.0 rem-pres))

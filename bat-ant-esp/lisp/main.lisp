@@ -72,12 +72,13 @@
 
 ; TODO: This should be renamed to rx-thr, but I didn't wan't to break
 ; backwards-compatibility for now...
-(defun thr-rx (thr uptime bme-hum bme-temp bme-pres) {
+(defun thr-rx (thr gear uptime bme-hum bme-temp bme-pres) {
     (setq throttle-rx-timestamp (systime))
     (def thr-val thr)
     (def rx-cnt (+ rx-cnt 1))
     (rcode-run-noret 10 `(rx-thr
         ,thr
+        ,gear
         ,rx-cnt
         ,uptime
         ,bme-hum
