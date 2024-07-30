@@ -18,10 +18,16 @@
 
 @const-start
 
+(def battery-timeout-ms 3000)
 (def broadcast-timeout-ms 2000)
 (def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
 
 (esp-now-start)
+
+; Send a unpair request to the battery
+(defun unpair-request () {
+    (esp-now-send batt-addr "(trap (unpair))")
+})
 
 ; When the battery requests, release pairing
 (defun unpair-ack () {
@@ -139,7 +145,16 @@
 
 (defun send-thr-rf (thr)
     (progn
-        (var str (str-from-n (clamp01 thr) "(thr-rx %.2f)"))
+        (var str (str-merge
+            "(thr-rx "
+                (str-from-n (clamp01 thr) "%.2f ") ; Throttle Now
+                (str-from-n (state-get-live 'gear) "%d ") ; Gear
+                (str-from-n (secs-since 0) "%.1f ") ; Uptime
+                (str-from-n (bme-hum) "%.3f ") ; Humidity
+                (str-from-n (bme-temp) "%.3f ") ; Temperature
+                (str-from-n (bme-pres) "%.2f ") ; Pressure
+            ")"
+        ))
 
         ; HACK: Send io-board message to trick esc that the jet is plugged in
         ;(send-code "(can-send-eid (+ 108 (shl 32 8)) '(0 0 0 0 0 0 0 0))")
@@ -183,11 +198,18 @@
                 (set-thr-is-active true)
         })
 
-        (if (eq pairing-state 'paired)
+        (if (eq pairing-state 'paired) {
+            ; Send Throttle
             (if (not (send-thr (if thr-active thr 0)))
                 (setq thr-fail-cnt (+ thr-fail-cnt 1))
             )
-        )
+
+            ; Update state when the Battery (ESC data) times out
+            (if (> (- (systime) battery-rx-timestamp) battery-timeout-ms) {
+                (state-set 'no-data true) ; Display indicator on main view
+                (set-thr-is-active false) ; Lock throttle
+            } (state-set 'no-data false))
+        })
 
         ; Timeout broadcast reception
         (atomic ; Do not allow broadcast-rx-timestamp to change in ESP RX handler while evaluating

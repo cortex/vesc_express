@@ -5,6 +5,9 @@
 
 (def dev-pair-without-jet false) ; Allows the remote to pair with the battery when no jet is connected
 
+(import "lib/sd-card.lisp" 'code-sd-card)
+(read-eval-program code-sd-card)
+
 (import "lib/file-server.lisp" 'code-file-server)
 (read-eval-program code-file-server)
 
@@ -67,13 +70,21 @@
         (sleep 1)
 })
 
-(defun thr-rx (thr) {
-        (setq throttle-rx-timestamp (systime))
-        (def thr-val thr)
-        (def rx-cnt (+ rx-cnt 1))
-        (canset-current-rel 10 thr)
-        (canset-current-rel 11 thr)
-        (rcode-run-noret 10 `{(setq rem-thr ,thr) (setq rem-cnt ,rx-cnt)})
+; TODO: This should be renamed to rx-thr, but I didn't wan't to break
+; backwards-compatibility for now...
+(defun thr-rx (thr gear uptime bme-hum bme-temp bme-pres) {
+    (setq throttle-rx-timestamp (systime))
+    (def thr-val thr)
+    (def rx-cnt (+ rx-cnt 1))
+    (rcode-run-noret 10 `(rx-thr
+        ,thr
+        ,gear
+        ,rx-cnt
+        ,uptime
+        ,bme-hum
+        ,bme-temp
+        ,bme-pres
+    ))
 })
 
 (defun proc-data (src des data rssi) {
@@ -166,7 +177,7 @@
             (notify-unpair {
                 ; Let the remote know we need to release pairing
                 ; NOTE: The remote or a jet connection can change this state
-                (send-code "(unpair-ack)")
+                (send-code "(trap (unpair-ack))")
             })
             (not-paired {
                 (if (or jet-if-timestamp dev-pair-without-jet)

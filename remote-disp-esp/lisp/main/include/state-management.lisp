@@ -50,6 +50,9 @@
     ; Received Signal Strength Indicator
     (cons 'rx-rssi nil)
 
+    ; No Data Indicator
+    (cons 'no-data nil)
+
     ; If the warning vibration once the remote loses connection has been played
     ; yet.
     ; When true, no more vibrations are played.
@@ -203,7 +206,7 @@
         (def pairing-state 'notify-unpair)
         (var retries 10)
         (loopwhile (> retries 0) {
-            (esp-now-send batt-addr "(unpair)")
+            (unpair-request)
             (setq retries (- retries 1))
         })
     })
