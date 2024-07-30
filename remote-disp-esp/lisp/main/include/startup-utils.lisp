@@ -224,3 +224,10 @@
         0x0000ff
     ))
 })
+
+; Update indicator for stale ESC data
+(defun render-data-indicator (no-data) {
+    (sbuf-clear no-data-buf)
+    (if no-data (sbuf-exec img-circle no-data-buf 7 7 (8 1 '(filled))))
+    (sbuf-render no-data-buf '(0x000000 0xff0000))
+})

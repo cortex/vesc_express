@@ -223,9 +223,8 @@
         (render-status-battery soc-remote)
     }))
 
-    (state-with-changed '(is-connected rx-rssi soc-bar-visible) (fn (is-connected rx-rssi soc-bar-visible) {
-        (if soc-bar-visible
-            (render-signal-strength rx-rssi is-connected))
+    (state-with-changed '(soc-bar-visible no-data) (fn (soc-bar-visible no-data) {
+        (render-data-indicator (if soc-bar-visible no-data nil))
     }))
 
     ; (if (not-eq script-start nil) {
