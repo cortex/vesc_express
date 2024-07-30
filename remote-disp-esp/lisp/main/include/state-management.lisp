@@ -50,6 +50,9 @@
     ; Received Signal Strength Indicator
     (cons 'rx-rssi nil)
 
+    ; No Data Indicator
+    (cons 'no-data nil)
+
     ; If the warning vibration once the remote loses connection has been played
     ; yet.
     ; When true, no more vibrations are played.
@@ -197,6 +200,23 @@
 
     (def draw-enabled false)
     (disp-clear)
+
+    ; If paired with a battery, attempt to release pairing
+    (if (eq pairing-state 'paired) {
+        (def pairing-state 'notify-unpair)
+        (var retries 10)
+        (loopwhile (> retries 0) {
+            (unpair-request)
+            (setq retries (- retries 1))
+        })
+    })
+
+    ; Wait for power button to be released from long press
+    (loopwhile btn-up-long-fired {
+        (print "Release power button")
+        (input-tick)
+        (sleep 0.1)
+    })
 
     ; Go to sleep and wake up in 6 hours
     (go-to-sleep (* (* 6 60) 60))

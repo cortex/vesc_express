@@ -1,6 +1,9 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
+(import "lib/config-check.lisp" 'code-config-check)
+(read-eval-program code-config-check)
+
 (start-code-server)
 
 (def buf-can (array-create 8))
@@ -8,7 +11,7 @@
 ; Load cell reading. Updated using code server when available.
 (def grams-load-cell 0.0)
 
-; Remote throttle and rx counters. Updated using code server.
+; Remote throttle and rx counters. Updated by rx-thr.
 (def rem-thr 0.0)
 (def rem-cnt 0.0)
 
@@ -17,6 +20,30 @@
 (def rem-hum 0.0)
 (def rem-temp 0.0)
 (def rem-pres 0.0)
+
+; Check that config is correct, and if so set the motor current.
+; Is the only function you should use for directly setting the thr!
+(defun set-thr-checked (thr) 
+    ; config-correct is set in lib/config-check.lisp
+    (if config-correct (atomic
+        (select-motor 1)
+        (set-current-rel thr)
+        (select-motor 2)
+        (set-current-rel thr)
+        (select-motor 1)
+    ))
+)
+
+; To be called by code server
+(defun rx-thr (thr rx-cnt uptime bme-hum bme-temp bme-pres) {
+    (def rem-thr thr)
+    (def rem-cnt rx-cnt)
+    (def rem-uptime uptime)
+    (def rem-hum bme-hum)
+    (def rem-temp bme-temp)
+    (def rem-pres bme-pres)
+    (set-thr-checked thr)
+})
 
 (select-motor 1)
 
@@ -137,6 +164,14 @@
         ("Rem Hum"                      (* 1.0 rem-hum))
         ("Rem Temp"                     (* 1.0 rem-temp))
         ("Rem Pres"                     (* 1.0 rem-pres))
+        
+        ; Uptime counters
+        ("ESC uptime"                    (secs-since 0))
+        
+        ; Checks
+        ("Motor Config Was Reapplied"    (if config-was-reapplied 1 0))
+        ("Motor Config Ok"               (if config-correct 1 0))
+
 ))
 
 (defun init-logging ()

@@ -5,10 +5,10 @@
 (defun get-view-handlers () (list
     (cons 'main (list
         (cons 'up (if dev-enable-connection-dbg-menu cycle-main-dbg-menu))
-        (cons 'up-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
+        (cons 'up-long enter-sleep)
 
         (cons 'down try-activate-thr)
-        (cons 'down-long enter-sleep)
+        (cons 'down-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
 
         (cons 'left decrease-gear)
         (cons 'right increase-gear)
@@ -22,15 +22,16 @@
 
     (cons 'board-info (list
         (cons 'up nil)
+        (cons 'up-long enter-sleep)
         (cons 'down nil)
-        (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
     ))
 
     (cons 'thr-activation (list
+        (cons 'up nil)
+        (cons 'up-long enter-sleep)
         (cons 'down try-activate-thr)
-        (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
         ; (cons 'left try-activate-thr)
@@ -53,8 +54,9 @@
     ))
 
     (cons 'charging (list
+        (cons 'up nil)
+        (cons 'up-long enter-sleep)
         (cons 'down nil)
-        (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
@@ -62,8 +64,8 @@
 
     (cons 'low-battery (list
         (cons 'up nil)
+        (cons 'up-long enter-sleep)
         (cons 'down nil)
-        (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
@@ -71,8 +73,8 @@
 
     (cons 'warning (list
         (cons 'up nil)
+        (cons 'up-long enter-sleep)
         (cons 'down nil)
-        (cons 'down-long enter-sleep)
         (cons 'left nil)
         (cons 'right nil)
         ; (cons 'left-long enter-sleep)
@@ -80,18 +82,16 @@
 
     (cons 'firmware (list
         (cons 'up nil)
+        (cons 'up-long nil)
         (cons 'down nil)
-        (cons 'down-long nil)
         (cons 'left nil)
         (cons 'right nil)
     ))
 
     (cons 'conn-lost (list
         (cons 'up (fn () {(leave-view-disconnected)}))
+        (cons 'up-long enter-sleep)
         (cons 'down (fn () {(leave-view-disconnected)}))
-
-        (cons 'down-long enter-sleep)
-
         (cons 'left (fn () {(leave-view-disconnected)}))
         (cons 'right (fn () {(leave-view-disconnected)}))
     ))

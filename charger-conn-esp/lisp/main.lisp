@@ -280,7 +280,7 @@
                 (setq fault-now-txt "FLT OT Conn2")
         })
 
-        (if (> i-out 75.0) { ; Overcurrent
+        (if (> i-out-flt 65.0) { ; Overcurrent
                 (setq fault-now true)
                 (setq fault-now-txt "FLT OC")
         })
@@ -453,10 +453,12 @@
         )
         ; Long press
 
-        (if  (= bt2 10) {
-        (print "run tests")
-               (setq pwr-sel 8)
-               (run-tests)
+        (if  (= bt2 100) {
+                (if mode-test? {
+                        (print "run tests")
+                        (setq pwr-sel 8)
+                        (run-tests)
+                })
         })
 
         (sleep 0.015)

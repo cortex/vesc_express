@@ -247,35 +247,7 @@
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 188 (+ 20 display-y-offset) 30 16))
-(def small-rssi-buf (create-sbuf 'indexed4 30 (+ 20 display-y-offset) 24 16))
-
-; Renders the signal strength at the top of the screen
-(defun render-signal-strength (rssi is-visible) {
-    (sbuf-clear small-rssi-buf)
-
-    (if (and is-visible (not-eq rssi nil) ) {
-        (var signal-bars 0)
-        (cond
-            ((> rssi -60) (setq signal-bars 4))
-            ((> rssi -70) (setq signal-bars 3))
-            ((> rssi -80) (setq signal-bars 2))
-            ((> rssi -90) (setq signal-bars 1))
-        )
-
-        (sbuf-exec img-rectangle small-rssi-buf 4 13 (2 3 1 '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 8 10 (2 6 (if (> signal-bars 0) 1 2) '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 12 7 (2 9 (if (> signal-bars 1) 1 2)  '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 16 4 (2 12 (if (> signal-bars 2) 1 2)  '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 20 1 (2 15 (if (> signal-bars 3) 1 2)  '(filled)))
-    })
-
-    (sbuf-render small-rssi-buf (list
-        col-black
-        col-white
-        0x363636
-        0x0
-    ))
-})
+(def no-data-buf (create-sbuf 'indexed2 22 (+ 20 display-y-offset) 16 16))
 
 ; Communication
 (def m-connection-tick-ms 0.0)

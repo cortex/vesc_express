@@ -30,8 +30,8 @@
 #define HW_DEFAULT_ID				40
 
 // CAN
-#define CAN_TX_GPIO_NUM				2
-#define CAN_RX_GPIO_NUM				3
+#define CAN_TX_GPIO_NUM				5
+#define CAN_RX_GPIO_NUM				10
 
 // BME280
 #define BME280_SDA					6

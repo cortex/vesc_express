@@ -25,32 +25,55 @@
 
 
 (defun pick-values (row)
-    (let ((d (ix row 0)) (m (ix row 1)))
+    (let (
+        (d (ix row 0))
+        (m (ix row 1))
+    ) (list
+        (to-float d)
         (list
-            (to-float d) (list
-                (ix m 0)
-                (ix m 1)
-                (ix m 2)
-                (ix m 3)
-                (ix m 4)
-                (ix m 5)
-            )
-)))
+            (ix m 0)
+            (ix m 1)
+            (ix m 2)
+            (ix m 3)
+            (ix m 4)
+            (ix m 5)
+        )
+    ))
+)
 
-(defun calibrate () {
+(defun calibrate (range-mm) {
     (puts "\n")
-    (puts "Started calibration...")
-    (define values (map calibrate-value (iota 14)))
+    (setq range-mm (to-i (floor range-mm)))
+    (puts (str-merge "Started calibration for " (str-from-n range-mm) " mm throttle..."))
+    (def values (map calibrate-value (iota (+ range-mm 1))))
+    ; Code expects the range to be 0-14 mm, so we rescale the data to fit.
+    ; Yes this is kind of ugly, should probably change this in the remote code
+    ; later.
+    (var virtual-range-mm 14)
+    (var virtual-steps (map
+        (fn (x) (* x (/ (to-float virtual-range-mm) (to-float range-mm))))
+        (iota (+ range-mm 1))
+    ))
+    (var rescaled-values (zipwith (fn (virtual-len-mm row) 
+        (list virtual-len-mm (ix row 1))
+    )
+        virtual-steps
+        values
+    ))
     
     (puts "\n")
     (puts (str-merge "(" (to-str (get-mac-addr)) " '("))
-    (map (fn (x) (puts (str-merge "    " (to-str x)))) (map pick-values values))
+    (map (fn (x) (puts (str-merge "    " (to-str x)))) (map pick-values rescaled-values))
     (puts "))")
     
     (puts "\n")
     (puts "Add this to the samples list in main/include/input.lisp")
     (puts "\n")
-    (puts "Run (calibrate) to redo the calibration procedure")
+    (puts (str-merge
+        "Run (set-len "
+        (str-from-n range-mm)
+        ") to redo the calibration procedure"
+    ))
 })
 
 
@@ -94,4 +117,8 @@
             (sleep 0.2)
 }))
 
-(calibrate)
+(defun with-len (len-mm) {
+    (calibrate len-mm)
+})
+
+(puts "Note how long you can depress the throttle in mm and run (with-len x) to start")
