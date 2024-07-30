@@ -160,13 +160,13 @@
         ("Rem Cnt"                       (* 1.0 rem-cnt))
 
         ; Remote sensors
-        ("Rem Uptime"                   (* 1.0 rem-uptime))
-        ("Rem Hum"                      (* 1.0 rem-hum))
-        ("Rem Temp"                     (* 1.0 rem-temp))
-        ("Rem Pres"                     (* 1.0 rem-pres))
+        ("Rem Uptime" "s"                (* 1.0 rem-uptime))
+        ("Rem Hum" "%"                   (* 1.0 rem-hum))
+        ("Rem Temp" "degC"               (* 1.0 rem-temp))
+        ("Rem Pres"                      (* 1.0 rem-pres))
         
         ; Uptime counters
-        ("ESC uptime"                    (secs-since 0))
+        ("ESC uptime" "s"                (secs-since 0))
         
         ; Checks
         ("Motor Config Was Reapplied"    (if config-was-reapplied 1 0))
