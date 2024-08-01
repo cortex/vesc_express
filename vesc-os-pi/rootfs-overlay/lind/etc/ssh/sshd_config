@@ -1,0 +1,2 @@
+# Permit root login
+PermitRootLogin yes
