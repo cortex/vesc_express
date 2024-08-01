@@ -352,12 +352,25 @@ Item {
         } else {
             lockInstallDevice(device)
             logToConsoles("Flashing STM32 Device: " + deviceName)
-            // TODO: This ^
-            syscmd.executeCommand("ls /dev/tty*")
-            syscmd.executeCommand("openocd")
-            syscmd.executeCommand("gpiodetect")
-            syscmd.executeCommand("gpioinfo")
-            syscmd.executeCommand("openocd -f /Firmware/openocd-pi-stm32.cfg -c \"program /Firmware/" + deviceName + "/firmware.elf verify reset exit\"")
+
+            var configFile = ""
+
+            if (deviceName == "bat-ant-stm") {
+                // TODO: test bat-ant-stm STM32G431
+                configFile = "/Firmware/openocd-pi-stm32g4.cfg"
+            } else if (deviceName == "bat-bms-stm") {
+                // TODO: test bat-bms-stm STM32L4
+                configFile = "/Firmware/openocd-pi-stm32l4.cfg"
+            } else if (deviceName == "bat-esc-stm") {
+                configFile = "/Firmware/openocd-pi-stm32f4.cfg"
+            } else {
+                logToConsoles("Error: Invalid STM Device")
+            }
+            syscmd.executeCommand("openocd -f " +  configFile + " -c \"init; reset init; flash write_image erase /Firmware/" + deviceName + "/firmware.bin 0x08000000; verify_image /Firmware/" + deviceName + "/firmware.bin 0x08000000; reset run; shutdown\"")
+
+            // TODO: Check if successful?
+            logToConsoles("Flash Operation Complete")
+
             unlockInstallDevice()
         }
     }
