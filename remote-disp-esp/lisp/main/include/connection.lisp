@@ -187,7 +187,7 @@
             (enter-sleep)
         })
 
-        (if (and (> (secs-since last-input-time) 30.0) (not dev-disable-inactivity-check)) {
+        (if (and (> (secs-since last-input-time) 10.0) (not dev-disable-inactivity-check)) {
                 (set-thr-is-active false)
         })
         (if (and (not is-connected) (not dev-disable-connection-check))
