@@ -112,18 +112,12 @@
                 `(-h ,fun-id ,@args)
             ))
         )
+        ((? other) {
+            (puts "Received invalid run message:")
+            (print other)
+        })
     )
 })))
-
-
-(loopwhile-thd 100 t {
-    (recv
-        ((? msg) (if (ix msg 3)
-            (rcode-run-noret (ix msg 1) (ix msg 2))
-            (send (ix msg 0) (rcode-run (ix msg 1) 0.5 (ix msg 2)))
-        ))
-    )
-})
 
 ; Use this as an sid event handler on each device that needs to be receive
 ; events.
