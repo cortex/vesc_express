@@ -51,7 +51,8 @@
 (def log-running nil)
 
 (def jet-if-timeout 3.0) ; Timeout in seconds
-(def jet-if-timestamp nil) ; Track when jet-if-esp is connected
+(def jet-if-timestamp nil) ; Updated each time a ping is received from jet-if-esp
+(def jet-if-connected false) ; Track when jet-if-esp is connected
 
 (def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
 
@@ -117,7 +118,7 @@
     (if (not-eq des broadcast-addr)
         {
             (if (eq pairing-state 'not-paired) {
-                (print "Pairing with remote")
+                (print "Paired with remote")
                 (def remote-addr src)
                 (esp-now-add-peer src)
                 (def pairing-state 'paired)
@@ -158,22 +159,27 @@
         ; Watch Jet timestamp for Timeout/Disconnect event
         (if jet-if-timestamp
             (if (> (secs-since jet-if-timestamp) jet-if-timeout) {
-                (print "Jet Disconnected")
+                (puts "Jet Disconnected")
                 (def jet-if-timestamp nil)
+                (def jet-if-connected false)
                 (if (eq pairing-state 'paired) {
                     (print "Notify remote it's time to release pairing")
                     (def pairing-state 'notify-unpair)
                 })
             } {
+                (if (not jet-if-connected) {
+                    (puts "Jet Connected")
+                    (def jet-if-connected true)
+                })
                 (if (eq pairing-state 'notify-unpair) {
-                    (print "Jet connected while unpairing from remote")
+                    (puts "Jet connected while unpairing from remote")
                     ; Jet connected while we were busy notifying remote to unpair
                     (def remote-addr broadcast-addr) ; Clear Remote Address
                     (def pairing-state 'not-paired) ; Update State
                 })
             })
             (if (eq pairing-state 'paired) {
-                (print "Releasing pairing while jet is disconnected")
+                (puts "Releasing pairing while jet is disconnected")
                 (def pairing-state 'not-paired)
             })
         )
