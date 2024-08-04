@@ -194,15 +194,6 @@ out
 (ble-attr-set-str registration-service '(remote)  serial-number-remote)
 (ble-attr-set-str registration-service '(board)   serial-number-board)
 
-(defun event-handler (){
-        (print "Setting up bluetooth event handler")
-        (loopwhile t
-            (recv
-                ((event-ble-rx (? handle) (? data)) (proc-ble-data handle data))
-                (_ nil) ; Ignore other events
-        ))
-})
-
 (defun handle-registration (data) {
     (print (str-merge "registered with id" data))
     (nv-update 'registration-id data)

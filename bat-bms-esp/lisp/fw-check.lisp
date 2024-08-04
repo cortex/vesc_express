@@ -3,6 +3,7 @@
 
 @const-start
 
+; TODO: Update remaining uses of rcode-run to instead use the new can-messages.lisp system.
 
 ; firmwareInstallationProgress
 ; {
@@ -101,7 +102,7 @@
 
     (if success {
         ; Update nv-data
-        (if (eq 'timeout (rcode-run 31 2 `(nv-set 'fw-id-battery ,(nv-get 'fw-id-battery-downloaded))))
+        (if (eq 'timeout (can-run id-bat-ant-esp 2 fun-nv-set 'fw-id-battery (nv-get 'fw-id-battery-downloaded)))
             (print "Timeout setting nv-data during fw-install-result")
         )
         (nv-update 'fw-install-ready false)

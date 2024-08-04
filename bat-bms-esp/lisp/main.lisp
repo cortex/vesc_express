@@ -11,13 +11,17 @@
 (import "lib/utils.lisp" 'utils)
 (read-eval-program utils)
 
-(import "display.lisp" 'display)
-(read-eval-program display)
-
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
-(start-code-server) ; To receive firmware related information
+(import "../../shared/lib/can-messages.lisp" 'code-can-messages)
+(read-eval-program code-can-messages)
+
+(import "lib/events.lisp" 'code-events)
+(read-eval-program code-events)
+
+(import "display.lisp" 'display)
+(read-eval-program display)
 
 (import "lib/file-server.lisp" 'code-file-server)
 (read-eval-program code-file-server)
@@ -41,3 +45,16 @@
 
 (import "status.lisp" 'status)
 (read-eval-program status)
+
+(defun event-handler () {
+    (loopwhile t
+        (recv
+            ((event-ble-rx (? handle) (? data)) (proc-ble-data handle data))
+            ((event-can-sid . ((? id) . (? data))) (can-event-proc-sid id data))
+            (_ nil) ; Ignore other events
+        )
+    )
+})
+(event-register-handler (spawn event-handler))
+(event-enable 'event-ble-rx)
+(event-enable 'event-can-sid)
