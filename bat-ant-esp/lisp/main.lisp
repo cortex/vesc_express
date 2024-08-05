@@ -83,6 +83,7 @@
     (setq throttle-rx-timestamp (systime))
     (def thr-val thr)
     (def rx-cnt (+ rx-cnt 1))
+    (gc)
     (can-run-noret id-bat-esc-stm fun-remote-data
         thr
         gear
