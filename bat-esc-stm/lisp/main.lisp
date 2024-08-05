@@ -271,3 +271,15 @@
 (can-event-register-handler event-log-stop (fn () {
     (stop-logging)
 }))
+
+(defun event-handler ()
+    (loopwhile t
+        (recv
+            ((event-can-sid . ((? id) . (? data))) (can-event-proc-sid id data))
+            (_ nil)
+        )
+    )
+)
+
+(event-register-handler (spawn event-handler))
+(event-enable 'event-can-sid)

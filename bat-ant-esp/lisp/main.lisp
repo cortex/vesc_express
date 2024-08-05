@@ -211,5 +211,3 @@
 
 (spawn connection-monitor)
 (spawn fw-update-processor)
-
-; (start-code-server) ; to receive from bat-bms-esp and jet-if-esp
