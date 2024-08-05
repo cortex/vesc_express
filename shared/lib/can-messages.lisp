@@ -84,7 +84,7 @@
 @const-start
 
 (defun can-fun-register-handler (fun-id handler) {
-    (setq event-handlers
+    (setq fun-handlers
         (acons fun-id handler fun-handlers)
     )
 })
