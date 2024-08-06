@@ -32,15 +32,12 @@
             (def main-right-held-last-time (systime))
         )
     })
-    
-    (state-with-changed '(thr-active thr-input left-pressed right-pressed) (fn (thr-active thr-input left-pressed right-pressed) {
+
+    ; Display throttle activation when throttle is pressed and not activated
+    (state-with-changed '(thr-active thr-input) (fn (thr-active thr-input) {
         (if (and
             (not thr-active)
-            (or
-                left-pressed
-                right-pressed
-                (is-thr-pressed thr-input)
-            )
+            (is-thr-pressed thr-input)
         )
             (activate-thr-reminder)
         )
@@ -76,10 +73,20 @@
             (state-set-current 'thr-activation-state 'reminder)
         })
     }))
-    
+
+    ; Require down button to be held during throttle unlock
+    (if (and
+        (eq (state-get 'thr-activation-state) 'countdown)
+        (not (state-get 'down-pressed))
+    ) {
+        (print "Hold down button to unlock throttle")
+        (state-set 'thr-activation-state 'reminder)
+        (state-set-current 'thr-requested false)
+    })
+
     (var secs (secs-since thr-countdown-start))
     (state-set-current 'thr-countdown-secs secs)
-    
+
     (if (and
         (eq (state-get 'thr-activation-state) 'countdown)
         (>= secs thr-countdown-len-secs)

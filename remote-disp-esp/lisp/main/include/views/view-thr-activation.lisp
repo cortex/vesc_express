@@ -27,6 +27,11 @@
         (sbuf-clear view-graphic-buf)
         (sbuf-exec img-circle view-graphic-buf 70 70 (70 2 '(filled)))
 
+        (if (eq thr-activation-state 'reminder) {
+            (sbuf-clear view-bg-buf-l)
+            (sbuf-clear view-bg-buf-r)
+        })
+
         (if (eq thr-activation-state 'release-warning)
         {
             ; White Circle

@@ -225,10 +225,8 @@
         })
     })
 
+    ; Update last-input-time with throttle or attempt to unlock
     (if (or
-        new-left
-        new-right
-        new-up
         new-down
         (is-thr-pressed thr-input)
     ) {
@@ -272,6 +270,13 @@
     (if (= btn-right 1)
         (def btn-right-start (systime))
     )
+
+    ; repeat presses fire until released
+    ; TODO: Implement up, left, right repeat press when necessary
+    (if (and (>= btn-down input-debounce-count) (>= (secs-since btn-down-start) 0.25)) {
+        (state-set 'down-pressed true)
+        (maybe-call (on-down-repeat-press))
+    })
 
     ; long presses fire as soon as possible and not on release
     (if (and (>= btn-up input-debounce-count) (>= (secs-since btn-up-start) 1.0) (not btn-up-long-fired)) {

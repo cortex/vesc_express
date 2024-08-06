@@ -302,8 +302,8 @@
     ; End Angle of Throttle Input
     (def arc-end-throttle (+
         arc-start-angle
-        (* arc-min-deg thr-input)
-        (* arc-degrees (* thr-input gear-pct))))
+        (* arc-min-deg main-thr-input)
+        (* arc-degrees (* main-thr-input gear-pct))))
 
     ; Arc Inner BG
     (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-inner-rad arc-start-angle 450 color-arc-inner-bg '(thickness 24)))
