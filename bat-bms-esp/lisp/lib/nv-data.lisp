@@ -18,7 +18,7 @@
 )
 
 (defun nv-update (key value) {
-    (match (can-run id-bat-ant-esp 2 fun-nv-set-save (flatten (list key value)))
+    (match (can-run id-bat-ant-esp 2 (fun-nv-set-save (flatten (list key value))))
         (timeout (print "Error: Timeout updating nv-data"))
         (eerror (print "EERROR updating nv-data"))
         (_  (nv-data-load)) ; No problems, load nv-data
@@ -26,7 +26,7 @@
 })
 
 (defunret nv-data-load () {
-    (var new-data (can-run id-bat-ant-esp 2 fun-nv-load-data))
+    (var new-data (can-run id-bat-ant-esp 2 (fun-nv-load-data)))
     (match new-data
         (timeout {
             (print "Error loading nv-data due to timeout")

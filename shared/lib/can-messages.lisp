@@ -50,27 +50,27 @@
     (can-send-sid event-id data)
 })
 
-; signature: (can-run device timeout fun-id ...args)
+; signature: (can-run device timeout (fun-id ...args))
 ; Run function on the specified device.
 ; Returns
 ; - The result of calling the function if successfull
 ; - 'timeout if the function did not respond in the specified timeout time.
 ; - 'unknown if the device did not have a registered handler for that function.
-(defun can-run (device timeout fun-id) {
+(def can-run (macro (device timeout fun-expr) `{
     (send can-run-thd-id (list
-        (this) device fun-id timeout (rest-args)
+        (this) ,device ,timeout ,(first fun-expr) ,(rest fun-expr)
     ))
     (recv
         ((? result) result)
     )
-})
+}))
 
-; signature: (can-run device fun-id ...args)
-(defun can-run-noret (device fun-id)
+; signature: (can-run device (fun-id ...args))
+(def can-run-noret (macro (device fun-expr) `{    
     (send can-run-thd-id (list
-        device fun-id (rest-args)
+        ,device ,(first fun-expr) ,(rest fun-expr)
     ))
-)
+}))
 
 @const-end
 ;;; Device specific state.
@@ -102,15 +102,17 @@
 (defun can-start-run-thd () (def can-run-thd-id (loopwhile-thd 100 t {
     ; timeout should be nil for no-ret.
     (recv
+        ; from can-run
+        (((? call-id) (? device-id) (? timeout) (? fun-id) (? args))
+            (send call-id (rcode-run device-id timeout
+                `(-h ,fun-id ,@args)
+            ))
+        )
+        ; from can-run-noret
         (((? device-id) (? fun-id) (? args))
             (rcode-run-noret device-id
                 `(-h ,fun-id ,@args)
             )
-        )
-        (((? call-id) (? device-id) (? fun-id) (? timeout) (? args))
-            (send call-id (rcode-run device-id timeout
-                `(-h ,fun-id ,@args)
-            ))
         )
         ((? other) {
             (puts "Received invalid run message:")

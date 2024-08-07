@@ -83,7 +83,7 @@
     (setq throttle-rx-timestamp (systime))
     (def thr-val thr)
     (def rx-cnt (+ rx-cnt 1))
-    (can-run-noret id-bat-esc-stm fun-remote-data
+    (can-run-noret id-bat-esc-stm (fun-remote-data
         thr
         gear
         rx-cnt
@@ -91,7 +91,7 @@
         bme-hum
         bme-temp
         bme-pres
-    )
+    ))
 })
 
 (can-event-register-handler event-jet-ping (fn () {
@@ -132,7 +132,7 @@
 
             ; Load cell grams
             (if (eq (ix br-data 0) 'lc-grams) {
-                (can-run-noret id-bat-esc-stm fun-set-grams-load-cell (ix br-data 1))
+                (can-run-noret id-bat-esc-stm (fun-set-grams-load-cell (ix br-data 1)))
             })
         }
     )

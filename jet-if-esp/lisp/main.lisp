@@ -21,9 +21,9 @@
 
 (loopwhile t {
     ; Send serial number to BMS
-    (can-run-noret id-bat-bms-esp fun-set-jet-serial-number
+    (can-run-noret id-bat-bms-esp (fun-set-jet-serial-number
        serial-number-jet
-    )
+    ))
 
     ; Update connected timestamp on BMS and Antenna
     (can-broadcast-event event-jet-ping)
