@@ -30,16 +30,71 @@
 #include "commands.h"
 #include "utils.h"
 
+#include <stdbool.h>
+
 // Private variables
+#define SAMPLE_COUNT 40
 static float temp_filtered[3] = {0.0, 0.0, 0.0};
+static float temp_samples[3][SAMPLE_COUNT] = {0};
+static size_t temp_samples_next_index[3] = {0, 0, 0};
+
+// Checks if the sample rank is between (0.25 to 0.75) * SAMPLE_COUNT.
+// "Rank" is the index it would have if the array was sorted.
+static bool is_sample_rank_q2_or_q3(float samples[SAMPLE_COUNT], float sample) {
+    static const size_t samples_above_q2 = ((SAMPLE_COUNT / 4) * 3);
+    static const size_t samples_below_q3 = samples_above_q2;
+
+    uint32_t count_above = 0;
+    uint32_t count_below = 0;
+    for (size_t i = 0; i < SAMPLE_COUNT; i++) {
+        // Note that we don't count equal samples
+        if (samples[i] > sample) {
+            count_above += 1;
+        }
+        if (samples[i] < sample) {
+            count_below += 1;
+        }
+    }
+
+    if (count_above >= samples_above_q2) {
+        // We are in q1
+        return false;
+    }
+    if (count_below >= samples_below_q3) {
+        // We are in q4
+        return false;
+    }
+
+    // We are in q2 or q3
+    return true;
+}
+
+static void handle_sensor_sample(uint32_t sensor_index) {
+    static const int adc_channels[3] = {HW_ADC_CH0, HW_ADC_CH1, HW_ADC_CH2};
+
+    float current_sample = NTC_TEMP(NTC_RES(adc_channels[sensor_index]));
+
+    size_t next_index = temp_samples_next_index[sensor_index]++;
+    temp_samples[sensor_index][next_index] = current_sample;
+    if (next_index >= SAMPLE_COUNT) {
+        temp_samples_next_index[sensor_index] = 0;
+    }
+
+	// We only update with the sample if the samples amplitude is within 25-75%
+	// of the last SAMPLE_COUNT samples.
+    if (is_sample_rank_q2_or_q3(temp_samples[sensor_index], current_sample)) {
+        UTILS_LP_FAST(temp_filtered[sensor_index], current_sample, 0.0003);
+    }
+}
 
 static void temp_task(void *arg) {
-	for(;;) {
-		UTILS_LP_FAST(temp_filtered[0], NTC_TEMP(NTC_RES(HW_ADC_CH0)), 0.0003);
-		UTILS_LP_FAST(temp_filtered[1], NTC_TEMP(NTC_RES(HW_ADC_CH1)), 0.0003);
-		UTILS_LP_FAST(temp_filtered[2], NTC_TEMP(NTC_RES(HW_ADC_CH2)), 0.0003);
-		vTaskDelay(1);
-	}
+    for (;;) {
+		handle_sensor_sample(0);
+		handle_sensor_sample(1);
+		handle_sensor_sample(2);
+
+        vTaskDelay(1);
+    }
 }
 
 static lbm_value ext_bme_hum(lbm_value *args, lbm_uint argn) {
