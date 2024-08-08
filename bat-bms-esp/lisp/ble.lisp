@@ -199,9 +199,6 @@ out
     (nv-update 'registration-id data)
 })
 
-(event-register-handler (spawn event-handler))
-(event-enable 'event-ble-rx)
-
 (defun set-wifi-status (status) {
         (var buf (bufcreate 1))
         (bufset-u8 buf 0 (wifi-status-code status))
