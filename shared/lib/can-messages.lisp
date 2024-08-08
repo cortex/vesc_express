@@ -58,7 +58,7 @@
 ; - 'unknown if the device did not have a registered handler for that function.
 (def can-run (macro (device timeout fun-expr) `{
     (send can-run-thd-id (list
-        (this) ,device ,timeout ,(first fun-expr) ,(rest fun-expr)
+        (this) ,device ,timeout ,(first fun-expr) ,(cons list (rest fun-expr))
     ))
     (recv
         ((? result) result)
@@ -68,7 +68,7 @@
 ; signature: (can-run device (fun-id ...args))
 (def can-run-noret (macro (device fun-expr) `{    
     (send can-run-thd-id (list
-        ,device ,(first fun-expr) ,(rest fun-expr)
+        ,device ,(first fun-expr) ,(cons list (rest fun-expr))
     ))
 }))
 
