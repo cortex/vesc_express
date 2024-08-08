@@ -17,6 +17,8 @@
 (import "../../shared/lib/can-messages.lisp" 'code-can-messages)
 (read-eval-program code-can-messages)
 
+(can-start-run-thd)
+
 (import "lib/events.lisp" 'code-events)
 (read-eval-program code-events)
 
