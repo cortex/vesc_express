@@ -11,7 +11,6 @@
 (read-eval-program code-can-messages)
 
 (can-start-run-thd)
-@const-end
 
 (import "lib/sd-card.lisp" 'code-sd-card)
 (read-eval-program code-sd-card)

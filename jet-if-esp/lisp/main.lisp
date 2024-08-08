@@ -6,8 +6,6 @@
 (import "../../shared/lib/can-messages.lisp" 'code-can-messages)
 (read-eval-program code-can-messages)
 
-@const-end
-
 (can-start-run-thd)
 
 (defun hex-mac-addr ()
