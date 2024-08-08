@@ -13,7 +13,7 @@
 })
 
 (defun url-scheme (url){
-    (str-part url 0 (buf-find url "://"))
+    (str-part url 0 (str-find url "://"))
 })
 
 (defun url-port (url) {
@@ -23,4 +23,4 @@
     (if (eq port nil) (if (eq scheme "https") 443 80) port)
 })
 
-(defun url-path (url) (str-part url (buf-find url "/" 2)))
+(defun url-path (url) (str-part url (str-find url "/" 2)))
