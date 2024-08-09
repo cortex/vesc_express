@@ -1,9 +1,16 @@
 (loopwhile (not (main-init-done)) (sleep 0.1))
 
+
+(def dev-pair-without-jet false) ; Allows the remote to pair with the battery when no jet is connected
+
+
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
-(def dev-pair-without-jet false) ; Allows the remote to pair with the battery when no jet is connected
+(import "../../shared/lib/can-messages.lisp" 'code-can-messages)
+(read-eval-program code-can-messages)
+
+(can-start-run-thd)
 
 (import "lib/sd-card.lisp" 'code-sd-card)
 (read-eval-program code-sd-card)
@@ -43,7 +50,8 @@
 (def log-running nil)
 
 (def jet-if-timeout 3.0) ; Timeout in seconds
-(def jet-if-timestamp nil) ; Track when jet-if-esp is connected
+(def jet-if-timestamp nil) ; Updated each time a ping is received from jet-if-esp
+(def jet-if-connected false) ; Track when jet-if-esp is connected
 
 (def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
 
@@ -58,41 +66,58 @@
             (if (> (secs-since throttle-rx-timestamp) 5.0) {
                     (print "Stopping logging")
                     (setq log-running nil)
-                    (rcode-run-noret 10 '(stop-logging))
-                    (rcode-run-noret 10 '(stop-logging))
+                    (can-broadcast-event event-log-stop)
             })
             (if (< (secs-since throttle-rx-timestamp) 1.0) {
                     (print "Starting logging")
-                    (rcode-run-noret 10 '(start-logging))
+                    (can-broadcast-event event-log-start)
                     (setq log-running t)
             })
         )
         (sleep 1)
 })
 
-; TODO: This should be renamed to rx-thr, but I didn't wan't to break
-; backwards-compatibility for now...
+; Called via code sent by remote
 (defun thr-rx (thr gear uptime bme-hum bme-temp bme-pres) {
     (setq throttle-rx-timestamp (systime))
     (def thr-val thr)
     (def rx-cnt (+ rx-cnt 1))
-    (rcode-run-noret 10 `(rx-thr
-        ,thr
-        ,gear
-        ,rx-cnt
-        ,uptime
-        ,bme-hum
-        ,bme-temp
-        ,bme-pres
+    (can-run-noret id-bat-esc-stm (fun-remote-data
+        thr
+        gear
+        rx-cnt
+        uptime
+        bme-hum
+        bme-temp
+        bme-pres
     ))
 })
+
+(can-event-register-handler event-jet-ping (fn () {
+    (def jet-if-timestamp (systime))
+}))
+
+(can-event-register-handler event-bms-data (fn (data) {
+    (var soc-bms (/ (bufget-i16 data 0) 1000.0))
+    (var duty (/ (bufget-i16 data 2) 1000.0))
+    (var kmh (/ (bufget-i16 data 4) 10.0))
+    (var kw (/ (bufget-i16 data 6) 100.0))
+    (def rx-cnt-can (+ rx-cnt-can 1))
+    ; Send CAN data only when paired and not performing a firmware update
+    (if (and (eq pairing-state 'paired) (not fw-update-install)) {
+        (send-code (str-from-n soc-bms "(def soc-bms %.3f)"))
+        (send-code (str-from-n duty "(def duty %.3f)"))
+        (send-code (str-from-n kmh "(def kmh %.2f)"))
+        (send-code (str-from-n kw "(def motor-kw %.3f)"))
+    })
+}))
 
 (defun proc-data (src des data rssi) {
     ; Ignore broadcast, only handle data sent directly to us
     (if (not-eq des broadcast-addr)
         {
             (if (eq pairing-state 'not-paired) {
-                (print "Pairing with remote")
+                (print "Paired with remote")
                 (def remote-addr src)
                 (esp-now-add-peer src)
                 (def pairing-state 'paired)
@@ -106,29 +131,10 @@
 
             ; Load cell grams
             (if (eq (ix br-data 0) 'lc-grams) {
-                    (rcode-run-noret 10 `(setq grams-load-cell ,(ix br-data 1)))
+                (can-run-noret id-bat-esc-stm (fun-set-grams-load-cell (ix br-data 1)))
             })
         }
     )
-    (free data)
-})
-
-(defun proc-sid (id data) {
-    (if (= id 20) {
-        (var soc-bms (/ (bufget-i16 data 0) 1000.0))
-        (var duty (/ (bufget-i16 data 2) 1000.0))
-        (var kmh (/ (bufget-i16 data 4) 10.0))
-        (var kw (/ (bufget-i16 data 6) 100.0))
-        (def rx-cnt-can (+ rx-cnt-can 1))
-        ; Send CAN data only when paired and not performing a firmware update
-        (if (and (eq pairing-state 'paired) (not fw-update-install)) {
-            (send-code (str-from-n soc-bms "(def soc-bms %.3f)"))
-            (send-code (str-from-n duty "(def duty %.3f)"))
-            (send-code (str-from-n kmh "(def kmh %.2f)"))
-            (send-code (str-from-n kw "(def motor-kw %.3f)"))
-        })
-    })
-
     (free data)
 })
 
@@ -136,9 +142,11 @@
     (loopwhile t
         (recv
             ((event-esp-now-rx (? src) (? des) (? data) (? rssi)) (proc-data src des data rssi))
-            ((event-can-sid . ((? id) . (? data))) (proc-sid id data))
+            ((event-can-sid . ((? id) . (? data))) (can-event-proc-sid id data))
             (_ nil)
-)))
+        )
+    )
+)
 
 (defun connection-monitor () {
     (loopwhile t {
@@ -150,22 +158,27 @@
         ; Watch Jet timestamp for Timeout/Disconnect event
         (if jet-if-timestamp
             (if (> (secs-since jet-if-timestamp) jet-if-timeout) {
-                (print "Jet Disconnected")
+                (puts "Jet Disconnected")
                 (def jet-if-timestamp nil)
+                (def jet-if-connected false)
                 (if (eq pairing-state 'paired) {
                     (print "Notify remote it's time to release pairing")
                     (def pairing-state 'notify-unpair)
                 })
             } {
+                (if (not jet-if-connected) {
+                    (puts "Jet Connected")
+                    (def jet-if-connected true)
+                })
                 (if (eq pairing-state 'notify-unpair) {
-                    (print "Jet connected while unpairing from remote")
+                    (puts "Jet connected while unpairing from remote")
                     ; Jet connected while we were busy notifying remote to unpair
                     (def remote-addr broadcast-addr) ; Clear Remote Address
                     (def pairing-state 'not-paired) ; Update State
                 })
             })
             (if (eq pairing-state 'paired) {
-                (print "Releasing pairing while jet is disconnected")
+                (puts "Releasing pairing while jet is disconnected")
                 (def pairing-state 'not-paired)
             })
         )
@@ -197,5 +210,3 @@
 
 (spawn connection-monitor)
 (spawn fw-update-processor)
-
-(start-code-server) ; to receive from bat-bms-esp and jet-if-esp

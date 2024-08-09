@@ -15,6 +15,8 @@
 ; TODO: When lisp updates on self (lbm-run 1) will reset
 ;       the device before reporting update-results
 
+; TODO: Update uses of rcode-run to instead use the new can-messages.lisp system 
+
 ; NOTE: Useful information when performing updates:
 ;
 ; update fw-vesc before fw-lisp on same device

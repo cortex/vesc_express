@@ -1,10 +1,13 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
+(import "../../shared/lib/can-messages.lisp" 'code-can-messages)
+(read-eval-program code-can-messages)
+
 (import "lib/config-check.lisp" 'code-config-check)
 (read-eval-program code-config-check)
 
-(start-code-server)
+; (can-start-run-thd) ; TODO: necessary?
 
 (def buf-can (array-create 8))
 
@@ -33,17 +36,24 @@
     ))
 )
 
-; To be called by code server
-(defun rx-thr (thr gear rx-cnt uptime bme-hum bme-temp bme-pres) {
-    (def rem-thr thr)
-    (def rem-gear gear)
-    (def rem-cnt rx-cnt)
-    (def rem-uptime uptime)
-    (def rem-hum bme-hum)
-    (def rem-temp bme-temp)
-    (def rem-pres bme-pres)
-    (set-thr-checked thr)
-})
+(can-fun-register-handler fun-set-grams-load-cell
+    (fn (measurement) {
+        (def grams-load-cell measurement)
+    })
+)
+
+(can-fun-register-handler fun-remote-data
+    (fn (thr gear rx-cnt uptime bme-hum bme-temp bme-pres) {
+        (def rem-thr thr)
+        (def rem-gear gear)
+        (def rem-cnt rx-cnt)
+        (def rem-uptime uptime)
+        (def rem-hum bme-hum)
+        (def rem-temp bme-temp)
+        (def rem-pres bme-pres)
+        (set-thr-checked thr)
+    })
+)
 
 (select-motor 1)
 
@@ -222,7 +232,6 @@
             (sleep (/ 1.0 rate-hz))
 )))
 
-
 (defun start-logging () {
         (if log-running (stop-logging))
         (init-logging)
@@ -251,6 +260,26 @@
 })
 
 (defun stop-logging () {
-                    (def log-running false)
-                    (log-stop esp-can-id)
+    (def log-running false)
+    (log-stop esp-can-id)
 })
+
+(can-event-register-handler event-log-start (fn () {
+    (start-logging)
+}))
+
+(can-event-register-handler event-log-stop (fn () {
+    (stop-logging)
+}))
+
+(defun event-handler ()
+    (loopwhile t
+        (recv
+            ((event-can-sid . ((? id) . (? data))) (can-event-proc-sid id data))
+            (_ nil)
+        )
+    )
+)
+
+(event-register-handler (spawn event-handler))
+(event-enable 'event-can-sid)
