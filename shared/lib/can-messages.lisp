@@ -56,9 +56,9 @@
 ; - The result of calling the function if successfull
 ; - 'timeout if the function did not respond in the specified timeout time.
 ; - 'unknown if the device did not have a registered handler for that function.
-(def can-run (macro (device timeout fun-expr) `{
+(def can-run (macro (device tout fun-expr) `{
     (send can-run-thd-id (list
-        (this) ,device ,timeout ,(first fun-expr) ,(cons list (rest fun-expr))
+        (self) ,device ,tout ,(first fun-expr) ,(cons list (rest fun-expr))
     ))
     (recv
         ((? result) result)
@@ -103,8 +103,8 @@
     ; timeout should be nil for no-ret.
     (recv
         ; from can-run
-        (((? call-id) (? device-id) (? timeout) (? fun-id) (? args))
-            (send call-id (rcode-run device-id timeout
+        (((? call-id) (? device-id) (? tout) (? fun-id) (? args))
+            (send call-id (rcode-run device-id tout
                 `(-h ,fun-id ,@args)
             ))
         )
