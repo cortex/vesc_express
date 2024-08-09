@@ -23,4 +23,4 @@
     (if (eq port nil) (if (eq scheme "https") 443 80) port)
 })
 
-(defun url-path (url) (str-part url (str-find url "/" 2)))
+(defun url-path (url) (str-part url (str-find url "/" 0 2)))
