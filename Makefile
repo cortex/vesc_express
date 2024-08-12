@@ -51,6 +51,10 @@ remote-disp-esp: \
 	build/conf_general.h.template \
 	build/remote-disp-esp/firmware.bin
 
+charger-conn-esp: \
+	build/conf_general.h.template \
+	build/charger-conn-esp/firmware.bin
+
 reset:
 	git submodule foreach --recursive git clean -xfd
 	git submodule foreach --recursive git reset --hard
@@ -130,6 +134,15 @@ build/remote-disp-esp/firmware.bin: \
 	mkdir -p build/remote-disp-esp
 	cp ./remote-disp-esp/conf_express/* ./dependencies/vesc_express/main
 	./build-vesc-express.sh lb_hc build/remote-disp-esp
+
+build/charger-conn-esp/firmware.bin: \
+	charger-conn-esp/conf_express/hw_lb_chg.c \
+	charger-conn-esp/conf_express/hw_lb_chg.h
+
+	mkdir -p build/charger-conn-esp
+	cp ./charger-conn-esp/conf_express/* ./dependencies/vesc_express/main
+	./build-vesc-express.sh lb_chg build/charger-conn-esp
+
 
 result/bin/vesc_tool_6.05:
 	nix-build vesc-tool.nix
