@@ -8,12 +8,11 @@
 
 ; Run resistance measurement
 ; Should be between 2-3 mOhm
-(* (conf-measure-res 100) 1000)
+(* (conf-measure-res ?) 1000)
 
-; Run the openloop test
-(foc-openloop 100 100)
-(foc-openloop 200 100)
-(foc-openloop 290 100)
+; Run inductance measurement
+; Should be between ?-?
+(conf-measure-ind ?)
 
 ; Reset sensor mode
 (conf-set 'foc-sensor-mode 4)
@@ -27,10 +26,9 @@
 ; Should be between 2-3 mOhm
 (* (conf-measure-res 100) 1000)
 
-; Run the openloop test
-(foc-openloop 100 100)
-(foc-openloop 200 100)
-(foc-openloop 290 100)
+; Run inductance measurement
+; Should be between ?-?
+(conf-measure-ind ?)
 
 ; Reset sensor mode
 (conf-set 'foc-sensor-mode 4)
