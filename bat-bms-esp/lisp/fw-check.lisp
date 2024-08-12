@@ -102,7 +102,7 @@
 
     (if success {
         ; Update nv-data
-        (if (eq 'timeout (can-run id-bat-ant-esp 2 fun-nv-set 'fw-id-battery (nv-get 'fw-id-battery-downloaded)))
+        (if (eq 'timeout (can-run id-bat-ant-esp 2 (fun-nv-set 'fw-id-battery (nv-get 'fw-id-battery-downloaded))))
             (print "Timeout setting nv-data during fw-install-result")
         )
         (nv-update 'fw-install-ready false)
