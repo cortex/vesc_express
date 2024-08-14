@@ -7,12 +7,12 @@
 (conf-set 'foc-sensor-mode 0)
 
 ; Run resistance measurement
-; Should be between 2-3 mOhm
-(* (conf-measure-res ?) 1000)
+; Should be between 2-4 mOhm
+(* (conf-measure-res 30) 1000)
 
 ; Run inductance measurement
 ; Should be between ?-?
-(conf-measure-ind ?)
+(conf-measure-ind 30)
 
 ; Reset sensor mode
 (conf-set 'foc-sensor-mode 4)
@@ -23,12 +23,12 @@
 (conf-set 'foc-sensor-mode 0)
 
 ; Run resistance measurement
-; Should be between 2-3 mOhm
-(* (conf-measure-res 100) 1000)
+; Should be between 2-4 mOhm
+(* (conf-measure-res 30) 1000)
 
 ; Run inductance measurement
 ; Should be between ?-?
-(conf-measure-ind ?)
+(conf-measure-ind 30)
 
 ; Reset sensor mode
 (conf-set 'foc-sensor-mode 4)
