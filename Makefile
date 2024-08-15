@@ -175,7 +175,7 @@ build/bat-bms-esp/main.lpkg: vesc-tool
 # Creating lisp.vescpkg for install via VESC Tool
 
 build/bat-ant-esp/lisp.vescpkg: vesc-tool
-	cd ./bat-ant-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main.lisp::0
+	cd ./bat-ant-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --downloadPackageArchive --buildPkg lisp.vescpkg:main.lisp::0
 	mv ./bat-ant-esp/lisp/lisp.vescpkg $@
 
 build/bat-bms-esp/lisp.vescpkg: vesc-tool
