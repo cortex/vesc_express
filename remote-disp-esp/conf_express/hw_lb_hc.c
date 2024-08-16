@@ -1864,8 +1864,8 @@ static lbm_value ext_read_button(lbm_value *args, lbm_uint argn) {
 
 static void load_extensions(void) {
 	register_symbols_hc();
-#if LB_HW_VERSION == LB_HW_REV_C
-        lbm_add_extension("read-button", ext_read_button);
+#if LB_HW_VERSION >= LB_HW_REV_C
+	lbm_add_extension("read-button", ext_read_button);
 #endif
 	lbm_add_extension("conf-express-version", ext_conf_express_version);
 

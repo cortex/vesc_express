@@ -20,11 +20,13 @@
 #ifndef MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
 #define MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
 
+// Make sure that these numbers are strictly increasing for newer revisions.
 #define LB_HW_REV_A 1
 #define LB_HW_REV_B 2
 #define LB_HW_REV_C 3
+#define LB_HW_REV_E 4
 
-#define LB_HW_VERSION LB_HW_REV_C
+#define LB_HW_VERSION LB_HW_REV_E
 
 #define HW_INIT_HOOK()              hw_init()
 #define HW_EARLY_LBM_INIT
@@ -36,8 +38,12 @@
 #include <math.h>
 #include <stdint.h>
 
+// If my calculations are correct, we have 26 characters to work with for
+// HW_NAME, before we start getting buffer overflow, but I'm not entirely
+// sure...
+
 #if LB_HW_VERSION == LB_HW_REV_A
-    #define HW_NAME                 "LB HC V3"
+    #define HW_NAME                 "remote-disp-esp REVA"
     // BUTTONS
     #define HW_ADC_CH0              ADC1_CHANNEL_2
     // IO
@@ -45,7 +51,7 @@
     // NEAR FIELD
     #define GPIO_NF_TX_EN           GPIO_NUM_1
 #elif LB_HW_VERSION == LB_HW_REV_B
-    #define HW_NAME                 "LB HC REVB"
+    #define HW_NAME                 "remote-disp-esp REVB"
     // BUTTONS
     #define HW_ADC_CH0              ADC1_CHANNEL_1
     // IO
@@ -53,13 +59,21 @@
     // NEAR FIELD
     #define GPIO_NF_TX_EN           GPIO_NUM_2
 #elif LB_HW_VERSION == LB_HW_REV_C
-    #define HW_NAME                 "LB HC REVC"
+    #define HW_NAME                 "remote-disp-esp REVC"
     // BUTTONS
     #define HW_ADC_CH0              ADC1_CHANNEL_1
     // IO
     #define GPIO_BUTTON             GPIO_NUM_1
     // NEAR FIELD
     #define GPIO_NF_TX_EN           GPIO_NUM_2
+#elif LB_HW_VERSION == LB_HW_REV_E
+    #define HW_NAME                 "remote-disp-esp REVE"
+    // BUTTONS
+    #define HW_ADC_CH0              ADC1_CHANNEL_1
+    // IO
+    #define GPIO_BUTTON         GPIO_NUM_1
+    // NEAR FIELD
+    #define GPIO_NF_TX_EN GPIO_NUM_2
 #else
     #error "Invalid hardware version."
 #endif
