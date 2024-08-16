@@ -150,7 +150,9 @@ build/remote-disp-esp/firmware.bin: \
 	cp ./remote-disp-esp/conf_express/* ./dependencies/vesc_express/main
 	./build-vesc-express.sh lb_hc build/remote-disp-esp
 
-result/bin/vesc_tool_6.05:
+result/bin/vesc_tool_6.05: \
+	vesc-tool.nix
+	
 	nix-build vesc-tool.nix
 
 vesc-tool: result/bin/vesc_tool_6.05
