@@ -20,11 +20,13 @@
 #ifndef MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
 #define MAIN_HWCONF_OTHER_HW_LB_HC_V3_H_
 
+// Make sure that these numbers are strictly increasing for newer revisions.
 #define LB_HW_REV_A 1
 #define LB_HW_REV_B 2
 #define LB_HW_REV_C 3
+#define LB_HW_REV_E 4
 
-#define LB_HW_VERSION LB_HW_REV_C
+#define LB_HW_VERSION LB_HW_REV_E
 
 #define HW_INIT_HOOK()              hw_init()
 #define HW_EARLY_LBM_INIT
@@ -60,6 +62,14 @@
     #define GPIO_BUTTON             GPIO_NUM_1
     // NEAR FIELD
     #define GPIO_NF_TX_EN           GPIO_NUM_2
+#elif LB_HW_VERSION == LB_HW_REV_E
+    #define HW_NAME                 "LB HC REVE"
+    // BUTTONS
+    #define HW_ADC_CH0              ADC1_CHANNEL_1
+    // IO
+    #define GPIO_BUTTON         GPIO_NUM_1
+    // NEAR FIELD
+    #define GPIO_NF_TX_EN GPIO_NUM_2
 #else
     #error "Invalid hardware version."
 #endif
