@@ -3,3 +3,4 @@ result
 .direnv
 *.lpkg
 logserver/target
+logserver/secrets/secrets.key
