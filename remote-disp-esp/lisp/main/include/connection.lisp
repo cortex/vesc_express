@@ -162,15 +162,16 @@
         (send-code str)
 ))
 
-(defun send-thr (thr) (if (and batt-addr-rx (not dev-disable-send-thr))
-    (cond
-        ((= thr-mode 0) (send-thr-nf thr))
-        ((= thr-mode 1) (send-thr-rf thr))
-        ((= thr-mode 2)
-            (if (send-thr-rf thr)
-                true
-                (send-thr-nf thr)
-            )
+(defun send-thr (thr) (cond
+    ((not batt-addr-rx) false)
+    ((or dev-disable-send-thr dev-simulate-connection) true)
+    
+    ((= thr-mode 0) (send-thr-nf thr))
+    ((= thr-mode 1) (send-thr-rf thr))
+    ((= thr-mode 2)
+        (if (send-thr-rf thr)
+            true
+            (send-thr-nf thr)
         )
     )
 ))
@@ -205,11 +206,17 @@
             )
 
             ; Update state when the Battery (ESC data) times out
-            (if (> (- (systime) battery-rx-timestamp) battery-timeout-ms) {
+            (if (and (> (- (systime) battery-rx-timestamp) battery-timeout-ms) (not dev-simulate-connection)) {
                 (state-set 'no-data true) ; Display indicator on main view
                 (set-thr-is-active false) ; Lock throttle
             } (state-set 'no-data false))
-        })
+        }
+            (if dev-simulate-connection {
+                (state-set 'was-connected true)
+                (state-set 'conn-lost false)
+                (def pairing-state 'paired)
+            })
+        )
 
         ; Timeout broadcast reception
         (atomic ; Do not allow broadcast-rx-timestamp to change in ESP RX handler while evaluating
