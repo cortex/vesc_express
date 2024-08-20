@@ -99,7 +99,7 @@
 #define GPIO_DISP_BACKLIGHT         GPIO_NUM_3
 
 // BUTTONS
-#if LB_HW_VERSION != LB_HW_REV_C
+#if LB_HW_VERSION < LB_HW_REV_C
 #define HW_HAS_ADC
 #endif
 

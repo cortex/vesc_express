@@ -245,8 +245,8 @@ void init_gpio_expander(void) {
 	i2c_write_reg(I2C_ADDR_GPIO_EXP, GPIO_EXP_OUTPUT_REG, 0x0F); // ALL zeroes
 
         // Expander2
-#if LB_HW_VERSION == LB_HW_REV_C
-        i2c_write_reg(I2C_ADDR_GPIO_EXP2, GPIO_EXP_CONFIG_REG, 0x07); // Unused are outputs
+#if LB_HW_VERSION >= LB_HW_REV_C
+    i2c_write_reg(I2C_ADDR_GPIO_EXP2, GPIO_EXP_CONFIG_REG, 0x07); // Unused are outputs
 #endif
 }
 
@@ -1668,8 +1668,8 @@ static lbm_value ext_init_hw(lbm_value *args, lbm_uint argn) {
 	}
 
 	// GPIO
-#if LB_HW_VERSION == LB_HW_REV_C
-        gpio_set_direction(GPIO_BUTTON, GPIO_MODE_INPUT);
+#if LB_HW_VERSION >= LB_HW_REV_C
+    gpio_set_direction(GPIO_BUTTON, GPIO_MODE_INPUT);
 #endif
 
 	gpio_reset_pin(GPIO_NF_TX_EN);
