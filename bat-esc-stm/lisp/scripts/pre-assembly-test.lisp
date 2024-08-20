@@ -1,9 +1,17 @@
 ; DO NOT RUN THIS SCRIPT DIRECTLY, instead run the lines individually manually.
 (non-existant) ; To make sure you can't run the script.
 
+{
+    (def done true)
+    (loopwhile-thd 100 done {
+        (def v-in (get-vin))
+        (sleep 0.1)
+    })
+}
+
 (select-motor 1)
 
-; Set sensor mode to Sensorless
+; Set sensor mode to Sensor
 (conf-set 'foc-sensor-mode 0)
 
 ; Run resistance measurement
