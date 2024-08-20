@@ -4,7 +4,7 @@
 ; On occasion there is an additional 600ms delay noticed in the startup animation
 
 (defun version-check () {
-    (var compatible-version 4)
+    (var compatible-version 5)
     (if (!= (conf-express-version) compatible-version) {
         (loopwhile t {
             (print (str-merge
@@ -22,7 +22,7 @@
 
 @const-start
 
-(def version-str "v0.7")
+(def version-str "v0.8.1")
 (print (str-merge "Booting " version-str))
 
 ;;; Colors
@@ -213,7 +213,7 @@
 (def soc-bar-visible t)
 
 ; The last voltage captured while checking the remote battery.
-(def remote-batt-v (vib-vmon))
+(def remote-batt-v (/ (bat-v) 1000.0))
 
 ; Timestamp of the last tick where the left or right buttons where pressed
 (def main-left-held-last-time 0)
@@ -247,35 +247,7 @@
 
 ;;; Specific UI components
 (def small-battery-buf (create-sbuf 'indexed4 188 (+ 20 display-y-offset) 30 16))
-(def small-rssi-buf (create-sbuf 'indexed4 30 (+ 20 display-y-offset) 24 16))
-
-; Renders the signal strength at the top of the screen
-(defun render-signal-strength (rssi is-visible) {
-    (sbuf-clear small-rssi-buf)
-
-    (if (and is-visible (not-eq rssi nil) ) {
-        (var signal-bars 0)
-        (cond
-            ((> rssi -60) (setq signal-bars 4))
-            ((> rssi -70) (setq signal-bars 3))
-            ((> rssi -80) (setq signal-bars 2))
-            ((> rssi -90) (setq signal-bars 1))
-        )
-
-        (sbuf-exec img-rectangle small-rssi-buf 4 13 (2 3 1 '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 8 10 (2 6 (if (> signal-bars 0) 1 2) '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 12 7 (2 9 (if (> signal-bars 1) 1 2)  '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 16 4 (2 12 (if (> signal-bars 2) 1 2)  '(filled)))
-        (sbuf-exec img-rectangle small-rssi-buf 20 1 (2 15 (if (> signal-bars 3) 1 2)  '(filled)))
-    })
-
-    (sbuf-render small-rssi-buf (list
-        col-black
-        col-white
-        0x363636
-        0x0
-    ))
-})
+(def no-data-buf (create-sbuf 'indexed2 22 (+ 20 display-y-offset) 16 16))
 
 ; Communication
 (def m-connection-tick-ms 0.0)
@@ -368,6 +340,13 @@
 
 ; Slow updates
 (def m-slow-updates-tick-ms 0.0)
+(def soc-last-update (systime))
+
+; Set state before starting thread
+(def soc-remote (get-remote-soc))
+(state-set 'soc-remote soc-remote)
+(state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
+
 (spawn 120 (fn ()
     (loopwhile (not stop-threads) {
         (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
@@ -380,15 +359,23 @@
         ))
         (def thread-slow-updates-start (systime))
 
-        ; Update SOC
-        (def soc-remote (get-remote-soc))
-        (state-set 'soc-remote soc-remote)
+        ; Update charger-plugged-in state
+        (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
+
+        ; Update SOC (Limit to 5 seconds while charging)
+        (if (or (not (state-get 'charger-plugged-in))
+                (and (state-get 'charger-plugged-in) (> (secs-since soc-last-update) 5.0))
+        ) {
+            (def soc-remote (get-remote-soc))
+            (state-set 'soc-remote soc-remote)
+            (def soc-last-update (systime))
+        })
 
         ; Update RSSI state from latest esp-rx-rssi
         (state-set 'rx-rssi esp-rx-rssi)
 
         ; If we reach 3.2V (0% SOC) the remote must power down
-        (if (<= remote-batt-v 3.2) {
+        (if (and (<= remote-batt-v 3.2) (eq (bat-charge-status) nil)) {
             (print "Remote battery too low for operation!")
             (print "Foced Shutdown Event @ 0%")
 

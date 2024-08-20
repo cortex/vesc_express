@@ -1,19 +1,27 @@
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
+(import "../../shared/lib/can-messages.lisp" 'code-can-messages)
+(read-eval-program code-can-messages)
+
 (import "lib/config-check.lisp" 'code-config-check)
 (read-eval-program code-config-check)
 
-(start-code-server)
+; (can-start-run-thd) ; TODO: necessary?
 
 (def buf-can (array-create 8))
 
 ; Load cell reading. Updated using code server when available.
 (def grams-load-cell 0.0)
 
-; Remote throttle and rx counters. Updated by rx-thr.
+; Remote values. Updated when rx-thr is called by code server.
 (def rem-thr 0.0)
+(def rem-gear 0)
 (def rem-cnt 0.0)
+(def rem-uptime 0.0)
+(def rem-hum 0.0)
+(def rem-temp 0.0)
+(def rem-pres 0.0)
 
 ; Check that config is correct, and if so set the motor current.
 ; Is the only function you should use for directly setting the thr!
@@ -28,12 +36,24 @@
     ))
 )
 
-; To be called by code server
-(defun rx-thr (thr rem-rx-cnt) {
-    (def rem-thr thr)
-    (def rem-cnt rem-rx-cnt)
-    (set-thr-checked thr)
-})
+(can-fun-register-handler fun-set-grams-load-cell
+    (fn (measurement) {
+        (def grams-load-cell measurement)
+    })
+)
+
+(can-fun-register-handler fun-remote-data
+    (fn (thr gear rx-cnt uptime bme-hum bme-temp bme-pres) {
+        (def rem-thr thr)
+        (def rem-gear gear)
+        (def rem-cnt rx-cnt)
+        (def rem-uptime uptime)
+        (def rem-hum bme-hum)
+        (def rem-temp bme-temp)
+        (def rem-pres bme-pres)
+        (set-thr-checked thr)
+    })
+)
 
 (select-motor 1)
 
@@ -145,12 +165,19 @@
         ; Load cell
         ("Force Load Cell" "kg"          (/ grams-load-cell 1000.0))
 
-        ; Remote counters
+        ; Remote
         ("Rem Thr"                       (* 1.0 rem-thr))
+        ("Rem Gear"                      (* 1 rem-gear))
         ("Rem Cnt"                       (* 1.0 rem-cnt))
+        ("Rem Uptime" "s"                (* 1.0 rem-uptime))
 
+        ; Remote sensors
+        ("Rem Hum" "%"                   (* 1.0 rem-hum))
+        ("Rem Temp" "degC"               (* 1.0 rem-temp))
+        ("Rem Pres"                      (* 1.0 rem-pres))
+        
         ; Uptime counters
-        ("ESC uptime"                    (secs-since 0))
+        ("ESC uptime" "s"                (secs-since 0))
         
         ; Checks
         ("Motor Config Was Reapplied"    (if config-was-reapplied 1 0))
@@ -205,7 +232,6 @@
             (sleep (/ 1.0 rate-hz))
 )))
 
-
 (defun start-logging () {
         (if log-running (stop-logging))
         (init-logging)
@@ -234,6 +260,26 @@
 })
 
 (defun stop-logging () {
-                    (def log-running false)
-                    (log-stop esp-can-id)
+    (def log-running false)
+    (log-stop esp-can-id)
 })
+
+(can-event-register-handler event-log-start (fn () {
+    (start-logging)
+}))
+
+(can-event-register-handler event-log-stop (fn () {
+    (stop-logging)
+}))
+
+(defun event-handler ()
+    (loopwhile t
+        (recv
+            ((event-can-sid . ((? id) . (? data))) (can-event-proc-sid id data))
+            (_ nil)
+        )
+    )
+)
+
+(event-register-handler (spawn event-handler))
+(event-enable 'event-can-sid)

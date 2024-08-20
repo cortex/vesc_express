@@ -58,3 +58,5 @@
 (print (map (expect-epsilon 2 0.5) (voltages 1)))
 (print (map (expect-pct (/ vin 2) 10.0) (voltages 2)))
 
+(print "Done")
+

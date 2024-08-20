@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# sshd        Starts sshd.
+#
+
+# Make sure the ssh-keygen program exists
+[ -f /usr/bin/ssh-keygen ] || exit 0
+
+umask 077
+
+start() {
+    # Create writable directory for SSH keys
+    mkdir -p /var/run/ssh
+    chmod 700 /var/run/ssh
+
+    # Create keys in the writable directory
+    /usr/bin/ssh-keygen -t rsa -f /var/run/ssh/ssh_host_rsa_key -N ""
+    /usr/bin/ssh-keygen -t dsa -f /var/run/ssh/ssh_host_dsa_key -N ""
+    /usr/bin/ssh-keygen -t ecdsa -f /var/run/ssh/ssh_host_ecdsa_key -N ""
+    /usr/bin/ssh-keygen -t ed25519 -f /var/run/ssh/ssh_host_ed25519_key -N ""
+
+    # Start sshd with the writable directory for keys
+    printf "Starting sshd: "
+    /usr/sbin/sshd -h /var/run/ssh/ssh_host_rsa_key -h /var/run/ssh/ssh_host_ecdsa_key -h /var/run/ssh/ssh_host_ed25519_key
+#touch /var/lock/sshd
+    echo "OK"
+}
+stop() {
+    printf "Stopping sshd: "
+    killall sshd
+#rm -f /var/lock/sshd
+    echo "OK"
+}
+restart() {
+    stop
+    start
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart|reload)
+    restart
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?

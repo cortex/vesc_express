@@ -12,15 +12,33 @@
 (def any-ping-has-failed false) ; TODO: This is never set to true
 
 (def my-addr (get-mac-addr))
-(def rssi-pairing-threshold -50) ; TODO: -47 not consistent, -48 might be good - needs testing
+(def rssi-pairing-threshold -50)
 (def battery-rx-timestamp (- (systime) 20000))
 (def broadcast-rx-timestamp nil)
 
 @const-start
 
-(def rx-timeout-ms 2000)
+(def battery-timeout-ms 3000)
+(def broadcast-timeout-ms 2000)
+(def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
 
 (esp-now-start)
+
+; Send a unpair request to the battery
+(defun unpair-request () {
+    (esp-now-send batt-addr "(trap (unpair))")
+})
+
+; When the battery requests, release pairing
+(defun unpair-ack () {
+    (print "Battery request: release pairing")
+    (if (and (eq pairing-state 'paired) (send-code "(def pairing-state 'not-paired)")) {
+        (def pairing-state 'not-paired)
+        (def batt-addr-rx false)
+        (def is-connected false)
+        (if (state-get 'was-connected) (state-set 'conn-lost true))
+    })
+})
 
 @const-end
 
@@ -55,19 +73,21 @@
 
 ; ESP-NOW RX Handler
 (defun proc-data (src des data rssi) {
-    (if (and (eq des broadcast-addr) (not is-connected)){
+    (if (and (eq des broadcast-addr) (eq pairing-state 'not-paired)){
         (def broadcast-rx-timestamp (systime))
         (if (> rssi rssi-pairing-threshold) {
             ; Handle broadcast data
             (esp-now-add-peer src)
             (setq batt-addr src)
             (def batt-addr-rx true)
+            (def is-connected true)
             (state-set 'was-connected true)
             (state-set 'conn-lost false)
             (eval (read data))
             (def esp-rx-cnt (+ esp-rx-cnt 1))
             (def battery-rx-timestamp (systime))
             (def broadcast-rx-timestamp nil)
+            (def pairing-state 'paired)
         } {
             ;(print (str-merge "Broadcast RX too weak for pairing: " (to-str rssi)))
             (def esp-rx-rssi rssi)
@@ -105,10 +125,10 @@
 })
 
 (defun send-code (str)
-    (if batt-addr-rx
+    (if (eq pairing-state 'paired)
         (esp-now-send batt-addr str)
         {
-            (print "Error: send-code failed: batt-addr-rx is nil")
+            (print "Error: send-code failed, not-paired")
             nil
         }
 ))
@@ -125,7 +145,16 @@
 
 (defun send-thr-rf (thr)
     (progn
-        (var str (str-from-n (clamp01 thr) "(thr-rx %.2f)"))
+        (var str (str-merge
+            "(thr-rx "
+                (str-from-n (clamp01 thr) "%.2f ") ; Throttle Now
+                (str-from-n (state-get-live 'gear) "%d ") ; Gear
+                (str-from-n (secs-since 0) "%.1f ") ; Uptime
+                (str-from-n (bme-hum) "%.3f ") ; Humidity
+                (str-from-n (bme-temp) "%.3f ") ; Temperature
+                (str-from-n (bme-pres) "%.2f ") ; Pressure
+            ")"
+        ))
 
         ; HACK: Send io-board message to trick esc that the jet is plugged in
         ;(send-code "(can-send-eid (+ 108 (shl 32 8)) '(0 0 0 0 0 0 0 0))")
@@ -133,15 +162,16 @@
         (send-code str)
 ))
 
-(defun send-thr (thr) (if (and batt-addr-rx (not dev-disable-send-thr))
-    (cond
-        ((= thr-mode 0) (send-thr-nf thr))
-        ((= thr-mode 1) (send-thr-rf thr))
-        ((= thr-mode 2)
-            (if (send-thr-rf thr)
-                true
-                (send-thr-nf thr)
-            )
+(defun send-thr (thr) (cond
+    ((not batt-addr-rx) false)
+    ((or dev-disable-send-thr dev-simulate-connection) true)
+    
+    ((= thr-mode 0) (send-thr-nf thr))
+    ((= thr-mode 1) (send-thr-rf thr))
+    ((= thr-mode 2)
+        (if (send-thr-rf thr)
+            true
+            (send-thr-nf thr)
         )
     )
 ))
@@ -158,7 +188,7 @@
             (enter-sleep)
         })
 
-        (if (and (> (secs-since last-input-time) 30.0) (not dev-disable-inactivity-check)) {
+        (if (and (> (secs-since last-input-time) 10.0) (not dev-disable-inactivity-check)) {
                 (set-thr-is-active false)
         })
         (if (and (not is-connected) (not dev-disable-connection-check))
@@ -169,26 +199,30 @@
                 (set-thr-is-active true)
         })
 
-        (if (not (send-thr (if thr-active thr 0)))
-            (setq thr-fail-cnt (+ thr-fail-cnt 1))
-        )
+        (if (eq pairing-state 'paired) {
+            ; Send Throttle
+            (if (not (send-thr (if thr-active thr 0)))
+                (setq thr-fail-cnt (+ thr-fail-cnt 1))
+            )
 
-        ; Update is-connected status
-        (if (> (- (systime) battery-rx-timestamp) rx-timeout-ms) {
-            ; Do not timeout during update please
-            (if (not firmware-updating) {
-                ; Timeout, clear battery address
-                (def batt-addr-rx false)
-                (def is-connected false)
-                (if (state-get 'was-connected) (state-set 'conn-lost true))
+            ; Update state when the Battery (ESC data) times out
+            (if (and (> (- (systime) battery-rx-timestamp) battery-timeout-ms) (not dev-simulate-connection)) {
+                (state-set 'no-data true) ; Display indicator on main view
+                (set-thr-is-active false) ; Lock throttle
+            } (state-set 'no-data false))
+        }
+            (if dev-simulate-connection {
+                (state-set 'was-connected true)
+                (state-set 'conn-lost false)
+                (def pairing-state 'paired)
             })
-        } (def is-connected true))
+        )
 
         ; Timeout broadcast reception
         (atomic ; Do not allow broadcast-rx-timestamp to change in ESP RX handler while evaluating
             (if (and
                 (not-eq broadcast-rx-timestamp nil)
-                (> (- (systime) broadcast-rx-timestamp) rx-timeout-ms))
+                (> (- (systime) broadcast-rx-timestamp) broadcast-timeout-ms))
                 {
                     (def esp-rx-rssi -99)
                     (def broadcast-rx-timestamp nil)

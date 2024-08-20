@@ -19,6 +19,7 @@
         "sbuf",
         "setix",
         "setq",
+        "unpair",
         "vmon"
     ],
     "editor.formatOnType": false

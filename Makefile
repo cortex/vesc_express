@@ -14,6 +14,7 @@ firmware: \
 	bat-bms-esp \
 	bat-bms-stm \
 	bat-esc-stm \
+	charger-conn-esp \
 	jet-if-esp \
 	remote-disp-esp
 
@@ -23,7 +24,8 @@ clean:
 bat-ant-esp: \
 	build/conf_general.h.template \
 	build/bat-ant-esp/firmware.bin \
-	build/bat-ant-esp/main.lpkg
+	build/bat-ant-esp/main.lpkg \
+	build/bat-ant-esp/lisp.vescpkg
 
 bat-ant-stm: \
 	build/conf_general.h.template \
@@ -32,7 +34,8 @@ bat-ant-stm: \
 bat-bms-esp: \
 	build/conf_general.h.template \
 	build/bat-bms-esp/firmware.bin \
-	build/bat-bms-esp/main.lpkg
+	build/bat-bms-esp/main.lpkg \
+	build/bat-bms-esp/lisp.vescpkg
 
 bat-bms-stm: \
 	build/conf_general.h.template \
@@ -41,15 +44,23 @@ bat-bms-stm: \
 bat-esc-stm: \
 	build/conf_general.h.template \
 	build/bat-esc-stm/firmware.bin \
-	build/bat-esc-stm/main.lpkg
+	build/bat-esc-stm/main.lpkg \
+	build/bat-esc-stm/lisp.vescpkg
+
+charger-conn-esp: \
+	build/conf_general.h.template \
+	build/charger-conn-esp/firmware.bin \
+	build/charger-conn-esp/lisp.vescpkg
 
 jet-if-esp: \
 	build/conf_general.h.template \
-	build/jet-if-esp/firmware.bin
+	build/jet-if-esp/firmware.bin \
+	build/jet-if-esp/lisp.vescpkg
 
 remote-disp-esp: \
 	build/conf_general.h.template \
-	build/remote-disp-esp/firmware.bin
+	build/remote-disp-esp/firmware.bin \
+	build/remote-disp-esp/lisp.vescpkg
 
 reset:
 	git submodule foreach --recursive git clean -xfd
@@ -115,6 +126,14 @@ build/bat-esc-stm/firmware.bin: \
 	cd ./dependencies/bldc && make -j 4 fw_lb
 	cp ./dependencies/bldc/build/lb/lb.bin $@
 
+build/charger-conn-esp/firmware.bin: \
+	charger-conn-esp/conf_express/hw_lb_chg.c \
+	charger-conn-esp/conf_express/hw_lb_chg.h
+
+	mkdir -p build/charger-conn-esp
+	cp ./charger-conn-esp/conf_express/* ./dependencies/vesc_express/main
+	./build-vesc-express.sh lb_chg build/charger-conn-esp
+
 build/jet-if-esp/firmware.bin: \
 	jet-if-esp/conf_express/hw_lb_if.c \
 	jet-if-esp/conf_express/hw_lb_if.h
@@ -131,12 +150,16 @@ build/remote-disp-esp/firmware.bin: \
 	cp ./remote-disp-esp/conf_express/* ./dependencies/vesc_express/main
 	./build-vesc-express.sh lb_hc build/remote-disp-esp
 
-result/bin/vesc_tool_6.05:
+result/bin/vesc_tool_6.05: \
+	vesc-tool.nix
+	
 	nix-build vesc-tool.nix
 
 vesc-tool: result/bin/vesc_tool_6.05
 
 VESC_TOOL=$(realpath result/bin/vesc_tool_6.05) 
+
+# Creating main.lpkg for install via OTA update
 
 build/bat-esc-stm/main.lpkg: vesc-tool
 	cd ./bat-esc-stm/lisp/ && make && $(VESC_TOOL) --packLisp src/main.lisp:main.lpkg
@@ -150,6 +173,39 @@ build/bat-bms-esp/main.lpkg: vesc-tool
 	mkdir -p build/bat-bms-esp
 	cd ./bat-bms-esp/lisp/ && $(VESC_TOOL) --packLisp main.lisp:main.lpkg
 	cp ./bat-bms-esp/lisp/main.lpkg $@
+
+# Creating lisp.vescpkg for install via VESC Tool
+
+build/bat-ant-esp/lisp.vescpkg: vesc-tool
+	cd ./bat-ant-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --downloadPackageArchive --buildPkg lisp.vescpkg:main.lisp::0
+	mv ./bat-ant-esp/lisp/lisp.vescpkg $@
+
+build/bat-bms-esp/lisp.vescpkg: vesc-tool
+	mkdir -p build/bat-bms-esp
+	cd ./bat-bms-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main.lisp::0
+	mv ./bat-bms-esp/lisp/lisp.vescpkg $@
+
+build/bat-esc-stm/lisp.vescpkg: vesc-tool
+	mkdir -p build/bat-esc-stm
+	cd ./bat-esc-stm/lisp/ && make && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:src/main.lisp::0
+	mv ./bat-esc-stm/lisp/lisp.vescpkg $@
+
+build/charger-conn-esp/lisp.vescpkg: vesc-tool
+	mkdir -p build/charger-conn-esp
+	cd ./charger-conn-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main.lisp::0
+	mv ./charger-conn-esp/lisp/lisp.vescpkg $@
+
+build/jet-if-esp/lisp.vescpkg: vesc-tool
+	mkdir -p build/jet-if-esp
+	cd ./jet-if-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main.lisp::0
+	mv ./jet-if-esp/lisp/lisp.vescpkg $@
+
+build/remote-disp-esp/lisp.vescpkg: vesc-tool
+	mkdir -p build/remote-disp-esp
+	cd ./remote-disp-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main/main-ui.lisp::0
+	mv ./remote-disp-esp/lisp/lisp.vescpkg $@
+
+# Flashing firmwares
 
 flash: firmware vesc-tool
 	$(VESC_TOOL) --canFwd 10 --uploadLisp  build/bat-esc-stm/main.lpkg --vescPort /dev/ttyACM0; true

@@ -2,7 +2,7 @@
 
 (def char-lf 10b)
 (def crlf "\r\n")
-(defun strip-crlf (str) (str-part str 0 (buf-find str crlf)))
+(defun strip-crlf (str) (str-part str 0 (str-find str crlf)))
 
 (defun http-read-line (conn) {
     (var line (tcp-recv-to-char conn 128 char-lf))
@@ -10,14 +10,14 @@
 })
 
 (defunret take-until (str delim) {
-    (var pos (buf-find str delim))
+    (var pos (str-find str delim))
     (if (eq pos -1) (return (list 'parse-error str)))
     (if (> pos (buflen str)) (return (list 'parse-error str)))
     (list (str-part str 0 pos) (str-part str (+ pos (str-len delim))))
 })
 
 (defunret take-exact (str x) {
-    (var pos (buf-find str x))
+    (var pos (str-find str x))
     (if (eq pos -1) (return (list 'parse-error str)))
     (if (> pos (buflen str)) (return (list 'parse-error str)))
     (list (str-part str 0 (str-len x)) (str-part str (+ (str-len x))))

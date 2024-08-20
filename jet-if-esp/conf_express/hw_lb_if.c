@@ -35,9 +35,9 @@ static float temp_filtered[3] = {0.0, 0.0, 0.0};
 
 static void temp_task(void *arg) {
 	for(;;) {
-		UTILS_LP_FAST(temp_filtered[0], NTC_TEMP(NTC_RES(HW_ADC_CH0)), 0.005);
-		UTILS_LP_FAST(temp_filtered[1], NTC_TEMP(NTC_RES(HW_ADC_CH1)), 0.005);
-		UTILS_LP_FAST(temp_filtered[2], NTC_TEMP(NTC_RES(HW_ADC_CH2)), 0.005);
+		UTILS_LP_FAST(temp_filtered[0], NTC_TEMP(NTC_RES(HW_ADC_CH0)), 0.0003);
+		UTILS_LP_FAST(temp_filtered[1], NTC_TEMP(NTC_RES(HW_ADC_CH1)), 0.0003);
+		UTILS_LP_FAST(temp_filtered[2], NTC_TEMP(NTC_RES(HW_ADC_CH2)), 0.0003);
 		vTaskDelay(1);
 	}
 }

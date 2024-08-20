@@ -26,12 +26,25 @@
 #include "bme280_if.h"
 #include <math.h>
 
+#define LB_HW_VERSION_1_1 1
+#define LB_HW_VERSION_1_3 2
+
+#define LB_HW_VERSION LB_HW_VERSION_1_3
+
 #define HW_NAME						"jet-if-esp"
 #define HW_DEFAULT_ID				40
 
+#if LB_HW_VERSION == LB_HW_VERSION_1_3
 // CAN
 #define CAN_TX_GPIO_NUM				5
 #define CAN_RX_GPIO_NUM				10
+#elif LB_HW_VERSION == LB_HW_VERSION_1_1
+// CAN
+#define CAN_TX_GPIO_NUM            2
+#define CAN_RX_GPIO_NUM            3
+#else
+#error "Invalid hardware version."
+#endif
 
 // BME280
 #define BME280_SDA					6

@@ -54,4 +54,22 @@
     } (setq nv-data new-data))
 })
 
+(can-fun-register-handler fun-nv-get (fn (key) 
+    (nv-get key)
+))
+
+(can-fun-register-handler fun-nv-set (fn (key value) 
+    (nv-set key value)
+))
+
+(can-fun-register-handler fun-nv-set-save (fn (flat-key-value-pair) 
+    (nv-set-save flattened-assoc)
+))
+
+(can-fun-register-handler fun-nv-load-data (fn () 
+    (load-nv-data)
+))
+
+
+
 (spawn nv-data-init)
