@@ -276,7 +276,6 @@ static void als31300_init_reg(uint16_t addr) {
 	txbuf[0] = 0x02;
 
 	txbuf[2] |= (1 << 2); // Enable CRC
-
 	txbuf[2] &= ~(1 << 3); // Single ended hall mode
 	txbuf[2] &= ~(1 << 4); // Single ended hall mode
 
@@ -371,7 +370,7 @@ static void mag_task(void *arg) {
 			als_update_time[2] = xTaskGetTickCount();
 		}
 
-		vTaskDelay(10 / portTICK_PERIOD_MS);
+		vTaskDelay(3 / portTICK_PERIOD_MS);
 	}
 }
 
