@@ -189,6 +189,24 @@
     (map (fn (pair) (cons (car pair) (cdr pair))) alist)
 )
 
+; signature: (keep-indices lst:list index-mask:(...boolean)) -> list
+(defun list-keep-indices (lst index-mask) {
+    (var paired (zipwith (lambda (item should-keep) {
+        (cons item should-keep)
+    })
+        lst index-mask
+    ))
+    
+    (foldr (lambda (pair result) {
+        (if (cdr pair)
+            (cons (car pair) result)
+            result
+        )
+    })
+        nil paired
+    )
+})
+
 ; Returns true if list contains value at least once.
 (defun includes (lst v)
     ; false
@@ -344,8 +362,8 @@
 })
 
 ; Low pass filter? Copied from full_ui_v2.lisp
-(defun lpf (val sample)
-    (- val (* 0.2 (- val sample)))
+(defun lpf (val sample factor)
+    (- val (* factor (- val sample)))
 )
 
 ; Apply a smoothing filter to value samples.
