@@ -12,7 +12,7 @@
         (conf-set 'l-temp-motor-end 100.0)
         (conf-set 'l-erpm-start 0.8)
 
-        (conf-set 'foc-sensor-mode 4)
+        (conf-set 'foc-sensor-mode 0) ; Different from normal motor config
 
         (conf-set 'foc-motor-r 2.1)
         (conf-set 'foc-motor-l 4.0)
