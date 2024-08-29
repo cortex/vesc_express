@@ -172,7 +172,6 @@
 (def thread-thr-start (systime))
 (def thread-input-start (systime))
 (def thread-vibration-start (systime))
-(def thread-slow-updates-start (systime))
 (def thread-main-start (systime))
 
 
@@ -340,7 +339,6 @@
 
 
 ; Slow updates
-(def m-slow-updates-tick-ms 0.0)
 (def soc-last-update (systime))
 
 ; Set state before starting thread
@@ -350,15 +348,6 @@
 
 (spawn 120 (fn ()
     (loopwhile (not stop-threads) {
-        (def m-slow-updates-tick-ms (if dev-smooth-tick-ms
-            (smooth-filter
-                (ms-since thread-slow-updates-start)
-                m-slow-updates-tick-ms
-                dev-smoothing-factor
-            )
-            (ms-since thread-slow-updates-start)
-        ))
-        (def thread-slow-updates-start (systime))
 
         ; Update charger-plugged-in state
         (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
