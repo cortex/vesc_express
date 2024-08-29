@@ -37,6 +37,10 @@
 (import "include/startup-utils.lisp" code-startup-utils)
 (read-eval-program code-startup-utils)
 
+;;; Power management
+(import "include/power-management.lisp" code-power-management)
+(read-eval-program code-power-management)
+
 ;;; Utilities
 (import "include/draw-utils.lisp" code-draw-utils)
 (read-eval-program code-draw-utils)
@@ -212,9 +216,6 @@
 ; Whether or not the small soc battery is displayed at the top of the screen.
 (def soc-bar-visible t)
 
-; The last voltage captured while checking the remote battery.
-(def remote-batt-v (/ (bat-v) 1000.0))
-
 ; Timestamp of the last tick where the left or right buttons where pressed
 (def main-left-held-last-time 0)
 (def main-right-held-last-time 0)
@@ -378,10 +379,10 @@
         (if (and (<= remote-batt-v 3.2) (eq (bat-charge-status) nil)) {
             (print "Remote battery too low for operation!")
             (print "Foced Shutdown Event @ 0%")
-
+            (state-set 'view 'low-battery)
+            (sleep 3)
             ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
             (hibernate-now)
-            (state-set 'view 'low-battery)
             (sleep 8)
         })
 
