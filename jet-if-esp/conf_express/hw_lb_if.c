@@ -67,10 +67,24 @@ static void load_extensions(void) {
 }
 
 void hw_init(void) {
-	xTaskCreatePinnedToCore(temp_task, "temp", 512, NULL, 6, NULL, tskNO_AFFINITY);
+		// Configure the temperature ADC GPIO pins 
+	gpio_config_t gpconf = {0};
+
+	gpconf.pin_bit_mask = BIT(0) | BIT(1) | BIT(4);
+	gpconf.intr_type = GPIO_FLOATING;
+	gpconf.mode = GPIO_MODE_DISABLE;
+	gpconf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+	gpconf.pull_up_en = GPIO_PULLUP_DISABLE;
+	
+	gpio_reset_pin(0);
+	gpio_reset_pin(1);
+	gpio_reset_pin(4);
+	gpio_config(&gpconf);
 
 	lispif_add_ext_load_callback(load_extensions);
 	bme280_if_init(BME280_SDA, BME280_SCL);
+	
+	xTaskCreatePinnedToCore(temp_task, "temp", 512, NULL, 6, NULL, tskNO_AFFINITY);
 }
 
 float hw_temp_filtered(int ind) {

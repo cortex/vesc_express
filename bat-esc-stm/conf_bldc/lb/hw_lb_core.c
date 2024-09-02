@@ -377,7 +377,8 @@ static THD_FUNCTION(mux_thread, arg) {
 		chThdSleepMicroseconds(400);
 		ADC_Value[ADC_IND_TEMP_MOS_3_M2] = ADC_Value[ADC_IND_ADC_MUX];
 
-		// TODO: Motor temperature
+		// We're not using these either way, since we're overriding it by
+		// defining the NTC_TEMP_MOTOR(_2) macro.
 		ADC_Value[ADC_IND_TEMP_MOTOR] = 3000;
 		ADC_Value[ADC_IND_TEMP_MOTOR_2] = 3000;
 

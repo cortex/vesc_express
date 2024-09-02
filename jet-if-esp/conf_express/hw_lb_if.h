@@ -70,7 +70,7 @@ ADC1_CHANNEL_4 -> Motor 1 temp
 #define HW_ADC_CH2					ADC1_CHANNEL_1 // Oil
 
 // Macros
-#define NTC_TEMP(res)				(1.0 / ((logf((res) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
+#define NTC_TEMP(res)				(1.0 / ((logf((res) / 10000.0) / 4050.0) + (1.0 / 298.15)) - 273.15)
 #define NTC_RES(ch)					(10.0e3 / (3.3 / adc_get_voltage(ch) - 1.0))
 
 // CAN Status Messages
