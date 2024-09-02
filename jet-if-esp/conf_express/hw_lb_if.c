@@ -74,11 +74,12 @@ static void handle_sensor_sample(uint32_t sensor_index) {
 
     float current_sample = NTC_TEMP(NTC_RES(adc_channels[sensor_index]));
 
-    size_t next_index = temp_samples_next_index[sensor_index]++;
-    temp_samples[sensor_index][next_index] = current_sample;
-    if (next_index >= SAMPLE_COUNT) {
-        temp_samples_next_index[sensor_index] = 0;
+    size_t *next_index = &temp_samples_next_index[sensor_index];
+	*next_index += 1;
+    if (*next_index >= SAMPLE_COUNT) {
+		*next_index = 0;
     }
+    temp_samples[sensor_index][*next_index] = current_sample;
 
 	// We only update with the sample if the samples amplitude is within 25-75%
 	// of the last SAMPLE_COUNT samples.
