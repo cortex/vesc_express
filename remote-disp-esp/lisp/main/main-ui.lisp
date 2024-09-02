@@ -165,16 +165,6 @@
 
 @const-end
 
-(def start-tick (systime))
-
-; These are placed here so they don't use up binding slots.
-(def thread-connection-start (systime))
-(def thread-thr-start (systime))
-(def thread-input-start (systime))
-(def thread-vibration-start (systime))
-(def thread-main-start (systime))
-
-
 ;;; State variables. Some of these are calculated here and some are updated
 ;;; using esp-now from the battery. We use code streaming to make updating
 ;;; them convenient.
@@ -250,19 +240,8 @@
 (def no-data-buf (create-sbuf 'indexed2 22 (+ 20 display-y-offset) 16 16))
 
 ; Communication
-(def m-connection-tick-ms 0.0)
 (spawn 200 (fn ()
     (loopwhile (and (not stop-threads) (not firmware-updating)) {
-        (setq m-connection-tick-ms (if dev-smooth-tick-ms
-            (smooth-filter
-                (ms-since thread-connection-start)
-                m-connection-tick-ms
-                dev-smoothing-factor
-            )
-            (ms-since thread-connection-start)
-        ))
-        (setq thread-connection-start (systime))
-
         (connection-tick)
         ; this tick function handles its own sleep time
     })
@@ -270,18 +249,7 @@
 
 
 ; Throttle handling
-(def m-thr-tick-ms 0.0)
 (spawn 200 (fn () (loopwhile (not stop-threads) {
-    (setq m-thr-tick-ms (if dev-smooth-tick-ms
-            (smooth-filter
-                (ms-since thread-thr-start)
-                m-thr-tick-ms
-                dev-smoothing-factor
-            )
-            (ms-since thread-thr-start)
-        ))
-    (setq thread-thr-start (systime))
-
     (thr-tick)
 
     (if any-ping-has-failed
@@ -292,21 +260,9 @@
 
 
 ; Input read and filter
-(def m-input-tick-ms 0.0)
 (spawn 200 (fn ()
     (loopwhile (not stop-threads) {
-        (setq m-input-tick-ms (if dev-smooth-tick-ms
-            (smooth-filter
-                (ms-since thread-input-start)
-                m-input-tick-ms
-                dev-smoothing-factor
-            )
-            (ms-since thread-input-start)
-        ))
-        (setq thread-input-start (systime))
-
         (input-tick)
-
         (setq input-has-ran true)
         (if any-ping-has-failed
             (sleep-ms-or-until 80 (not any-ping-has-failed))
@@ -317,26 +273,12 @@
 
 
 ; Vibration playback
-(def m-vibration-tick-ms 0.0)
 (spawn 120 (fn ()
     (loopwhile (not stop-threads) {
-        (def m-vibration-tick-ms (if dev-smooth-tick-ms
-            (smooth-filter
-                (ms-since thread-vibration-start)
-                m-vibration-tick-ms
-                dev-smoothing-factor
-            )
-            (ms-since thread-vibration-start)
-        ))
-        (def thread-vibration-start (systime))
-
         (vib-flush-sequences)
-
-
         (sleep 0.08) ; 80 ms
     })
 ))
-
 
 ; Slow updates
 (def soc-last-update (systime))
@@ -363,17 +305,6 @@
         ; Update RSSI state from latest esp-rx-rssi
         (state-set 'rx-rssi esp-rx-rssi)
 
-        ; If we reach 3.2V (0% SOC) the remote must power down
-        (if (and (<= remote-batt-v 3.2) (eq (bat-charge-status) nil)) {
-            (print "Remote battery too low for operation!")
-            (print "Forced Shutdown Event @ 0%")
-            (state-set 'view 'low-battery)
-            (sleep 3)
-            ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
-            (hibernate-now)
-            (sleep 8)
-        })
-
         (if dev-bind-soc-bms-to-thr
             (state-set-current 'soc-bms (* (state-get 'thr-input) dev-soc-bms-thr-ratio))
             (state-set 'soc-bms soc-bms)
@@ -384,19 +315,8 @@
 
 
 ; Tick UI
-(def m-main-tick-ms 0.0)
 (spawn 200 (fn () {
     (loopwhile (not stop-threads) {
-        (def m-main-tick-ms (if dev-smooth-tick-ms
-            (smooth-filter
-                (ms-since thread-main-start)
-                m-main-tick-ms
-                dev-smoothing-factor
-            )
-            (ms-since thread-main-start)
-        ))
-        (def thread-main-start (systime))
-
         (var start (systime))
         (sleep-until input-has-ran)
         (tick)
