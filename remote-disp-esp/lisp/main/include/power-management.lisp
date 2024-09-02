@@ -34,46 +34,12 @@
     (map-range-01 voltage 3.45 4.1)
 })
 
-; Detect whether USB is connected
-; This is not following the spec on 
-; https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP2723GQC/document_id/6815/
-; but mysteriously works.
-(defun weird-charger-status () {
-    (define arr (array-create 2))
-    (i2c-tx-rx 0x4B (list 0x0c) arr)
-    (var status-byte (bufget-u8 arr 1))
-    (var vin-stat-val (shr status-byte 5))
-    (match vin-stat-val
-        (4 'connected)
-        (5 'not-connected))
-})
-
-; This is the vin-stat according to spec, but 
-; it doesn't work.
-(defun vin-stat () {
-    (define arr (array-create 2))
-    (i2c-tx-rx 0x4B (list 0x0c) arr)
-    (var all (bufget-u8 arr 1))
-    (puts (str-merge "     all bits: " (to-str (bits all))))
-    (var vin-stat-val (shr (bufget-u8 arr 1) 5))
-    (puts (str-merge "vin_stat bits: " (to-str (bits vin-stat-val))))
-    (match vin-stat-val
-        (0 'nc)
-        (1 'nonstandard)
-        (2 'sdp)
-        (3 'cdp)
-        (4 'dcp)
-        (5 'dcp)
-        (6 'unknown)
-        (7 'otg))
-})
-
 
 (defun refresh-battery-voltage () (progn
     (var new-remote-batt-v
         ; If remote is charging, use the charging voltage, 
         ; otherwise use the vibration voltage
-        (if (eq (weird-charger-status)  'connected)  
+        (if (bat-charge-status)  
             {
                 (var batv-before (bat-v))
                 (bat-set-charge false)
@@ -139,3 +105,19 @@
     ; Go to sleep and wake up in 6 hours
     (go-to-sleep (* (* 6 60) 60))
 })
+
+
+(defun monitor-battery () {
+    (refresh-battery-voltage)
+    ; If we reach 3.2V (0% SOC) the remote must power down
+    (if (and (<= remote-batt-v 3.2) (eq (bat-charge-status) nil)) {
+        (print "Remote battery too low for operation!")
+        (print "Forced Shutdown Event @ 0%")
+        (state-set 'view 'low-battery)
+        (sleep 3)
+        ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
+        (hibernate-now)
+        (sleep 8)
+    })
+})
+

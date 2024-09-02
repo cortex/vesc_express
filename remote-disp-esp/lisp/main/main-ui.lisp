@@ -290,6 +290,9 @@
 (spawn 120 (fn ()
     (loopwhile (not stop-threads) {
 
+
+        (monitor-battery)
+        
         ; Update charger-plugged-in state
         (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 
