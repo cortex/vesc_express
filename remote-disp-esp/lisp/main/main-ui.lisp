@@ -342,8 +342,7 @@
 (def soc-last-update (systime))
 
 ; Set state before starting thread
-(def soc-remote (get-remote-soc))
-(state-set 'soc-remote soc-remote)
+(state-set 'soc-remote remote-batt-soc)
 (state-set 'charger-plugged-in (not-eq (bat-charge-status) nil))
 
 (spawn 120 (fn ()
@@ -356,8 +355,8 @@
         (if (or (not (state-get 'charger-plugged-in))
                 (and (state-get 'charger-plugged-in) (> (secs-since soc-last-update) 5.0))
         ) {
-            (def soc-remote (get-remote-soc))
-            (state-set 'soc-remote soc-remote)
+            (refresh-battery-voltage)
+            (state-set 'soc-remote remote-batt-soc)
             (def soc-last-update (systime))
         })
 
@@ -367,7 +366,7 @@
         ; If we reach 3.2V (0% SOC) the remote must power down
         (if (and (<= remote-batt-v 3.2) (eq (bat-charge-status) nil)) {
             (print "Remote battery too low for operation!")
-            (print "Foced Shutdown Event @ 0%")
+            (print "Forced Shutdown Event @ 0%")
             (state-set 'view 'low-battery)
             (sleep 3)
             ; NOTE: Hibernate takes 8 seconds (tDISC_L to turn off BATFET)
