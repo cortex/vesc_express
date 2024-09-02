@@ -24,6 +24,3 @@
 ; Enables a dbg menu that shows information about connection to the board. Can
 ; be enabled by pressing the up button, disabled by holding the up button
 (def dev-enable-connection-dbg-menu false)
-
-(def dev-smooth-tick-ms true) ; Applies a smoothing filter to the tick interval measurements.
-(def dev-smoothing-factor 0.1) ; Lower values result in more smoothing.
