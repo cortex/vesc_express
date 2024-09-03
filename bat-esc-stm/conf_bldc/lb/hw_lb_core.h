@@ -202,8 +202,8 @@
 #define NTC_TEMP(adc_ind)		hw_get_temp(adc_ind)
 
 #define NTC_RES_MOTOR(adc_val)	(10000.0 / ((4095.0 / (float)adc_val) - 1.0)) // Motor temp sensor on low side
-#define NTC_TEMP_MOTOR(beta)	hw_get_temp_motor(2)
-#define NTC_TEMP_MOTOR_2(beta)	hw_get_temp_motor(1)
+#define NTC_TEMP_MOTOR(beta)	hw_get_temp_motor(1)
+#define NTC_TEMP_MOTOR_2(beta)	hw_get_temp_motor(2)
 
 #define NTC_TEMP_MOS1()			(1.0 / ((logf(NTC_RES(ADC_Value[ADC_IND_TEMP_MOS]) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
 #define NTC_TEMP_MOS2()			(1.0 / ((logf(NTC_RES(ADC_Value[ADC_IND_TEMP_MOS_2]) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
