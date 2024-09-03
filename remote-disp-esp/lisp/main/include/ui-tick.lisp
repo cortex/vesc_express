@@ -33,10 +33,10 @@
         )
     })
 
-    ; Display throttle activation when throttle is pressed and not activated
-    (state-with-changed '(thr-active thr-input) (fn (thr-active thr-input) {
+    ; Display throttle activation when throttle is pressed and not primed
+    (state-with-changed '(thr-primed thr-input) (fn (thr-primed thr-input) {
         (if (and
-            (not thr-active)
+            (not thr-primed)
             (is-thr-pressed thr-input)
         )
             (activate-thr-reminder)
@@ -90,9 +90,9 @@
     (if (and
         (eq (state-get 'thr-activation-state) 'countdown)
         (>= secs thr-countdown-len-secs)
-    ) { ; thr is now enabled
+    ) { ; thr is now primed
         (vib-add-sequence vib-thr-enable)
-        (set-thr-is-active-current true)
+        (set-thr-is-primed-current true)
         (state-set-current 'thr-activation-shown false)
         (state-set-current 'thr-requested false)
         (request-view-change)
@@ -122,6 +122,7 @@
     ; global tick
     
     (if dev-force-thr-enable {
+        (set-thr-is-primed-current true)
         (set-thr-is-active-current true)
     })
     
@@ -207,9 +208,6 @@
     (state-with-changed '(view) (fn (-)
         (update-displayed-view)
     ))
-    ; (if (not-eq script-start nil) {
-    ;     (println ("load took" (* (secs-since script-start) 1000) "ms"))
-    ; })
     
     (draw-current-view)
     (if (state-value-changed 'view)
@@ -233,11 +231,6 @@
     (state-with-changed '(soc-bar-visible no-data) (fn (soc-bar-visible no-data) {
         (render-data-indicator (if soc-bar-visible no-data nil))
     }))
-
-    ; (if (not-eq script-start nil) {
-    ;     (println ("render took" (* (secs-since script-start) 1000) "ms"))
-    ;     (def script-start nil)
-    ; })
     
     ;(state-with-changed '(is-connected) (fn (is-connected) {
     ;    (render-is-connected is-connected)

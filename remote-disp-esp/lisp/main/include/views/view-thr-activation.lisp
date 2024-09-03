@@ -4,7 +4,7 @@
 
 (defun view-is-visible-thr-activation () {
     (and
-        (not (state-get 'thr-enabled))
+        (not (state-get 'thr-primed))
         (state-get 'thr-activation-shown)
     )
 })

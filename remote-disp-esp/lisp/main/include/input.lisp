@@ -25,9 +25,6 @@
 ; Final throttle that's adjusted for the current gear, 0.0 to 1.0.
 (def thr 0.0)
 
-; If the thr is enabled, causing thr-input to be sent to the battery.
-(def thr-enabled false)
-
 ; Seems to control with what method thr is sent to the battery.
 (def thr-mode 1)
 
