@@ -68,6 +68,7 @@ ADC1_CHANNEL_4 -> Motor 1 temp
 #define HW_ADC_CH0					ADC1_CHANNEL_4 // Motor 1
 #define HW_ADC_CH1					ADC1_CHANNEL_0 // Motor 2
 #define HW_ADC_CH2					ADC1_CHANNEL_1 // Oil
+#define HW_ADC_CH3					ADC1_CHANNEL_3 // Cap sense
 
 // Macros
 #define NTC_TEMP(res)				(1.0 / ((logf((res) / 10000.0) / 4050.0) + (1.0 / 298.15)) - 273.15)
@@ -78,6 +79,9 @@ ADC1_CHANNEL_4 -> Motor 1 temp
 #define HW_CAN_STATUS_ADC1			hw_temp_filtered(1)
 #define HW_CAN_STATUS_ADC2			hw_temp_filtered(2)
 #define HW_CAN_STATUS_ADC3			bme280_if_get_hum()
+
+// Cap Sense Drive
+#define CAP_SENSOR_GPIO              8
 
 // Functions
 void hw_init(void);
