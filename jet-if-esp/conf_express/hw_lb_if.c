@@ -91,10 +91,10 @@ static bool is_sample_rank_q2_or_q3(float samples[SAMPLE_COUNT], float sample) {
     return true;
 }
 
-static void handle_sensor_sample(uint32_t sensor_index) {
+static void handle_sensor_sample(uint32_t sensor_index, float beta) {
     static const int adc_channels[3] = {HW_ADC_CH0, HW_ADC_CH1, HW_ADC_CH2};
 
-    float current_sample = NTC_TEMP(NTC_RES(adc_channels[sensor_index]));
+    float current_sample = NTC_TEMP(NTC_RES(adc_channels[sensor_index]), beta);
 
     size_t *next_index = &temp_samples_next_index[sensor_index];
 	*next_index += 1;
@@ -106,16 +106,16 @@ static void handle_sensor_sample(uint32_t sensor_index) {
 	// We only update with the sample if the samples amplitude is within 25-75%
 	// of the last SAMPLE_COUNT samples.
     if (is_sample_rank_q2_or_q3(temp_samples[sensor_index], current_sample)) {
-        UTILS_LP_FAST(temp_filtered[sensor_index], current_sample, 0.0005);
+        UTILS_LP_FAST(temp_filtered[sensor_index], current_sample, 0.005);
     }
 }
 
 volatile static uint32_t cap_charge_time_us = 20;
 static void temp_task(void *arg) {
     for (;;) {
-		handle_sensor_sample(0);
-		handle_sensor_sample(1);
-		handle_sensor_sample(2);
+		handle_sensor_sample(0, 4050.0); // Motor beta value 4050.0
+		handle_sensor_sample(1, 3984.0); // Gearbox beta value 3984.0
+		handle_sensor_sample(2, 4050.0); // Motor beta value 4050.0
 		
 		// Capacitance measurement
         vTaskDelay(2);
