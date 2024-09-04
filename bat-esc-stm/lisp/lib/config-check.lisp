@@ -11,8 +11,9 @@
     (cons 'l-battery-cut-start 40.8)
     (cons 'l-battery-cut-end 37.2)
 
-    (cons 'l-temp-motor-start 85.0)
-    (cons 'l-temp-motor-end 100.0)
+    (cons 'l-temp-motor-start 110.0)
+    (cons 'l-temp-motor-end 120.0)
+    (cons 'l-temp-accel-dec 0.0)
     (cons 'l-erpm-start 0.8)
 
     (cons 'foc-sensor-mode 4)

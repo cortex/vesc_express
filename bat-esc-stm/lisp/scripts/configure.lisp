@@ -8,8 +8,9 @@
         (conf-set 'l-battery-cut-start 40.8)
         (conf-set 'l-battery-cut-end 37.2)
 
-        (conf-set 'l-temp-motor-start 85.0)
-        (conf-set 'l-temp-motor-end 100.0)
+        (conf-set 'l-temp-motor-start 110.0)
+        (conf-set 'l-temp-motor-end 120.0)
+        (conf-set 'l-temp-accel-dec 0.0)
         (conf-set 'l-erpm-start 0.8)
 
         (conf-set 'foc-sensor-mode 0) ; Different from normal motor config
