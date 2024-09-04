@@ -8,6 +8,7 @@
         (cons 'up-long enter-sleep)
 
         (cons 'down try-activate-thr)
+        (cons 'down-repeat try-activate-thr)
         (cons 'down-long (if dev-enable-connection-dbg-menu (fn () {(main-subview-change 'none)})))
 
         (cons 'left decrease-gear)
@@ -31,7 +32,8 @@
     (cons 'thr-activation (list
         (cons 'up nil)
         (cons 'up-long enter-sleep)
-        (cons 'down try-activate-thr)
+        (cons 'down nil)
+        (cons 'down-repeat try-activate-thr)
         (cons 'left nil)
         (cons 'right nil)
         ; (cons 'left try-activate-thr)
@@ -135,6 +137,8 @@
 (def on-down-long-pressed nil)
 (def on-left-long-pressed nil)
 (def on-right-long-pressed nil)
+
+(def on-down-repeat-press nil)
 
 ; ; An association list of all buffers which belong to the current view.
 ; ; These are rendered using `sbuf-render-changes`
@@ -266,6 +270,7 @@
     (def on-down-long-pressed (assoc handlers 'down-long))
     (def on-left-long-pressed (assoc handlers 'left-long))
     (def on-right-long-pressed (assoc handlers 'right-long))
+    (def on-down-repeat-press (assoc handlers 'down-repeat))
 }))
 
 ;;; Views

@@ -25,6 +25,10 @@
     (cons 'left-pressed false)
     (cons 'right-pressed false)
 
+    ; Controls if the throttle is unlocked
+    (cons 'thr-primed false)
+
+    ; Controls if the throttle is sent to the battery
     (cons 'thr-active false)
     
     ; If the user has tried to use thrust while it was disabled or requested to
@@ -228,11 +232,10 @@
 ;;;; Lower-level functions
 
 ; Should be called outside render thread
+(defun set-thr-is-primed (is-primed) {
+    (state-set 'thr-primed is-primed)
+})
 (defun set-thr-is-active (is-active) {
-    (def thr-active (if dev-force-thr-enable
-        true
-        is-active
-    ))
     (state-set 'thr-active is-active)
     (if is-active
         (state-set 'conn-lost-has-alerted false)
@@ -240,11 +243,10 @@
 })
 
 ; Should only be called in render thread
+(defun set-thr-is-primed-current (is-primed) {
+    (state-set-current 'thr-primed is-primed)
+})
 (defun set-thr-is-active-current (is-active) {
-    (def thr-active (if dev-force-thr-enable
-        true
-        is-active
-    ))
     (state-set-current 'thr-active is-active)
     (if is-active
         (state-set-current 'conn-lost-has-alerted false)

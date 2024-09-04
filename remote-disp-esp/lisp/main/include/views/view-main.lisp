@@ -36,14 +36,14 @@
     (state-with-changed '(gear) (fn (gear) {
         (view-draw-inner-arc main-current-gear main-thr-input)
 
-        ; Flag showing animal icon after changing gears
+        ; Flag showing current gear after changing gears
         (if (not-eq main-current-gear main-previous-gear){
             (setq main-previous-gear main-current-gear)
             (setq show-time (+ (secs-since view-timeline-start) 2.0)) ; Show animals
         })
 
         (if (> show-time 0)
-            (view-draw-center-animal main-current-gear)
+            (view-draw-center-gear main-current-gear)
         )
         (setq view-updated true)
     }))
@@ -57,12 +57,11 @@
     ;     })
     ; }))
 
-    ; Switch back to drawing speed if it's hidden and the animal timer is expired
-    (if (not center-value-visible) {
+    ; Switch back to drawing animal icon
+    (if center-value-visible {
         (if (< show-time (secs-since view-timeline-start)) (setq show-time 0))
         (if (eq show-time 0)
-            ; NOTE: Asked to show gear instead. (view-draw-center-speed main-speed-kph)
-            (view-draw-center-gear main-current-gear)
+            (view-draw-center-animal main-current-gear)
             (setq view-updated true)
         )
     })
@@ -99,8 +98,7 @@
                 )
                 (view-draw-outer-arc main-soc-bms)
                 (view-draw-inner-arc main-current-gear main-thr-input)
-                ; NOTE: Asked to show gear instead. (view-draw-center-speed main-speed-kph)
-                (view-draw-center-gear main-current-gear)
+                (view-draw-center-animal main-current-gear)
             })
             (if (eq view-main-subview 'dbg) {
                 (subview-draw-dbg)
@@ -114,8 +112,7 @@
                 )
                 (view-draw-outer-arc main-soc-bms)
                 (view-draw-inner-arc main-current-gear main-thr-input)
-                ; NOTE: Asked to show gear instead. (view-draw-center-speed main-current-gear main-speed-kph)
-                (view-draw-center-gear main-current-gear)
+                (view-draw-center-animal main-current-gear)
             })
         }))
     })
@@ -255,7 +252,6 @@
 })
 
 (defun view-draw-center-gear (main-current-gear) {
-
     ; Draw current geart if not visible previously
     (if (not center-value-visible) {
         (view-clean-center)
@@ -302,8 +298,8 @@
     ; End Angle of Throttle Input
     (def arc-end-throttle (+
         arc-start-angle
-        (* arc-min-deg thr-input)
-        (* arc-degrees (* thr-input gear-pct))))
+        (* arc-min-deg main-thr-input)
+        (* arc-degrees (* main-thr-input gear-pct))))
 
     ; Arc Inner BG
     (sbuf-exec img-arc view-main-buf (/ buf-width-main 2) (/ buf-height-main 2) (arc-inner-rad arc-start-angle 450 color-arc-inner-bg '(thickness 24)))

@@ -1,6 +1,3 @@
-
-(def thr-active false)
-
 (def esp-rx-rssi -99)
 (def esp-rx-cnt 0)
 (def batt-addr-rx false)
@@ -189,25 +186,46 @@
         })
 
         (if (and (> (secs-since last-input-time) 10.0) (not dev-disable-inactivity-check)) {
-                (set-thr-is-active false)
-        })
-        (if (and (not is-connected) (not dev-disable-connection-check))
+            (set-thr-is-primed false)
             (set-thr-is-active false)
-        )
+        })
+        (if (and (not is-connected) (not dev-disable-connection-check)) {
+            (set-thr-is-primed false)
+            (set-thr-is-active false)
+        })
 
         (if dev-force-thr-enable {
-                (set-thr-is-active true)
+            (set-thr-is-primed true)
+            (set-thr-is-active true)
         })
 
         (if (eq pairing-state 'paired) {
-            ; Send Throttle
-            (if (not (send-thr (if thr-active thr 0)))
+            ; Activate Throttle when Primed and Down is held with Zero throttle
+            (if (and
+                (state-get 'thr-primed)
+                (state-get 'down-pressed)
+                (= thr 0.0)
+            ){
+                (set-thr-is-active true)
+            })
+
+            ; Deactivate with no throttle and down released
+            (if (and
+                (not (state-get 'down-pressed))
+                (= thr 0.0)
+            ) {
+                (set-thr-is-active false)
+            })
+
+            ; Send Throttle (send 0 when not active)
+            (if (not (send-thr (if (state-get 'thr-active) thr 0)))
                 (setq thr-fail-cnt (+ thr-fail-cnt 1))
             )
 
             ; Update state when the Battery (ESC data) times out
             (if (and (> (- (systime) battery-rx-timestamp) battery-timeout-ms) (not dev-simulate-connection)) {
                 (state-set 'no-data true) ; Display indicator on main view
+                (set-thr-is-primed false)
                 (set-thr-is-active false) ; Lock throttle
             } (state-set 'no-data false))
         }
@@ -227,8 +245,6 @@
                     (def esp-rx-rssi -99)
                     (def broadcast-rx-timestamp nil)
                 }))
-
-;        (if (not is-connected) (def thr-active false))
 
         (var tick-secs (if any-ping-has-failed
                 0.004 ; 4 ms

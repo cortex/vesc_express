@@ -4,7 +4,7 @@
 
 (defun view-is-visible-thr-activation () {
     (and
-        (not (state-get 'thr-enabled))
+        (not (state-get 'thr-primed))
         (state-get 'thr-activation-shown)
     )
 })
@@ -26,6 +26,11 @@
     (state-with-changed '(thr-activation-state) (fn (thr-activation-state) {
         (sbuf-clear view-graphic-buf)
         (sbuf-exec img-circle view-graphic-buf 70 70 (70 2 '(filled)))
+
+        (if (eq thr-activation-state 'reminder) {
+            (sbuf-clear view-bg-buf-l)
+            (sbuf-clear view-bg-buf-r)
+        })
 
         (if (eq thr-activation-state 'release-warning)
         {
