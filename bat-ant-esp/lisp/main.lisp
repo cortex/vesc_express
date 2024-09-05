@@ -59,7 +59,7 @@
 (defun unpair () {
     (print "Remote request: release pairing")
     (if (eq pairing-state 'paired) (rcode-run-noret 10 '(alert-unpair)))
-    (def pairing-state 'not-paired) 
+    (def pairing-state 'release-pairing)
 })
 
 (loopwhile-thd 100 t {
@@ -199,6 +199,11 @@
                     ; Send broadcast ping to remote
                     (esp-now-send broadcast-addr "")
                 )
+            })
+            (release-pairing {
+                (print "state: release pairing")
+                (sleep 1.0)
+                (def pairing-state 'not-paired)
             })
         )
 

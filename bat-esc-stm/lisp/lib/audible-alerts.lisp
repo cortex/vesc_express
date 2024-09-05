@@ -1,9 +1,5 @@
 @const-start
 
-(import "./alerts/ascend.mid" 'midi-pair)
-(import "./alerts/descend.mid" 'midi-unpair)
-(import "./alerts/error.mid" 'midi-error)
-
 (def midi-voltage-scale 0.42)
 
 (defun alert-paired () {
@@ -113,6 +109,7 @@
 
                 (midi-eob {
                         (print "End of file")
+                        (foc-play-stop)
                         (break)
                 })
 
