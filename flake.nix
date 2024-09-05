@@ -3,7 +3,7 @@
   inputs = {
     nixpkgs-esp-dev.url = "github:Lindboard/nixpkgs-esp-dev";
     vesc-tool-flake = {
-      url = "github:laxsjo/vesc-tool-flakewoopsimistyped¯\\_(ツ)_/¯/main";
+      url = "github:laxsjo/vesc-tool-flake/main";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.vesc-tool-src.url = "github:vedderb/vesc_tool/e4fcfe3";
     };
