@@ -53,7 +53,7 @@
 (def jet-if-timestamp nil) ; Updated each time a ping is received from jet-if-esp
 (def jet-if-connected false) ; Track when jet-if-esp is connected
 
-(def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
+(def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'release-pairing 'paired
 
 ; When the remote requests, release pairing
 (defun unpair () {
@@ -171,6 +171,7 @@
                 (if (not jet-if-connected) {
                     (puts "Jet Connected")
                     (def jet-if-connected true)
+                    (rcode-run-noret 10 '(alert-jet-connect))
                 })
                 (if (eq pairing-state 'notify-unpair) {
                     (puts "Jet connected while unpairing from remote")

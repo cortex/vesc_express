@@ -1,6 +1,6 @@
 @const-start
 
-(def midi-voltage-scale 0.42)
+(def midi-voltage-scale 0.6)
 
 (defun alert-paired () {
     (ext-midi-open 0 midi-pair)
@@ -16,6 +16,12 @@
 
 (defun alert-error () {
     (ext-midi-open 0 midi-error)
+    (def t-start (systime))
+    (spawn 200 play-midi 0 midi-voltage-scale 0.92)
+})
+
+(defun alert-jet-connect () {
+    (ext-midi-open 0 midi-jet-connect)
     (def t-start (systime))
     (spawn 200 play-midi 0 midi-voltage-scale 0.92)
 })

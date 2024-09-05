@@ -1,3 +1,5 @@
+@const-symbol-strings
+
 (import "pkg@://vesc_packages/lib_code_server/code_server.vescpkg" 'code-server)
 (read-eval-program code-server)
 
@@ -13,6 +15,7 @@
 (import "./lib/alerts/ascend.mid" 'midi-pair)
 (import "./lib/alerts/descend.mid" 'midi-unpair)
 (import "./lib/alerts/error.mid" 'midi-error)
+(import "./lib/alerts/jet-connect.mid" 'midi-jet-connect)
 (import "lib/audible-alerts.lisp" 'audible-alerts)
 (read-eval-program audible-alerts)
 
