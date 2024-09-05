@@ -58,7 +58,7 @@
 ; When the remote requests, release pairing
 (defun unpair () {
     (print "Remote request: release pairing")
-    (if (eq pairing-state 'paired) (rcode-run-noret 10 '(alert-unpair)))
+    (if (eq pairing-state 'paired) (can-broadcast-event event-alert-unpair))
     (def pairing-state 'release-pairing)
 })
 
@@ -122,7 +122,7 @@
                 (def remote-addr src)
                 (esp-now-add-peer src)
                 (def pairing-state 'paired)
-                (rcode-run-noret 10 '(alert-paired))
+                (can-broadcast-event event-alert-paired)
             })
 
             (eval (read data))
@@ -171,7 +171,7 @@
                 (if (not jet-if-connected) {
                     (puts "Jet Connected")
                     (def jet-if-connected true)
-                    (rcode-run-noret 10 '(alert-jet-connect))
+                    (can-broadcast-event event-alert-jet-connect)
                 })
                 (if (eq pairing-state 'notify-unpair) {
                     (puts "Jet connected while unpairing from remote")

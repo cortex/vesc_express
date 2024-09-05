@@ -2,29 +2,29 @@
 
 (def midi-voltage-scale 0.6)
 
-(defun alert-paired () {
+(can-event-register-handler event-alert-paired (fn () {
     (ext-midi-open 0 midi-pair)
     (def t-start (systime))
     (spawn 200 play-midi 0 midi-voltage-scale 0.92)
-})
+}))
 
-(defun alert-unpair () {
+(can-event-register-handler event-alert-unpair (fn () {
     (ext-midi-open 0 midi-unpair)
     (def t-start (systime))
     (spawn 200 play-midi 0 midi-voltage-scale 0.92)
-})
+}))
 
-(defun alert-error () {
+(can-event-register-handler event-alert-error (fn () {
     (ext-midi-open 0 midi-error)
     (def t-start (systime))
     (spawn 200 play-midi 0 midi-voltage-scale 0.92)
-})
+}))
 
-(defun alert-jet-connect () {
+(can-event-register-handler event-alert-jet-connect (fn () {
     (ext-midi-open 0 midi-jet-connect)
     (def t-start (systime))
     (spawn 200 play-midi 0 midi-voltage-scale 0.92)
-})
+}))
 
 (load-native-lib midi)
 
