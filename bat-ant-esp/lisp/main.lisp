@@ -193,8 +193,8 @@
                 })
             })
             (if (eq pairing-state 'paired) {
-                (puts "Releasing pairing while jet is disconnected")
-                (update-pairing-state 'not-paired)
+                (puts "Notify unpair while jet is disconnected")
+                (update-pairing-state 'notify-unpair)
             })
         )
 
