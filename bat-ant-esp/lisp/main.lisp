@@ -54,12 +54,24 @@
 (def jet-if-connected false) ; Track when jet-if-esp is connected
 
 (def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'release-pairing 'paired
+; TODO: The remote directly sets the pairing-state variable, leading to this
+; variable not being correct in that case. It is fine for now though for reasons
+; I don't feel like explaining. ._.
+(def pairing-state-update-time (systime)) ; Timstamp when pairing-state was last updated.
+; How many seconds we will wait for the remote to acknowledge our unpair before
+; we force the unpaired state.
+(def notify-unpair-timeout 1.0)
+
+(defun update-pairing-state (new-state) (atomic
+    (def pairing-state new-state)
+    (def pairing-state-update-time (systime))
+))
 
 ; When the remote requests, release pairing
 (defun unpair () {
     (print "Remote request: release pairing")
     (if (eq pairing-state 'paired) (can-broadcast-event event-alert-unpair))
-    (def pairing-state 'release-pairing)
+    (update-pairing-state 'release-pairing)
 })
 
 (loopwhile-thd 100 t {
@@ -121,7 +133,7 @@
                 (print "Paired with remote")
                 (def remote-addr src)
                 (esp-now-add-peer src)
-                (def pairing-state 'paired)
+                (update-pairing-state 'paired)
                 (can-broadcast-event event-alert-paired)
             })
 
@@ -165,7 +177,7 @@
                 (def jet-if-connected false)
                 (if (eq pairing-state 'paired) {
                     (print "Notify remote it's time to release pairing")
-                    (def pairing-state 'notify-unpair)
+                    (update-pairing-state 'notify-unpair)
                 })
             } {
                 (if (not jet-if-connected) {
@@ -177,12 +189,12 @@
                     (puts "Jet connected while unpairing from remote")
                     ; Jet connected while we were busy notifying remote to unpair
                     (def remote-addr broadcast-addr) ; Clear Remote Address
-                    (def pairing-state 'not-paired) ; Update State
+                    (update-pairing-state 'not-paired) ; Update State
                 })
             })
             (if (eq pairing-state 'paired) {
-                (puts "Releasing pairing while jet is disconnected")
-                (def pairing-state 'not-paired)
+                (puts "Notify unpair while jet is disconnected")
+                (update-pairing-state 'notify-unpair)
             })
         )
 
@@ -193,7 +205,14 @@
             (notify-unpair {
                 ; Let the remote know we need to release pairing
                 ; NOTE: The remote or a jet connection can change this state
-                (send-code "(trap (unpair-ack))")
+                
+                (if (< (secs-since pairing-state-update-time) notify-unpair-timeout) {
+                    ; Manually clear pairing from battery since the remote has
+                    ; not acknowledged the unpair within the timeout period.
+                    (puts "Manually set 'not-paired due to no response from remote")
+                    (can-broadcast-event event-alert-unpair)
+                    (update-pairing-state 'not-paired)
+                })
             })
             (not-paired {
                 (if (or jet-if-timestamp dev-pair-without-jet)
@@ -202,9 +221,9 @@
                 )
             })
             (release-pairing {
-                (print "state: release pairing")
+                (puts "state: release pairing")
                 (sleep 1.0)
-                (def pairing-state 'not-paired)
+                (update-pairing-state 'not-paired)
             })
         )
 
