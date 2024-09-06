@@ -9,6 +9,14 @@
 
 ; (can-start-run-thd) ; TODO: necessary?
 
+(import "pkg::midi@://vesc_packages/lib_midi/midi.vescpkg" 'midi)
+(import "./lib/alerts/ascend.mid" 'midi-pair)
+(import "./lib/alerts/descend.mid" 'midi-unpair)
+(import "./lib/alerts/error.mid" 'midi-error)
+(import "./lib/alerts/jet-connect.mid" 'midi-jet-connect)
+(import "lib/audible-alerts.lisp" 'audible-alerts)
+(read-eval-program audible-alerts)
+
 (def buf-can (array-create 8))
 
 ; Load cell reading. Updated using code server when available.
@@ -23,9 +31,11 @@
 (def rem-temp 0.0)
 (def rem-pres 0.0)
 
+@const-start
+
 ; Check that config is correct, and if so set the motor current.
 ; Is the only function you should use for directly setting the thr!
-(defun set-thr-checked (thr) 
+(defun set-thr-checked (thr)
     ; config-correct is set in lib/config-check.lisp
     (if config-correct (atomic
         (select-motor 1)
@@ -55,6 +65,8 @@
     })
 )
 
+@const-end
+
 (select-motor 1)
 
 (spawn (fn ()
@@ -69,8 +81,12 @@
                 (sleep 0.1)
 ))))
 
+@const-start
+
 (def esp-can-id 31)
 (def rate-hz 5.0)
+
+@const-end
 
 (defun run-m2 (code)
     (let ((res 0.0))
@@ -94,6 +110,8 @@
 (def power-impeller 0.0)
 (def power-bms 0.0)
 
+@const-start
+
 (def gearing 3.37)
 
 (defun calc-torque ()
@@ -107,6 +125,8 @@
         ) (* iq-tot corr fluxl gearing 2.0 1.5)
 ))
 
+@const-end
+
 (loopwhile-thd 100 t {
         (setq i-in (get-current-in 1))
         (setq i-in-m2 (run-m2 '(get-current-in 1)))
@@ -119,6 +139,8 @@
         (setq power-impeller (* 0.1047 rpm-impeller torque-impeller))
         (sleep 0.05)
 })
+
+@const-start
 
 ; List with log fields and values. Format:
 ;
@@ -175,15 +197,17 @@
         ("Rem Hum" "%"                   (* 1.0 rem-hum))
         ("Rem Temp" "degC"               (* 1.0 rem-temp))
         ("Rem Pres"                      (* 1.0 rem-pres))
-        
+
         ; Uptime counters
         ("ESC uptime" "s"                (secs-since 0))
-        
+
         ; Checks
         ("Motor Config Was Reapplied"    (if config-was-reapplied 1 0))
         ("Motor Config Ok"               (if config-correct 1 0))
 
 ))
+
+@const-end
 
 (defun init-logging ()
     (looprange row 0 (length loglist)
@@ -219,6 +243,8 @@
 )))
 
 (def log-running false)
+
+@const-start
 
 (defun log-sender ()
     (loopwhile log-running
@@ -263,6 +289,8 @@
     (def log-running false)
     (log-stop esp-can-id)
 })
+
+@const-end
 
 (can-event-register-handler event-log-start (fn () {
     (start-logging)

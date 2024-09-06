@@ -53,12 +53,13 @@
 (def jet-if-timestamp nil) ; Updated each time a ping is received from jet-if-esp
 (def jet-if-connected false) ; Track when jet-if-esp is connected
 
-(def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'paired
+(def pairing-state 'not-paired) ; 'not-paired 'notify-unpair 'release-pairing 'paired
 
 ; When the remote requests, release pairing
 (defun unpair () {
     (print "Remote request: release pairing")
-    (def pairing-state 'not-paired)
+    (if (eq pairing-state 'paired) (can-broadcast-event event-alert-unpair))
+    (def pairing-state 'release-pairing)
 })
 
 (loopwhile-thd 100 t {
@@ -121,6 +122,7 @@
                 (def remote-addr src)
                 (esp-now-add-peer src)
                 (def pairing-state 'paired)
+                (can-broadcast-event event-alert-paired)
             })
 
             (eval (read data))
@@ -169,6 +171,7 @@
                 (if (not jet-if-connected) {
                     (puts "Jet Connected")
                     (def jet-if-connected true)
+                    (can-broadcast-event event-alert-jet-connect)
                 })
                 (if (eq pairing-state 'notify-unpair) {
                     (puts "Jet connected while unpairing from remote")
@@ -197,6 +200,11 @@
                     ; Send broadcast ping to remote
                     (esp-now-send broadcast-addr "")
                 )
+            })
+            (release-pairing {
+                (print "state: release pairing")
+                (sleep 1.0)
+                (def pairing-state 'not-paired)
             })
         )
 

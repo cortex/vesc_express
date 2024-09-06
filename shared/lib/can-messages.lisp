@@ -22,6 +22,10 @@
 (def event-log-start 21b) ; listeners: bat-esc-stm
 (def event-log-stop 22b) ; listeners: bat-esc-stm
 (def event-jet-ping 23b) ; listeners: bat-bms-esp, bat-ant-esp
+(def event-alert-paired 24b) ; listeners: bat-esc-stm
+(def event-alert-unpair 25b) ; listeners: bat-esc-stm
+(def event-alert-error 26b) ; listeners: bat-esc-stm
+(def event-alert-jet-connect 27b) ; listeners: bat-esc-stm
 
 ;;; Functions and their IDs.
 
@@ -105,7 +109,7 @@
         ; from can-run
         (((? call-id) (? device-id) (? tout) (? fun-id) (? args))
             (send call-id (rcode-run device-id tout
-                `(-h ,fun-id ,@args)
+                `(-h ,funfun-id-id ,@args)
             ))
         )
         ; from can-run-noret
