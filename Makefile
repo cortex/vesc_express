@@ -150,64 +150,57 @@ build/remote-disp-esp/firmware.bin: \
 	cp ./remote-disp-esp/conf_express/* ./dependencies/vesc_express/main
 	./build-vesc-express.sh lb_hc build/remote-disp-esp
 
-result/bin/vesc_tool_6.05: \
-	vesc-tool.nix
-	
-	nix-build vesc-tool.nix
-
-vesc-tool: result/bin/vesc_tool_6.05
-
-VESC_TOOL=$(realpath result/bin/vesc_tool_6.05) 
+VESC_TOOL=vesc_tool 
 
 # Creating main.lpkg for install via OTA update
 
-build/bat-esc-stm/main.lpkg: vesc-tool
+build/bat-esc-stm/main.lpkg:
 	cd ./bat-esc-stm/lisp/ && make && $(VESC_TOOL) --packLisp src/main.lisp:main.lpkg
 	cp ./bat-esc-stm/lisp/main.lpkg $@
 
-build/bat-ant-esp/main.lpkg: vesc-tool
+build/bat-ant-esp/main.lpkg:
 	cd ./bat-ant-esp/lisp/ && $(VESC_TOOL) --packLisp main.lisp:main.lpkg
 	cp ./bat-ant-esp/lisp/main.lpkg $@
 
-build/bat-bms-esp/main.lpkg: vesc-tool
+build/bat-bms-esp/main.lpkg:
 	mkdir -p build/bat-bms-esp
 	cd ./bat-bms-esp/lisp/ && $(VESC_TOOL) --packLisp main.lisp:main.lpkg
 	cp ./bat-bms-esp/lisp/main.lpkg $@
 
 # Creating lisp.vescpkg for install via VESC Tool
 
-build/bat-ant-esp/lisp.vescpkg: vesc-tool
+build/bat-ant-esp/lisp.vescpkg:
 	cd ./bat-ant-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --downloadPackageArchive --buildPkg lisp.vescpkg:main.lisp::0
 	mv ./bat-ant-esp/lisp/lisp.vescpkg $@
 
-build/bat-bms-esp/lisp.vescpkg: vesc-tool
+build/bat-bms-esp/lisp.vescpkg:
 	mkdir -p build/bat-bms-esp
 	cd ./bat-bms-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main.lisp::0
 	mv ./bat-bms-esp/lisp/lisp.vescpkg $@
 
-build/bat-esc-stm/lisp.vescpkg: vesc-tool
+build/bat-esc-stm/lisp.vescpkg:
 	mkdir -p build/bat-esc-stm
 	cd ./bat-esc-stm/lisp/ && make && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:src/main.lisp::0
 	mv ./bat-esc-stm/lisp/lisp.vescpkg $@
 
-build/charger-conn-esp/lisp.vescpkg: vesc-tool
+build/charger-conn-esp/lisp.vescpkg:
 	mkdir -p build/charger-conn-esp
 	cd ./charger-conn-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main.lisp::0
 	mv ./charger-conn-esp/lisp/lisp.vescpkg $@
 
-build/jet-if-esp/lisp.vescpkg: vesc-tool
+build/jet-if-esp/lisp.vescpkg:
 	mkdir -p build/jet-if-esp
 	cd ./jet-if-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main.lisp::0
 	mv ./jet-if-esp/lisp/lisp.vescpkg $@
 
-build/remote-disp-esp/lisp.vescpkg: vesc-tool
+build/remote-disp-esp/lisp.vescpkg:
 	mkdir -p build/remote-disp-esp
 	cd ./remote-disp-esp/lisp/ && touch lisp.vescpkg && $(VESC_TOOL) --buildPkg lisp.vescpkg:main/main-ui.lisp::0
 	mv ./remote-disp-esp/lisp/lisp.vescpkg $@
 
 # Flashing firmwares
 
-flash: firmware vesc-tool
+flash: firmware
 	$(VESC_TOOL) --canFwd 10 --uploadLisp  build/bat-esc-stm/main.lpkg --vescPort /dev/ttyACM0; true
 	$(VESC_TOOL) --canFwd 21 --uploadLisp  build/bat-bms-esp/main.lpkg --vescPort /dev/ttyACM0; true
 
