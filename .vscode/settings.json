@@ -19,6 +19,7 @@
         "sbuf",
         "setix",
         "setq",
+        "ublox",
         "unpair",
         "vmon"
     ],

@@ -19,6 +19,9 @@
 
 (can-start-run-thd)
 
+(import "lib/gnss.lisp" 'code-gnss)
+(read-eval-program code-gnss)
+
 (import "lib/events.lisp" 'code-events)
 (read-eval-program code-events)
 
