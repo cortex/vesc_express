@@ -242,3 +242,9 @@ flash-bat-bms-esp:
 
 flash-bat-bms-stm:
 	openocd -f dependencies/vesc_bms_fw/stm32l4_stlinkv2.cfg -c "program build/bat-bms-stm/vesc_bms.elf verify reset exit"
+
+flash-charger-openocd:
+	$(OPENOCD) -c "program_esp build/charger-conn-esp/bootloader.bin 0 verify reset exit"
+	$(OPENOCD) -c "program_esp build/charger-conn-esp/partition-table.bin 0x8000 verify reset exit"
+	$(OPENOCD) -c "program_esp build/charger-conn-esp/firmware.bin 0x020000 verify reset exit"
+	$(OPENOCD) -c "program_esp build/charger-conn-esp/firmware.bin 0x1B0000 verify reset exit"
