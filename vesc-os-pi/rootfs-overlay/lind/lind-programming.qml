@@ -356,12 +356,13 @@ Item {
             var configFile = ""
 
             if (deviceName == "bat-ant-stm") {
-                // TODO: test bat-ant-stm STM32G431
+                // NOTE: STM32G431
                 configFile = "/Firmware/openocd-pi-stm32g4.cfg"
             } else if (deviceName == "bat-bms-stm") {
-                // TODO: test bat-bms-stm STM32L4
+                // NOTE: STM32L4
                 configFile = "/Firmware/openocd-pi-stm32l4.cfg"
             } else if (deviceName == "bat-esc-stm") {
+                // NOTE: STM32F4
                 configFile = "/Firmware/openocd-pi-stm32f4.cfg"
             } else {
                 logToConsoles("Error: Invalid STM Device")
