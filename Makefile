@@ -66,7 +66,7 @@ reset:
 	git submodule foreach --recursive git clean -xfd
 	git submodule foreach --recursive git reset --hard
 	git submodule update --init --recursive
-	rm build/conf_general.h.template
+	rm -f build/conf_general.h.template
 
 build/conf_general.h.template:
 	git submodule foreach --recursive git clean -xfd
