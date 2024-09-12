@@ -39,23 +39,18 @@
     (var new-remote-batt-v
         ; If remote is charging, use the charging voltage, 
         ; otherwise use the vibration voltage
-        (if (bat-charge-status)  
-            {
-                (var batv-before (bat-v))
-                (bat-set-charge false)
-                (sleep 0.05)
-                (var batv-after (* (vib-vmon)  1000))
-                (print "Charging, using bat-v")
-                (bat-set-charge true)
-                (/ batv-after 1000.0)
-            }
-            {
-                (print "Not charging, using vib-vmon")
-                (vib-vmon)
-            }))
+        (if (bat-charge-status) {
+            (bat-set-charge false)
+            (sleep 0.05)
+            (var batv (vib-vmon))
+            (bat-set-charge true)
+            batv
+        } {
+            (vib-vmon)
+        })
+    )
     (def remote-batt-v new-remote-batt-v)
     (def remote-batt-soc (v-to-soc remote-batt-v))
-    (print (str-merge "Remote Battery SOC: " (to-str remote-batt-soc) " V: " (to-str remote-batt-v)))
 ))
 
 (defun check-battery-on-boot () {
