@@ -104,6 +104,82 @@ void hw_board_init(void) {
 			terminal_reset_pwr);
 }
 
+#define C3_PERIOD     7645  // 130.81 Hz
+#define C3_SHARP      7209  // 138.59 Hz (C#3 / Db3)
+#define D3_PERIOD     6810  // 146.83 Hz
+#define D3_SHARP      6428  // 155.56 Hz (D#3 / Eb3)
+#define E3_PERIOD     6067  // 164.81 Hz
+#define F3_PERIOD     5727  // 174.61 Hz
+#define F3_SHARP      5405  // 185.00 Hz (F#3 / Gb3)
+#define G3_PERIOD     5102  // 196.00 Hz
+#define G3_SHARP      4816  // 207.65 Hz (G#3 / Ab3)
+#define A3_PERIOD     4545  // 220.00 Hz
+#define A3_SHARP      4290  // 233.08 Hz (A#3 / Bb3)
+#define B3_PERIOD     4049  // 246.94 Hz
+
+#define C4_PERIOD     3822  // 261.63 Hz
+#define C4_SHARP      3607  // 277.18 Hz (C#4 / Db4)
+#define D4_PERIOD     3405  // 293.66 Hz
+#define D4_SHARP      3215  // 311.13 Hz (D#4 / Eb4)
+#define E4_PERIOD     3034  // 329.63 Hz
+#define F4_PERIOD     2864  // 349.23 Hz
+#define F4_SHARP      2703  // 369.99 Hz (F#4 / Gb4)
+#define G4_PERIOD     2551  // 392.00 Hz
+#define G4_SHARP      2407  // 415.30 Hz (G#4 / Ab4)
+#define A4_PERIOD     2273  // 440.00 Hz
+#define A4_SHARP      2146  // 466.16 Hz (A#4 / Bb4)
+#define B4_PERIOD     2028  // 493.88 Hz
+
+#define C5_PERIOD     1911  // 523.25 Hz
+#define C5_SHARP      1804  // 554.37 Hz (C#5 / Db5)
+#define D5_PERIOD     1703  // 587.33 Hz
+#define D5_SHARP      1607  // 622.25 Hz (D#5 / Eb5)
+#define E5_PERIOD     1517  // 659.25 Hz
+#define F5_PERIOD     1432  // 698.46 Hz
+#define F5_SHARP      1352  // 739.99 Hz (F#5 / Gb5)
+#define G5_PERIOD     1275  // 783.99 Hz
+#define G5_SHARP      1204  // 830.61 Hz (G#5 / Ab5)
+#define A5_PERIOD     1136  // 880.00 Hz
+#define A5_SHARP      1073  // 932.33 Hz (A#5 / Bb5)
+#define B5_PERIOD     1012  // 987.77 Hz
+
+// Octave 6
+#define C6_PERIOD      956  // 1046.50 Hz
+#define C6_SHARP       902  // 1108.73 Hz (C#6 / Db6)
+#define D6_PERIOD      851  // 1174.66 Hz
+#define D6_SHARP       803  // 1244.51 Hz (D#6 / Eb6)
+#define E6_PERIOD      758  // 1318.51 Hz
+#define F6_PERIOD      716  // 1396.91 Hz
+#define F6_SHARP       676  // 1479.98 Hz (F#6 / Gb6)
+#define G6_PERIOD      638  // 1567.98 Hz
+#define G6_SHARP       602  // 1661.22 Hz (G#6 / Ab6)
+#define A6_PERIOD      568  // 1760.00 Hz
+#define A6_SHARP       536  // 1864.66 Hz (A#6 / Bb6)
+#define B6_PERIOD      506  // 1975.53 Hz
+
+// Octave 7
+#define C7_PERIOD      478  // 2093.00 Hz
+#define C7_SHARP       451  // 2217.46 Hz (C#7 / Db7)
+#define D7_PERIOD      425  // 2349.32 Hz
+#define D7_SHARP       401  // 2489.02 Hz (D#7 / Eb7)
+#define E7_PERIOD      379  // 2637.02 Hz
+#define F7_PERIOD      358  // 2793.83 Hz
+#define F7_SHARP       338  // 2959.96 Hz (F#7 / Gb7)
+#define G7_PERIOD      319  // 3135.96 Hz
+#define G7_SHARP       301  // 3322.44 Hz (G#7 / Ab7)
+#define A7_PERIOD      284  // 3520.00 Hz
+#define A7_SHARP       268  // 3729.31 Hz (A#7 / Bb7)
+#define B7_PERIOD      253  // 3951.07 Hz
+
+
+static void play_note(unsigned int period_ms, unsigned int duration_ms, unsigned int pause_ms) {
+	pwmChangePeriod(&BUZZER_PWM, period_ms);
+	BUZZER_ON();
+	chThdSleepMilliseconds(duration_ms);
+	BUZZER_OFF();
+	chThdSleepMilliseconds(pause_ms);
+}
+
 void hw_board_sleep(void) {
 	palClearLine(LINE_BATT_OUT_EN);
 	palClearLine(LINE_12V_EN);
@@ -286,6 +362,7 @@ static THD_FUNCTION(hw_thd_mon, p) {
 		//sleep_reset();
 
 		if (hw_temp_cell_max() > 60.0 && 0) {
+			
 			BUZZER_ON();
 			chThdSleepMilliseconds(500);
 			BUZZER_OFF();
@@ -341,16 +418,89 @@ static void terminal_mc_en(int argc, const char **argv) {
 	commands_printf("Invalid arguments\n");
 }
 
-static void terminal_buzzer_test(int argc, const char **argv) {
-	(void)argc; (void)argv;
 
-	for (int i = 0;i < 3;i++) {
-		BUZZER_ON();
-		chThdSleepMilliseconds(500);
-		BUZZER_OFF();
-		chThdSleepMilliseconds(500);
+typedef struct {
+	const char *name;
+	int period;
+} note_t;
+
+static note_t notes[] = {
+{"C3", C3_PERIOD},
+{"C3#", C3_SHARP},
+{"D3", D3_PERIOD},
+{"D3#", D3_SHARP},
+{"E3", E3_PERIOD},
+{"F3", F3_PERIOD},
+{"F3#", F3_SHARP},
+{"G3", G3_PERIOD},
+{"G3#", G3_SHARP},
+{"A3", A3_PERIOD},
+{"A3#", A3_SHARP},
+{"B3", B3_PERIOD},
+{"C4", C4_PERIOD},
+{"C4#", C4_SHARP},
+{"D4", D4_PERIOD},
+{"D4#", D4_SHARP},
+{"E4", E4_PERIOD},
+{"F4", F4_PERIOD},
+{"F4#", F4_SHARP},
+{"G4", G4_PERIOD},
+{"G4#", G4_SHARP},
+{"A4", A4_PERIOD},
+{"A4#", A4_SHARP},
+{"B4", B4_PERIOD},
+{"C5", C5_PERIOD},
+{"C5#", C5_SHARP},
+{"D5", D5_PERIOD},
+{"D5#", D5_SHARP},
+{"E5", E5_PERIOD},
+{"F5", F5_PERIOD},
+{"F5#", F5_SHARP},
+{"G5", G5_PERIOD},
+{"G5#", G5_SHARP},
+{"A5", A5_PERIOD},
+{"A5#", A5_SHARP},
+{"B5", B5_PERIOD},
+{"C6", C6_PERIOD},
+{"C6#", C6_SHARP},
+{"D6", D6_PERIOD},
+{"D6#", D6_SHARP},
+{"E6", E6_PERIOD},
+{"F6", F6_PERIOD},
+{"F6#", F6_SHARP},
+{"G6", G6_PERIOD},
+{"G6#", G6_SHARP},
+{"A6", A6_PERIOD},
+{"A6#", A6_SHARP},
+{"B6", B6_PERIOD}
+};
+
+bool str_eq(const char *a, const char *b) {
+	while (*a && *b) {
+		if (*a != *b) {
+			return false;
+		}
+		a++;
+		b++;
+	}
+	return *a == *b;
+}
+
+
+
+static void terminal_buzzer_test(int argc, const char **argv) {
+	//int notes[] = {G5_PERIOD, F5_SHARP, D5_SHARP, A4_PERIOD,G4_SHARP, E5_PERIOD, G5_SHARP, C6_PERIOD};
+	
+	for (size_t i = 1;i < (size_t)argc; i++) {
+		for (size_t j = 0;j < sizeof(notes) / sizeof(note_t); j++) {
+			if (str_eq(argv[i], notes[j].name)) {
+				play_note(notes[j].period, 75, 75);
+				break;
+			}
+		}
 	}
 }
+
 
 static void terminal_hw_info(int argc, const char **argv) {
 	(void)argc; (void)argv;
@@ -478,10 +628,10 @@ static void terminal_reset_pwr(int argc, const char **argv) {
 	palClearLine(LINE_MC_EN);
 	palClearLine(LINE_ESP_EN);
 	palSetLine(LINE_CURR_MEASURE_EN);
-
+	
 	commands_printf("Disabling power...");
 	chThdSleepMilliseconds(2000);
-	commands_printf("Enabling power power");
+	commands_printf("Enabling power");
 
 	awake_block = false;
 	palClearLine(LINE_CURR_MEASURE_EN);
@@ -493,13 +643,10 @@ static void terminal_reset_pwr(int argc, const char **argv) {
 void hw_test_wake_up(void) {
 	if (hw_test_if_conn(false)) {
 		sleep_reset();
+		play_note(C5_PERIOD, 100, 75);
+		play_note(E5_PERIOD, 80, 75);
+		play_note(G5_PERIOD, 300, 75);
 
-		for (int i = 0;i < 2;i++) {
-			BUZZER_ON();
-			chThdSleepMilliseconds(100);
-			BUZZER_OFF();
-			chThdSleepMilliseconds(100);
-		}
 	} else {
 		if (sleep_time_left() < 300) {
 			sleep_set_timer(0);
